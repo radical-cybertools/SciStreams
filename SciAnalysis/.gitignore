@@ -60,8 +60,4 @@ docs/_build/
 target/
 
 #Custom gitignore from CFN
-pyscripts
-pylists
-pystorage
-config.py
 *.swp
