@@ -279,7 +279,7 @@ class Processor(object):
             for key, val in event.items():
                 event_doc[key] = val
             event_doc['time'] = time.time()
-            event_doc['uid'] = uuid4()
+            event_doc['uid'] = str(uuid4())
             event_docs.append(event_doc)
 
             if 'data' not in event_doc:
@@ -291,7 +291,7 @@ class Processor(object):
 
         stop_doc = dict()
         stop_doc['time'] = time.time()
-        stop_doc['uid'] = uuid4()
+        stop_doc['uid'] = str(uuid4())
         stop_doc['run_start'] = start_doc['uid']
         stop_doc['exit_status'] = 'success'
 

@@ -1,5 +1,9 @@
 from metadatastore.mds import MDS
 from filestore.fs import FileStore
+# MDS and FS could come from different source
+from portable_mds.sqlite.mds import MDS as MDS_Analysis
+from portable_fs.sqlite.fs import FileStore as FileStore_Analysis
+
 from databroker import Broker, get_events, get_images
 import tifffile
 import numpy as np
@@ -88,27 +92,38 @@ class AreaDetectorTiffHandler(HandlerBase):
 cmsdb.fs.register_handler('AD_TIFF', AreaDetectorTiffHandler)
 
 ### ANALYSIS STORE SETUP
+''' Instructions on how to port this to actual database:
+    1. remove where it says 'test directory' and 'test path'
+    2. make sure the database field is correct
+    3. change MDS_Analysis -> MDS and FileStore_Analyis -> FileStore
+    WARNING: Make sure there is *no conflict* in the database name!
+
+'''
 # Set up of the databroker
 # This an example. You'll need to know your local configuration.
-mds_analysis = MDS({
-        #'host': 'xf11bm-ca1',
-        'host': 'localhost',
-             #'port': 27017,
-             'port': PORT_ANALYSIS,
-             # uses metadatastore
-             'database': 'metadatastore-production-v1',
-             'timezone': 'US/Eastern',
-             }, auth=False)
+mds_analysis_conf = {
+                     'host': 'localhost',
+                     'port': PORT_ANALYSIS,
+                     # uses metadatastore
+                     'database': 'metadatastore-production-v1',
+                     'timezone': 'US/Eastern',
+                     # test directory
+                     'directory' : '/home/group/mongodb-cms/sqlite-db'
+                     }
+mds_analysis = MDS_Analysis(mds_analysis_conf, auth=False)
 # This an example. You'll need to know your local configuration.
 fs_analysis_conf = {
-        'host': 'localhost',
-        'port': PORT_ANALYSIS,
-        'database': 'filestore-production-v1'}
+                    'host': 'localhost',
+                    'port': PORT_ANALYSIS,
+                    'database': 'filestore-production-v1',
+                    # test path
+                     'dbpath' : '/home/group/mongodb-cms/sqlite-db.db'
+                    }
 
 # if first time, run this:
 #from filestore.utils import install_sentinels
 #install_sentinels(fs_analysis_conf, version_number)
-fs_analysis = FileStore(fs_analysis_conf)
+fs_analysis = FileStore_Analysis(fs_analysis_conf)
 
 cmsdb_analysis = Broker(mds_analysis, fs_analysis)
 print("Set up the cms database at `cmsdb`. Please test if connection is"
