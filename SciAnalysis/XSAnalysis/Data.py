@@ -93,6 +93,10 @@ class Data2DScattering(Data2D):
 
         if self.mask is not None:
             self.name = tools.Filename(infile).get_filebase()
+            if self.mask.data.shape != self.data.shape:
+                raise ValueError("Shape mismatch between mask and data"
+                        "{},{} versus {},{}".format(**self.data.shape, **self.mask.data.shape))
+
             self.data *= self.mask.data
 
 
@@ -728,6 +732,9 @@ class Mask(object):
         else:
             print("Couldn't identify mask format for %s."%(infile))
 
+        # mask is binary so keep it simple type
+        # it will typecast automatically
+        self.data = self.data.astype(np.uint8)
 
     def load_blank(self, width, height):
         '''Creates a null mask; i.e. one that doesn't exlude any pixels.'''
@@ -744,6 +751,7 @@ class Mask(object):
         img = PIL.Image.open(infile).convert("L") # black-and-white
         img2 = img.point(lambda p: p > threshold and 255)
         data = np.asarray(img2)/255
+        data = data.astype(np.uint8)
 
         if invert:
             data = -1*(data-1)

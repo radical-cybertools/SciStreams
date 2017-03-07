@@ -25,6 +25,11 @@ import time
 #import xml.etree.ElementTree as etree # XML read/write
 from lxml import etree
 import xml.dom.minidom as minidom
+# import the analysis databroker
+from cmsdb import cmsdb_analysis
+_FILESTORE = cmsdb_analysis.fs
+_METADATASTORE = cmsdb_analysis.mds
+from uuid import uuid4
 
 def make_dir(directory):
     if not os.path.isdir(directory):
@@ -113,6 +118,8 @@ class Filename(object):
 ################################################################################
 class Processor(object):
     '''Base class for processing a bunch of data files.'''
+    # enable databroker with this flag
+    _DBENABLE = True
 
     def __init__(self, load_args={}, run_args={}, **kwargs):
 
@@ -187,9 +194,9 @@ class Processor(object):
             except OSError:
                 print('  ERROR (OSError) with file {}.'.format(infile))
 
-            except Exception as exception:
+            #except Exception as exception:
                 # Ignore errors, so that execution doesn't get stuck on a single bad file
-                print('  ERROR ({}) with file {}.'.format(exception.__class__.__name__, infile))
+                #print('  ERROR ({}) with file {}.'.format(exception.__class__.__name__, infile))
 
 
     def load(self, infile, **kwargs):
@@ -200,9 +207,12 @@ class Processor(object):
 
 
     def store_results(self, results, output_dir, name, protocol):
+        ''' This function stores the results from the analysis (run in the
+        `run` method) It currently writes to both xml and also databroker.
+        '''
 
         output_dir = self.access_dir(output_dir, 'results')
-        outfile = os.path.join( output_dir, Filename(name).get_filebase()+'.xml' )
+        outfile = os.path.join(output_dir, Filename(name).get_filebase()+'.xml' )
 
         if os.path.isfile(outfile):
             # Result XML file already exists
@@ -244,6 +254,53 @@ class Processor(object):
 
         tree = etree.ElementTree(root)
         tree.write(outfile, pretty_print=True)
+
+        # Store in databroker, make the documents
+        start_doc = dict()
+        for key, val in attributes.items():
+            start_doc[key] = val
+        start_doc['time'] = time.time()
+        start_doc['uid'] = str(uuid4())
+        start_doc['plan_name'] = 'analysis'
+
+        descriptor_doc = dict()
+        for key, val in results['descriptors'].items():
+            descriptor_doc[key] = val
+        descriptor_doc['time'] = time.time()
+        descriptor_doc['uid'] = str(uuid4())
+        descriptor_doc['run_start'] = start_doc['uid']
+
+        if 'data_keys' not in descriptor_doc:
+            raise ValueError("Error, 'data_keys' missing for descriptors")
+
+        event_docs = list()
+        for event in results['events']:
+            event_doc = dict()
+            for key, val in event.items():
+                event_doc[key] = val
+            event_doc['time'] = time.time()
+            event_doc['uid'] = uuid4()
+            event_docs.append(event_doc)
+
+            if 'data' not in event_doc:
+                raise ValueError("Error, key 'data' missing for event document")
+
+        event_doc['descriptor'] = descriptor_doc['uid']
+        event_doc['seq_num'] = 1
+
+
+        stop_doc = dict()
+        stop_doc['time'] = time.time()
+        stop_doc['uid'] = uuid4()
+        stop_doc['run_start'] = start_doc['uid']
+        stop_doc['exit_status'] = 'success'
+
+        print("Inserting resources to database")
+        _METADATASTORE.insert('start', start_doc)
+        _METADATASTORE.insert('descriptor', descriptor_doc)
+        for event_doc in event_docs:
+            _METADATASTORE.insert('event', event_doc)
+        _METADATASTORE.insert('stop', stop_doc)
 
 
 
@@ -486,6 +543,3 @@ def get_result_xml(infile, protocol):
 # verbosity=3 : Output all useful results
 # verbosity=4 : Output marginally useful things (e.g. essentially redundant/obvious things)
 # verbosity=5 : Output everything (e.g. for testing)
-
-
-

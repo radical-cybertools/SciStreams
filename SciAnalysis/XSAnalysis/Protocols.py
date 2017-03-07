@@ -23,6 +23,11 @@
 from .Data import *
 from ..tools import *
 
+# import the analysis databroker
+from cmsdb import cmsdb_analysis
+_FILESTORE = cmsdb_analysis.fs
+_METADATASTORE = cmsdb_analysis.mds
+from uuid import uuid4
 
 class ProcessorXS(Processor):
 
@@ -41,6 +46,8 @@ class ProcessorXS(Processor):
 
 
 class thumbnails(Protocol):
+    # FS :  the specifier for the file handler
+    _SPEC = 'PNG'
 
     def __init__(self, name='thumbnails', **kwargs):
 
@@ -75,6 +82,29 @@ class thumbnails(Protocol):
             outfile = self.get_outfile(data.name, output_dir)
 
         data.plot_image(outfile, **run_args)
+        dat_uid = str(uuid4())
+        datum_kwargs = {}  #kwargs for data if needed
+
+        # databroker : two step process: 1. insert resource 2. Save data
+        resource_document = _FILESTORE.insert_resource(self._SPEC, outfile, {})
+        _FILESTORE.insert_datum(resource_document, dat_uid, datum_kwargs)
+        # add to results for filestore to handle
+        # see saveschematic.txt for deails
+
+        # create the events to be stored in filestore (data)
+        # a list of dictionaries
+        events = [{'data' : {'thumb' : dat_uid}, 'timestamps' : {'thumb' : time.time()} }]  #uid saved instead
+
+        # TODO : It would be nice to know shape of outfile
+        descriptors = {'data_keys' : {'thumb' : {'dtype' : outfile,
+                       'shape' : (),
+                       'source' : 'thumbnail',
+                       'external' : 'FILESTORE:'
+                                      },
+                                      },}
+
+        results['descriptors'] = descriptors
+        results['events'] = events
 
         return results
 
