@@ -1,6 +1,7 @@
 import sys, os
-SciAnalysis_PATH = os.path.expanduser("~/home/xf11bm/software/SciAnalysis")
-SciAnalysis_PATH in sys.path or sys.path.append(SciAnalysis_PATH)
+# no need as SciAnalysis is globally installed in conda env
+#SciAnalysis_PATH = os.path.expanduser("~/home/xf11bm/software/SciAnalysis")
+#SciAnalysis_PATH in sys.path or sys.path.append(SciAnalysis_PATH)
 
 import glob
 from SciAnalysis import tools
@@ -14,10 +15,11 @@ calibration.set_pixel_size(pixel_size_um=172.0)
 calibration.set_distance(5.038)
 calibration.set_beam_position(263.5, 552.0)
 
-mask_dir = '/home/lhermitte/research/projects/SciAnalysis/storage'
+
+mask_dir = os.path.expanduser('~/research/projects/SciAnalysis-data/storage/masks')
 #mask = Mask(mask_dir+'/Pilatus300k_main_gaps-mask.png')
-mask = Mask(mask_dir+'/Pilatus300k_current-mask.png')
-mask.load(mask_dir + '/Pilatus300k_current-mask.png')
+mask = Mask(mask_dir+'/Pilatus300k_generic-mask.png')
+mask.load(mask_dir + '/Pilatus300k_generic-mask.png')
 
 protocols = [
     #Protocols.calibration_check(show=False, AgBH=True, q0=0.010, num_rings=4, ztrim=[0.05, 0.05], ) ,
@@ -34,7 +36,7 @@ protocols = [
 # Files to analyze
 ########################################
 
-root_dir = '/home/lhermitte/research/projects/SciAnalysis/data'
+root_dir = os.path.expanduser('~/research/projects/SciAnalysis-data/data')
 #root_dir = '/GPFS/xf11bm/Pilatus300/'
 #root_dir = '/GPFS/xf11bm/Pilatus300/2016-3/CFN_aligned-BCP/'
 
@@ -87,3 +89,6 @@ fs1.deregister_handler(_SPEC)
 fs1.register_handler(_SPEC, PNGHandler)
 imgs = cmsdb_analysis.get_images(cmsdb_analysis[-1], 'thumb')
 
+import matplotlib.pyplot as plt
+plt.ion()
+plt.imshow(imgs[0])
