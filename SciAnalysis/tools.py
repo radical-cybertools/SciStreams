@@ -278,6 +278,8 @@ class Processor(object):
             start_doc['save_timestamp'] = time.time()
             start_doc['output_dir'] = output_dir
             start_doc['outfile'] = outfile
+            if '_start' in results:
+                start_doc.update(results['_start'])
     
             descriptor_doc = dict()
             # results['_descriptors'] contains the descriptors
@@ -555,7 +557,7 @@ def get_result_xml(infile, protocol):
 ##################################################################
 # add to results for filestore to handle
 # see saveschematic.txt for deails
-def add_events(data, fs):
+def add_events(data, fs, **run_args):
     ''' Add data as an event.
         Requires the following keys:
             data : the data (or uid) of the saved result
@@ -572,6 +574,11 @@ def add_events(data, fs):
     if '_descriptors' not in results:
         results['_descriptors'] = dict()
         results['_descriptors']['data_keys'] = dict()
+    if '_start' not in results:
+        results['_start'] = dict()
+    
+    # this identifies the run arguments
+    results['_start']['run_args'] = dict(**run_args)
 
     event = dict()
     event['data'] = dict()

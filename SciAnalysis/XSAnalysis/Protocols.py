@@ -95,7 +95,7 @@ class thumbnails(Protocol):
         # could maybe be decorator
         if run_args['db_analysis'] is not None:
             fs = run_args['db_analysis'].fs
-            results = add_events(results, fs)
+            results = add_events(results, fs, **run_args)
 
         return results
 
