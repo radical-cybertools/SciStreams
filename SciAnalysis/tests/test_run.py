@@ -5,55 +5,127 @@ import sys, os
 
 import glob
 from SciAnalysis import tools
-from SciAnalysis.XSAnalysis.Data import *
+from SciAnalysis.XSAnalysis.Data import Calibration, Mask
 from SciAnalysis.XSAnalysis import Protocols
+from SciAnalysis.Data import cmap_vge_hdr
 
 import tempfile
+from PIL import Image
 
 # set up mock database
 from portable_mds.sqlite.mds import MDS as MDS_Analysis
 from portable_fs.sqlite.fs import FileStore as FileStore_Analysis
+from portable_fs.sqlite.fs import FileStore as FileStore_Analysis
+from filestore.path_only_handlers import RawHandler
+from databroker import Broker
+import numpy as np
+from SciAnalysis.detectors import detectors2D
 
 
-def test_thumb():
+def test_thumb(db=None, header=None):
+    ''' Test the thumbnail code for analysis.
+        This is a good example. The database needs to be passed to the
+            Processor object.
+
+        If db is not none, read image from there
+        If header is not None, use that as database to retrieve an image from
+            should be a tuple of database, uid, detector_key
+    '''
+    #from setupdb import cmsdb_analysis
+
     # Set up of the databroker
     # This an example. You'll need to know your local configuration.
+    tmpfile = tempfile.NamedTemporaryFile().name
+    tmpdir_analysis = tempfile.TemporaryDirectory().name
+    os.mkdir(tmpdir_analysis)
+    tmpdir_data = tempfile.TemporaryDirectory().name
+    os.mkdir(tmpdir_data)
+
     mds_analysis_conf = {
-                         'host': 'localhost',
-                         'port': PORT_ANALYSIS,
-                         # uses metadatastore
                          'database': 'metadatastore-production-v1',
                          'timezone': 'US/Eastern',
                          # test directory
-                         'directory' : '/home/group/mongodb-cms/sqlite-db'
+                         'directory' : tmpdir_analysis
                          }
+
     mds_analysis = MDS_Analysis(mds_analysis_conf, auth=False)
     # This an example. You'll need to know your local configuration.
     fs_analysis_conf = {
-                        'host': 'localhost',
-                        'port': PORT_ANALYSIS,
                         'database': 'filestore-production-v1',
                         # test path
-                         'dbpath' : '/home/group/mongodb-cms/sqlite-db.db'
+                         'dbpath' : tmpfile
                         }
-
     # if first time, run this:
     #from filestore.utils import install_sentinels
     #install_sentinels(fs_analysis_conf, version_number)
     fs_analysis = FileStore_Analysis(fs_analysis_conf)
 
     cmsdb_analysis = Broker(mds_analysis, fs_analysis)
+    # reverse key map in databroker metadata
+    keymaps = {'wavelength_A' : 'calibration_wavelength_A',
+                    'detectors' : 'detectors',
+                    'beamx0' : 'detector_SAXS_x0_pix',
+                    'beamy0' : 'detector_SAXS_y0_pix',
+                    'sample_det_distance_m' : 'detector_SAXS_distance_m'}
 
-    calibration = Calibration(wavelength_A=0.9184) # 13.5 keV
-    calibration.set_image_size(487, height=619) # Pilatus300k
-    calibration.set_pixel_size(pixel_size_um=172.0)
-    calibration.set_distance(5.038)
-    calibration.set_beam_position(263.5, 552.0)
+    
 
-    mask_dir = os.path.expanduser('~/research/projects/SciAnalysis-data/storage/masks')
+
+    if header is not None:
+        if db is None:
+            raise ValueError("Error: header and db must be set")
+
+        start_doc = header['start']
+        wavelength_A = start_doc[keymaps['wavelength_A']]
+        sample_det_distance_m = start_doc[keymaps['sample_det_distance_m']]
+        beamx0 = start_doc[keymaps['beamx0']]
+        beamy0 = start_doc[keymaps['beamy0']]
+        # just take first detector
+        first_detector = start_doc[keymaps['detectors']][0]
+        detector_key = detectors2D[first_detector]['image_key']
+
+        # look up in local library
+        image_key = first_detector + "_image"
+        pixel_size_um = detectors2D[first_detector]['xpixel_size_um']
+        img_shape = detectors2D[first_detector]['shape']
+        
+        calibration = Calibration(wavelength_A=wavelength_A) # 13.5 keV
+        calibration.set_image_size(img_shape[1], height=img_shape[0]) # Pilatus300k
+        calibration.set_pixel_size(pixel_size_um=pixel_size_um)
+        calibration.set_distance(sample_det_distance_m)
+        calibration.set_beam_position(beamx0, beamy0)
+      
+        data = db.get_images(header, detector_key)[0]
+
+    else:
+        calibration = Calibration(wavelength_A=0.9184) # 13.5 keV
+        img_shape = 619, 487
+        calibration.set_image_size(487, height=619) # Pilatus300k
+        calibration.set_pixel_size(pixel_size_um=172.0)
+        calibration.set_distance(5.038)
+        calibration.set_beam_position(263.5, 552.0)
+
+        # make dummy data
+        data = np.ones(img_shape, dtype=np.uint8)
+        data[50:60] = 0
+        data_filename = tmpdir_data + "/test_data.png"
+        im = Image.fromarray(data)
+        im.save(data_filename)
+
+
+    #create dummy image and mask
+    mask_data = np.ones(img_shape, dtype=np.uint8)
+    mask_data[50:60] = 0
+    mask_filename = tmpdir_analysis + "/test_mask.png"
+    im = Image.fromarray(mask_data)
+    im.save(mask_filename)
+
+
+
+
     #mask = Mask(mask_dir+'/Pilatus300k_main_gaps-mask.png')
-    mask = Mask(mask_dir+'/Pilatus300k_generic-mask.png')
-    mask.load(mask_dir + '/Pilatus300k_generic-mask.png')
+    mask = Mask(mask_filename)
+    mask.load(mask_filename)
 
     protocols = [
         #Protocols.calibration_check(show=False, AgBH=True, q0=0.010, num_rings=4, ztrim=[0.05, 0.05], ) ,
@@ -64,26 +136,14 @@ def test_thumb():
         Protocols.thumbnails(crop=None, resize=0.5, cmap=cmap_vge_hdr, ztrim=[0.005, 0.01]) ,
         ]
 
-
-
-
     # Files to analyze
     ########################################
-
-    root_dir = os.path.expanduser('~/research/projects/SciAnalysis-data/data')
-    #root_dir = '/GPFS/xf11bm/Pilatus300/'
-    #root_dir = '/GPFS/xf11bm/Pilatus300/2016-3/CFN_aligned-BCP/'
-
-
-    #source_dir = os.path.join(root_dir, '')
+    root_dir = os.path.expanduser(tmpdir_data)
     source_dir = root_dir
 
+    output_dir = tmpdir_analysis
 
-    #output_dir = os.path.join(source_dir, 'analysis/')
-    #output_dir = './'
-    output_dir = "../storage"
-
-    infiles = [source_dir + "/93e70975-875f-4b57-a9c9_000000.tiff"]
+    infiles = [data_filename]
     #infiles = glob.glob(os.path.join(source_dir, '*.tiff'))
     #infiles = glob.glob(os.path.join(source_dir, 'Ag*.tiff'))
     #infiles.sort()
@@ -98,19 +158,31 @@ def test_thumb():
     run_args = { 'verbosity' : 3,
                 }
 
-    process = Protocols.ProcessorXS(load_args=load_args, run_args=run_args)
+    process = Protocols.ProcessorXS(load_args=load_args, run_args=run_args, db_analysis=cmsdb_analysis)
 
 
     # Run
     ########################################
     process.run(infiles, protocols, output_dir=output_dir, force=False)
-
+    print("Ran successfully, now retrieving results")
 
     # retrieve
-    from cmsdb import cmsdb_analysis
     fs1 = cmsdb_analysis.fs
     _SPEC = "PNG"
-    from PIL import Image
+
+    # can create a handler that supplies the filename
+    class PNGHandlerRaw:
+        def __init__(self, fpath, **kwargs):
+            self.fpath = fpath
+
+        def __call__(self, **kwargs):
+            return self.fpath
+
+    fs1.register_handler(_SPEC, PNGHandlerRaw, overwrite=True)
+    fname = cmsdb_analysis.get_images(cmsdb_analysis[-1], 'thumb')[0]
+    print("filename is {}".format(fname))
+
+    # create quick handler
     class PNGHandler:
         def __init__(self, fpath, **kwargs):
             self.fpath = fpath
@@ -119,10 +191,9 @@ def test_thumb():
             return np.array(Image.open(self.fpath))
 
     # retrieving
-    fs1.deregister_handler(_SPEC)
-    fs1.register_handler(_SPEC, PNGHandler)
+    fs1.register_handler(_SPEC, PNGHandler, overwrite=True)
     imgs = cmsdb_analysis.get_images(cmsdb_analysis[-1], 'thumb')
+    print("Got an image of shape {}".format(imgs[0].shape))
 
-    import matplotlib.pyplot as plt
-    plt.ion()
-    plt.imshow(imgs[0])
+    return cmsdb_analysis
+

@@ -95,9 +95,9 @@ class Data2DScattering(Data2D):
             self.name = tools.Filename(infile).get_filebase()
             if self.mask.data.shape != self.data.shape:
                 raise ValueError("Shape mismatch between mask and data"
-                        "{},{} versus {},{}".format(**self.data.shape, **self.mask.data.shape))
+                        "{},{} versus {},{}".format(*self.data.shape, *self.mask.data.shape))
 
-            self.data *= self.mask.data
+            self.data = self.data*self.mask.data
 
 
     def load_eiger(self, infile, frame='all'):

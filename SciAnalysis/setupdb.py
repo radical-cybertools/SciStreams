@@ -10,7 +10,8 @@ import numpy as np
 
 #####    Data located in this database
 # Port used for tunneling (CMS' mongodb port is 27017)
-PORT_DATA = 27018
+HOST_DATA = 'xf11bm-ca1'
+PORT_DATA = 27017
 # old cms root directory for EIGER files and other filestore stuff
 # set to blank list (NOT blank string!) to use default
 OLDROOT_DATA = ["/GPFS/xf11bm/Pilatus300"]
@@ -29,7 +30,7 @@ NEWPATH_ANALYSIS = ""
 # This an example. You'll need to know your local configuration.
 mds = MDS({
         #'host': 'xf11bm-ca1',
-        'host': 'localhost',
+        'host': HOST_DATA,
              #'port': 27017,
              'port': PORT_DATA,
              'database': 'metadatastore-production-v1',
@@ -126,5 +127,5 @@ fs_analysis_conf = {
 fs_analysis = FileStore_Analysis(fs_analysis_conf)
 
 cmsdb_analysis = Broker(mds_analysis, fs_analysis)
-print("Set up the cms database at `cmsdb`. Please test if connection is"
+print("Set up the cms analysis database at `cmsdb`. Please test if connection is"
       "successful by running chxdb[-1]")
