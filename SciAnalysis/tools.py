@@ -246,6 +246,8 @@ class Processor(object):
 
         # Saving to xml
         for name, content in results.items():
+            if name[0] == '_':
+                continue  # ignore hidden variables, like _start etc
             import numpy as np
 
             if isinstance(content, dict):
@@ -594,8 +596,8 @@ def add_events(data, fs, **run_args):
 
 
     for key, val in data.items():
-        # first check if it's a filename, then make filestore instance
         # if entry is more complicated than a string, intercept and check
+        # Assumes a dict() type is automatically saved to filestore
         if isinstance(val['external'], dict):
             extinfo = val['external']
             if 'type' in extinfo and extinfo['type'] == 'filename':
@@ -605,9 +607,13 @@ def add_events(data, fs, **run_args):
                 dat_uid = str(uuid4())
                 val['data'] = dat_uid
                 spec = val['external']['spec']
-                datum_kwargs = val['external']['kwargs']
+                extinfo.setdefault('resource_kwargs', {})
+                extinfo.setdefault('datum_kwargs', {})
+                resource_kwargs = extinfo['resource_kwargs']
+                datum_kwargs = extinfo['datum_kwargs']
+                # could also add datum_kwargs
                 # databroker : two step process: 1. insert resource 2. Save data
-                resource_document = fs.insert_resource(spec, filename, val)
+                resource_document = fs.insert_resource(spec, filename, resource_kwargs)
                 fs.insert_datum(resource_document, dat_uid, datum_kwargs)
                 # overwrite with correct argument
                 val['external'] = "FILESTORE:"

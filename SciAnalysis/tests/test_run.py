@@ -17,6 +17,8 @@ from portable_mds.sqlite.mds import MDS as MDS_Analysis
 from portable_fs.sqlite.fs import FileStore as FileStore_Analysis
 from portable_fs.sqlite.fs import FileStore as FileStore_Analysis
 from filestore.path_only_handlers import RawHandler
+from filestore import HandlerBase
+from filestore.handlers import DATHandler
 from databroker import Broker
 import numpy as np
 from SciAnalysis.detectors import detectors2D
@@ -114,7 +116,7 @@ def test_thumb(db=None, header=None):
 
 
     #create dummy image and mask
-    mask_data = np.ones(img_shape, dtype=np.uint8)
+    mask_data = np.ones(img_shape, dtype=np.uint8)*255
     mask_data[50:60] = 0
     mask_filename = tmpdir_analysis + "/test_mask.png"
     im = Image.fromarray(mask_data)
@@ -189,9 +191,9 @@ def test_thumb(db=None, header=None):
 
         def __call__(self, **kwargs):
             return np.array(Image.open(self.fpath))
-
     # retrieving
     fs1.register_handler(_SPEC, PNGHandler, overwrite=True)
+    fs1.register_handler('DAT', DATHandler, overwrite=True)
     imgs = cmsdb_analysis.get_images(cmsdb_analysis[-1], 'thumb')
     print("Got an image of shape {}".format(imgs[0].shape))
 

@@ -146,17 +146,22 @@ class circular_average(Protocol):
 
         try:
             line.plot(save=outfile, show=False, **run_args)
+            # first set to FILENAME:, let filestore intercept it make entries of
+            # results
+            extinfo = {'type' : 'filename', 'spec' : 'PNG', 'resource_kwargs' : {'comments' :["#"], 'delimiter' : " "},
+                            'datum_kwargs' : {}}
+            results['sqplot'] = {'data' : outfile, 'dtype' : 'array', 'shape' : (),
+                                'source' : 'thumbnail', 'external' : extinfo,}
         except ValueError:
             pass
 
         outfile = self.get_outfile(data.name, output_dir, ext='.dat')
         line.save_data(outfile)
-        print("circ avg out file is {}".format(outfile))
 
         # first set to FILENAME:, let filestore intercept it make entries of
         # results
-        extinfo = {'type' : 'filename', 'spec' : 'DAT', 'kwargs' : {}}
-        results['sq'] = {'data' : outfile, 'dtype' : 'array', 'shape' : (),
+        extinfo = {'type' : 'filename', 'spec' : 'DAT', 'resource_kwargs' : {}, 'datum_kwargs' : {}}
+        results['sqdat'] = {'data' : outfile, 'dtype' : 'array', 'shape' : (),
                             'source' : 'thumbnail', 'external' : extinfo,}
         # save to databroker
         # could maybe be decorator
