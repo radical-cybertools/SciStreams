@@ -129,7 +129,7 @@ def test_thumb(db=None, header=None):
 
     protocols = [
         #Protocols.calibration_check(show=False, AgBH=True, q0=0.010, num_rings=4, ztrim=[0.05, 0.05], ) ,
-        #Protocols.circular_average(ylog=True, plot_range=[0, 0.12, None, None]) ,
+        Protocols.circular_average(ylog=True, plot_range=[0, 0.12, None, None]),
         #circular_average_q2I_fit(plot_range=[0, 0.10, 0, None]) ,
         #linecut_angle_fit(dq=0.00455*1.5) , # for q0
         #linecut_angle_fit_qm(q0=0.05, dq=0.025) , # for qm

@@ -28,6 +28,10 @@ from ..tools import add_events, parse_args
 # import the analysis databroker
 from uuid import uuid4
 from functools import partial
+
+import hashlib
+
+
 def partialdec(f):
     def f2(*args, **kwargs):
         return partial(f, *args, **kwargs)
@@ -121,9 +125,17 @@ class circular_average(Protocol):
         self.run_args = {}
         self.run_args.update(kwargs)
 
-
     @run_default
     def run(self, data, output_dir, **run_args):
+        # update run args with internal run_args first
+        for key, val in self.run_args.items():
+            if key not in run_args:
+                run_args[key] = val
+        #data = {'object' : data, 'id' : hashlib.md5(str(data.data).encode('utf-8'))}
+        #return delayed(self.run_explicit(data, output_dir, **run_args),pure=True)
+        return self.run_explicit(data, output_dir, **run_args)
+
+    def run_explicit(self, data, output_dir, **run_args):
 
         results = {}
 

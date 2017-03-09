@@ -178,6 +178,15 @@ class Data2DScattering(Data2D):
         #self.data = np.loadtxt(infile, skiprows=i).reshape(width, height) # Fails if lines of different length
         self.data = data.reshape(height, width)
 
+    def get_args(self):
+        ''' return all arguments that object uses implicitly.
+                Note : doesn't have to be everything. Can just
+                be the set that is determined to describe object
+                fully. (ex: plotting options can be ignored)
+        '''
+        return dict(data=self.data, mask=**self.mask.get_args(),
+                    calibration=self.calibration.get_args(), 
+                    )
 
 
     # Coordinate methods

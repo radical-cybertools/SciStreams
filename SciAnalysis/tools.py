@@ -152,7 +152,9 @@ class Processor(object):
         return output_dir
 
 
-    def run(self, infiles=None, protocols=None, output_dir=None, force=False, ignore_errors=False, sort=False, load_args={}, run_args={}, **kwargs):
+    def run(self, infiles=None, protocols=None, output_dir=None, force=False,
+            ignore_errors=False, sort=False, load_args={}, run_args={},
+            **kwargs):
         '''Process the specified files using the specified protocols.'''
 
         l_args = self.load_args.copy()
