@@ -27,6 +27,7 @@ from lxml import etree
 import xml.dom.minidom as minidom
 # import the analysis databroker
 from uuid import uuid4
+import numpy as np
 
 def make_dir(directory):
     if not os.path.isdir(directory):
@@ -579,6 +580,7 @@ def add_events(data, fs, **run_args):
     
     # this identifies the run arguments
     results['_start']['run_args'] = dict(**run_args)
+    parse_args(results['_start']['run_args'])
 
     event = dict()
     event['data'] = dict()
@@ -621,6 +623,29 @@ def add_events(data, fs, **run_args):
     results['_events'].append(event)
 
     return results
+
+def parse_args(argsdict):
+    ''' Parse args and make sure they are databroker friendly.
+        Also useful for hashing the args.
+        For ex: if it's a matplotlib instance etc just ignore
+
+        Modifies in place.
+
+        Warning : This is a recursive function
+    '''
+    for key, val in argsdict.items():
+        if isinstance(val, dict):
+            parse_args(val)
+        elif isinstance(val, np.ndarray):
+            # do nothing
+            pass
+        elif np.isscalar(val):
+            # convenient to check if it's a number
+            pass
+        else:
+            argsdict[key] = str(type(val))
+            
+    
 
 
 # Notes

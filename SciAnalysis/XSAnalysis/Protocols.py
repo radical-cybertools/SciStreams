@@ -23,7 +23,7 @@
 from .Data import Data2DScattering
 from ..tools import *
 # databroker stuff
-from ..tools import add_events
+from ..tools import add_events, parse_args
 
 # import the analysis databroker
 from uuid import uuid4
@@ -49,7 +49,6 @@ class ProcessorXS(Processor):
 
 
 class thumbnails(Protocol):
-    @partialdec
     def __init__(self, name='thumbnails', **kwargs):
 
         self.name = self.__class__.__name__ if name is None else name
@@ -68,10 +67,14 @@ class thumbnails(Protocol):
                         }
         self.run_args.update(kwargs)
 
-    # if dask, delays run
+    # run_explicity is meant to run with all parameters input explicitly
     @run_default
     def run(self, data, output_dir, **run_args):
-        self.run_explicit(data, output_dir, **run_args)
+        # update run args with internal run_args first
+        for key, val in self.run_args.items():
+            if key not in run_args:
+                run_args[key] = val
+        return self.run_explicit(data, output_dir, **run_args)
 
     def run_explicit(self, data, output_dir, **run_args):
         ''' This run saves the data and outputs it to a png file.'''
