@@ -116,16 +116,38 @@ class Filename(object):
 ################################################################################
 class Processor(object):
     '''Base class for processing a bunch of data files.'''
-    def __init__(self, load_args={}, run_args={}, **kwargs):
+    def __init__(self, load_args={}, run_args={}):
+        ''' Initialize the processor.
+            
+            Parameters
+            ----------
 
+            load_args : 
+
+            run_args : 
+                Run arguments. Can contain (but not limited to):
+
+                save_xml : bool
+                    If true, processor will save xml files with results
+    
+                db_analysis : databroker instance
+                    If set, then processor will save to this databroker instance
+            
+        '''
         self.load_args = load_args
         self.run_args = run_args
 
-        # databroker setup
-        if 'db_analysis' in kwargs:
-            self.db_analysis = kwargs['db_analysis']
+        # xml saving setup
+        if 'save_xml' in run_args:
+            self.save_xml = run_args['save_xml']
         else:
-            self.db_analysis = None
+            run_args['save_xml'] = True
+
+        # databroker setup
+        if 'db_analysis' in run_args:
+            self.db_analysis = run_args['db_analysis']
+        else:
+            run_args['db_analysis'] = None
 
 
     def set_files(self, infiles):
@@ -161,8 +183,8 @@ class Processor(object):
         l_args.update(load_args)
         r_args = self.run_args.copy()
         r_args.update(run_args)
-        if self.db_analysis is not None:
-            r_args['db_analysis'] = self.db_analysis
+        if self.run_args['db_analysis'] is not None:
+            r_args['db_analysis'] = self.run_args['db_analysis']
         else:
             r_args['db_analysis'] = None
 
@@ -218,9 +240,32 @@ class Processor(object):
         ''' This function stores the results from the analysis (run in the
         `run` method) It currently writes to both xml and also databroker.
         '''
+        attributes = {}
+        attributes['name'] = protocol.name
+        # TODO : added this, I think "protocol_name" may be more precise for metadata
+        # okay to remove 'name'?
+        attributes['protocol_name'] = protocol.name
+        attributes['start_timestamp'] = protocol.start_timestamp
+        attributes['end_timestamp'] = protocol.end_timestamp
+        attributes['runtime'] = protocol.end_timestamp - protocol.start_timestamp
+        attributes['save_timestamp'] = time.time()
+        attributes['output_dir'] = output_dir
+        attributes = dict([k, str(v)] for k, v in attributes.items())
 
+        # save_xml needs to be first. if saved, it modifies attributes
+        # (adds xml filename)
+        if self.save_xml:
+            self.store_results_xml(results, attributes, output_dir, name, protocol)
+
+        if self.db_analysis is not None:
+            self.store_results_databroker(results, attributes, 
+                                          name, protocol, self.db_analysis)
+
+
+    def store_results_xml(self, results, attributes, output_dir, name, protocol):
         output_dir = self.access_dir(output_dir, 'results')
         outfile = os.path.join(output_dir, Filename(name).get_filebase()+'.xml' )
+        attributes['outfile'] = outfile
 
         if os.path.isfile(outfile):
             # Result XML file already exists
@@ -232,16 +277,6 @@ class Processor(object):
             # TODO: Add characteristics of outfile
             root = etree.Element('DataFile', name=name)
 
-
-        attributes = {}
-        attributes['name'] = protocol.name
-        attributes['start_timestamp'] = protocol.start_timestamp
-        attributes['end_timestamp'] = protocol.end_timestamp
-        attributes['runtime'] = protocol.end_timestamp - protocol.start_timestamp
-        attributes['save_timestamp'] = time.time()
-        attributes['output_dir'] = output_dir
-        attributes['outfile'] = outfile
-        attributes = dict([k, str(v)] for k, v in attributes.items())
         prot = etree.SubElement(root, 'protocol', **attributes)
 
         # Saving to xml
@@ -266,65 +301,68 @@ class Processor(object):
         tree = etree.ElementTree(root)
         tree.write(outfile, pretty_print=True)
 
+    def store_results_databroker(self, results, attributes, name, protocol,
+                                 db):
+        ''' Save results to a databroker instance.'''
         # saving to databroker
-        if self.db_analysis is not None:
-            mds = self.db_analysis.mds # metadatastore
-            # Store in databroker, make the documents
-            start_doc = dict()
-            for key, val in attributes.items():
-                start_doc[key] = val
-            start_doc['time'] = time.time()
-            start_doc['uid'] = str(uuid4())
-            start_doc['plan_name'] = 'analysis'
-            start_doc['name'] = protocol.name
-            start_doc['start_timestamp'] = protocol.start_timestamp
-            start_doc['end_timestamp'] = protocol.end_timestamp
-            start_doc['runtime'] = protocol.end_timestamp - protocol.start_timestamp
-            start_doc['save_timestamp'] = time.time()
-            start_doc['output_dir'] = output_dir
-            start_doc['outfile'] = outfile
-            if '_start' in results:
-                start_doc.update(results['_start'])
-    
-            descriptor_doc = dict()
-            # results['_descriptors'] contains the descriptors
-            for key, val in results['_descriptors'].items():
-                descriptor_doc[key] = val
-            descriptor_doc['time'] = time.time()
-            descriptor_doc['uid'] = str(uuid4())
-            descriptor_doc['run_start'] = start_doc['uid']
-    
-            if 'data_keys' not in descriptor_doc:
-                raise ValueError("Error, 'data_keys' missing for descriptors")
-    
-            event_docs = list()
-            # results['_events'] contains events
-            for event in results['_events']:
-                event_doc = dict()
-                for key, val in event.items():
-                    event_doc[key] = val
-                event_doc['time'] = time.time()
-                event_doc['uid'] = str(uuid4())
-                event_docs.append(event_doc)
-    
-                if 'data' not in event_doc:
-                    raise ValueError("Error, key 'data' missing for event document")
-    
-            event_doc['descriptor'] = descriptor_doc['uid']
-            event_doc['seq_num'] = 1
-    
-    
-            stop_doc = dict()
-            stop_doc['time'] = time.time()
-            stop_doc['uid'] = str(uuid4())
-            stop_doc['run_start'] = start_doc['uid']
-            stop_doc['exit_status'] = 'success'
-    
-            mds.insert('start', start_doc)
-            mds.insert('descriptor', descriptor_doc)
-            for event_doc in event_docs:
-                mds.insert('event', event_doc)
-            mds.insert('stop', stop_doc)
+        mds = db.mds # metadatastore
+        # Store in databroker, make the documents
+        start_doc = dict()
+        for key, val in attributes.items():
+            start_doc[key] = val
+        start_doc['time'] = time.time()
+        start_doc['uid'] = str(uuid4())
+        start_doc['plan_name'] = 'analysis'
+        start_doc['name'] = protocol.name
+        start_doc['start_timestamp'] = protocol.start_timestamp
+        start_doc['end_timestamp'] = protocol.end_timestamp
+        start_doc['runtime'] = protocol.end_timestamp - protocol.start_timestamp
+        start_doc['save_timestamp'] = time.time()
+        start_doc['output_dir'] = attributes['output_dir']
+        if 'outfile' in attributes:
+            start_doc['outfile'] = attributes['outfile']
+        if '_start' in results:
+            start_doc.update(results['_start'])
+
+        descriptor_doc = dict()
+        # results['_descriptors'] contains the descriptors
+        for key, val in results['_descriptors'].items():
+            descriptor_doc[key] = val
+        descriptor_doc['time'] = time.time()
+        descriptor_doc['uid'] = str(uuid4())
+        descriptor_doc['run_start'] = start_doc['uid']
+
+        if 'data_keys' not in descriptor_doc:
+            raise ValueError("Error, 'data_keys' missing for descriptors")
+
+        event_docs = list()
+        # results['_events'] contains events
+        for event in results['_events']:
+            event_doc = dict()
+            for key, val in event.items():
+                event_doc[key] = val
+            event_doc['time'] = time.time()
+            event_doc['uid'] = str(uuid4())
+            event_docs.append(event_doc)
+
+            if 'data' not in event_doc:
+                raise ValueError("Error, key 'data' missing for event document")
+
+        event_doc['descriptor'] = descriptor_doc['uid']
+        event_doc['seq_num'] = 1
+
+
+        stop_doc = dict()
+        stop_doc['time'] = time.time()
+        stop_doc['uid'] = str(uuid4())
+        stop_doc['run_start'] = start_doc['uid']
+        stop_doc['exit_status'] = 'success'
+
+        mds.insert('start', start_doc)
+        mds.insert('descriptor', descriptor_doc)
+        for event_doc in event_docs:
+            mds.insert('event', event_doc)
+        mds.insert('stop', stop_doc)
 
 
 
@@ -483,6 +521,34 @@ class Protocol(object):
 
         return results
 
+    def make_file_metadata(self, results, entryname, filename=None, dtype="array",
+                shape=(), source=None, spec=None, type='filename',
+                resource_kwargs={}, datum_kwargs={}):
+        ''' Creates keys to results for add_events to understand.
+            Modifies results in place.
+        '''
+        if entryname not in results:
+            results[entryname] = dict()
+        entry = results[entryname]
+        extinfo = dict()
+        extinfo['type'] = type
+        if source is None:
+            entry['source'] = self.name
+        else:
+            entry['source'] = source
+        if spec is not None:
+            extinfo['spec'] = spec
+        extinfo['resource_kwargs'] = resource_kwargs
+        extinfo['datum_kwargs'] = datum_kwargs
+
+        # doesn't matter for what's in data, will be replaced in filestore
+        entry['data'] = filename
+        entry['dtype'] = dtype
+        entry['shape'] = shape 
+        entry['external'] = extinfo
+        if filename is not None:
+            entry['filename'] = filename
+
 
     # End class Protocol(object)
     ########################################
@@ -565,15 +631,17 @@ def get_result_xml(infile, protocol):
 def add_events(data, fs, **run_args):
     ''' Add data as an event.
         Requires the following keys:
-            data : the data (or uid) of the saved result
+            results : the dictionary of the saved result
             dtype : the data type
-            shape : the shape
-            source : the source
+            shape  : the shape
+            source  : the source
             external : information about external storage
 
-        Automatically saves to results (assumes it's a dictionary)
+        Filestore handling is done here as well.
+        Automatically saves to data (assumes it's a dictionary)
     '''
-    results = dict()
+    # this makes a new copy at upper level (not lower)
+    results = dict(**data)
     if '_events' not in results:
         results['_events'] = list()
     if '_descriptors' not in results:
@@ -606,7 +674,14 @@ def add_events(data, fs, **run_args):
                 filename = val['data']
                 dat_uid = str(uuid4())
                 val['data'] = dat_uid
-                spec = val['external']['spec']
+                if 'spec' in extinfo:
+                    spec = extinfo['spec']
+                else:
+                    extension = os.path.splitext(filename)[1]
+                    if len(extension) > 1:
+                        spec = extension[1:].upper()
+                    else:
+                        raise ValueError("Error could not figure out file type for {}".format(filename))
                 extinfo.setdefault('resource_kwargs', {})
                 extinfo.setdefault('datum_kwargs', {})
                 resource_kwargs = extinfo['resource_kwargs']
@@ -631,6 +706,8 @@ def add_events(data, fs, **run_args):
     results['_events'].append(event)
 
     return results
+
+    
 
 def parse_args(argsdict):
     ''' Parse args and make sure they are databroker friendly.

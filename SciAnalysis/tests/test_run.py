@@ -158,9 +158,11 @@ def test_thumb(db=None, header=None):
                  'mask' : mask,
                  }
     run_args = { 'verbosity' : 3,
+                 'db_analysis' : cmsdb_analysis,
+                 'save_xml' : True
                 }
 
-    process = Protocols.ProcessorXS(load_args=load_args, run_args=run_args, db_analysis=cmsdb_analysis)
+    process = Protocols.ProcessorXS(load_args=load_args, run_args=run_args)
 
 
     # Run
@@ -170,7 +172,6 @@ def test_thumb(db=None, header=None):
 
     # retrieve
     fs1 = cmsdb_analysis.fs
-    _SPEC = "PNG"
 
     # can create a handler that supplies the filename
     class PNGHandlerRaw:
@@ -180,10 +181,6 @@ def test_thumb(db=None, header=None):
         def __call__(self, **kwargs):
             return self.fpath
 
-    fs1.register_handler(_SPEC, PNGHandlerRaw, overwrite=True)
-    fname = cmsdb_analysis.get_images(cmsdb_analysis[-1], 'thumb')[0]
-    print("filename is {}".format(fname))
-
     # create quick handler
     class PNGHandler:
         def __init__(self, fpath, **kwargs):
@@ -191,11 +188,85 @@ def test_thumb(db=None, header=None):
 
         def __call__(self, **kwargs):
             return np.array(Image.open(self.fpath))
-    # retrieving
-    fs1.register_handler(_SPEC, PNGHandler, overwrite=True)
+
+    fs1.register_handler('PNG', PNGHandlerRaw, overwrite=True)
+    fs1.register_handler('JPG', PNGHandlerRaw, overwrite=True)
     fs1.register_handler('DAT', DATHandler, overwrite=True)
+    fname = cmsdb_analysis.get_images(cmsdb_analysis[-1], 'thumb')[0]
+    print("filename is {}".format(fname))
+
+    fs1.register_handler('PNG', PNGHandler, overwrite=True)
+    fs1.register_handler('JPG', PNGHandler, overwrite=True)
+    # retrieving
     imgs = cmsdb_analysis.get_images(cmsdb_analysis[-1], 'thumb')
     print("Got an image of shape {}".format(imgs[0].shape))
+    sqdat = cmsdb_analysis.get_images(cmsdb_analysis[-2], 'sqdat')
+    print("Got circular average dat file of shape {}".format(sqdat[0].shape))
+    sqplot = cmsdb_analysis.get_images(cmsdb_analysis[-2], 'sqplot')
+    print("Got circular average plot of shape {}".format(sqplot[0].shape))
+    events = list(cmsdb_analysis.get_events(cmsdb_analysis[-2], fill=True))
+    print("Successfully filled events from circular average")
+    events = list(cmsdb_analysis.get_events(cmsdb_analysis[-1], fill=True))
+    print("Successfully filled events from thumb reduction")
+    hdr_thumb = cmsdb_analysis(protocol_name="thumbnails")[0]
+    print("Successfully found last run thumbnail protocol")
+    hdr_thumb = cmsdb_analysis(protocol_name="thumbnails")[0]
+    print("Successfully found last run circular_average protocol")
+    hdr_circavg = cmsdb_analysis(protocol_name="circular_average")[0]
 
     return cmsdb_analysis
 
+
+
+def test_qt(db):
+    ''' requires a databroker instance'''
+    from databroker_browser.qt import BrowserWindow, CrossSection, StackViewer
+
+
+    search_result = lambda h: "{start[plan_name]} ['{start[uid]:.6}']".format(**h)
+    text_summary = lambda h: "This is a(n) {start[plan_name]}.".format(**h)
+
+
+    def fig_dispatch(header, factory):
+        # plotting doesn't work for now
+        '''
+        print(header)
+        plan_name = header['start']['plan_name']
+        plotted = False
+        for key in ['thumb', 'sqplot']:
+            if key in header['descriptors'][0]['data_keys']:
+                fig = factory('Image Series')
+                cs = CrossSection(fig)
+                sv = StackViewer(cs, db.get_images(header, 'thumb'))
+                plotted = True
+            if plotted:
+                break
+        '''
+        pass
+    
+    return BrowserWindow(db, fig_dispatch, text_summary, search_result)
+
+def test_qt_plotting(db):
+    from databroker_browser.qt import BrowserWindow, CrossSection, StackViewer
+    
+    
+    search_result = lambda h: "{start[plan_name]} ['{start[uid]:.6}']".format(**h)
+    text_summary = lambda h: "This is a {start[plan_name]}.".format(**h)
+    
+    
+    def fig_dispatch(header, factory):
+        plan_name = header['start']['plan_name']
+        if 'pilatus300' in header['start']['detectors']:
+            fig = factory('Image Series')
+            cs = CrossSection(fig)
+            sv = StackViewer(cs, db.get_images(header, 'pilatus300_image'))
+        elif len(header['start'].get('motors', [])) == 1:
+            motor, = header['start']['motors']
+            main_det, *_ = header['start']['detectors']
+            fig = factory("{} vs {}".format(main_det, motor))
+            ax = fig.gca()
+            lp = LivePlot(main_det, motor, ax=ax)
+            db.process(header, lp)
+    
+    
+    return BrowserWindow(db, fig_dispatch, text_summary, search_result)

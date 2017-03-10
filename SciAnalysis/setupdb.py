@@ -4,7 +4,7 @@ from filestore.fs import FileStore
 from portable_mds.sqlite.mds import MDS as MDS_Analysis
 from portable_fs.sqlite.fs import FileStore as FileStore_Analysis
 
-from databroker import Broker, get_events, get_images
+from databroker import Broker 
 import tifffile
 import numpy as np
 
@@ -14,7 +14,8 @@ HOST_DATA = 'xf11bm-ca1'
 PORT_DATA = 27017
 # old cms root directory for EIGER files and other filestore stuff
 # set to blank list (NOT blank string!) to use default
-OLDROOT_DATA = ["/GPFS/xf11bm/Pilatus300"]
+#OLDROOT_DATA = ["/GPFS/xf11bm/Pilatus300"]
+OLDROOT_DATA = list()
 # new root directory for EIGER files and other filestore stuff
 NEWROOT_DATA = "/media/cmslive"
 
@@ -111,7 +112,7 @@ mds_analysis_conf = {
                      # test directory
                      'directory' : '/home/group/mongodb-cms/sqlite-db'
                      }
-mds_analysis = MDS_Analysis(mds_analysis_conf, auth=False)
+#mds_analysis = MDS_Analysis(mds_analysis_conf, auth=False)
 # This an example. You'll need to know your local configuration.
 fs_analysis_conf = {
                     'host': 'localhost',
@@ -124,8 +125,8 @@ fs_analysis_conf = {
 # if first time, run this:
 #from filestore.utils import install_sentinels
 #install_sentinels(fs_analysis_conf, version_number)
-fs_analysis = FileStore_Analysis(fs_analysis_conf)
+#fs_analysis = FileStore_Analysis(fs_analysis_conf)
 
-cmsdb_analysis = Broker(mds_analysis, fs_analysis)
-print("Set up the cms analysis database at `cmsdb`. Please test if connection is"
-      "successful by running chxdb[-1]")
+#cmsdb_analysis = Broker(mds_analysis, fs_analysis)
+#print("Set up the cms analysis database at `cmsdb`. Please test if connection is"
+      #"successful by running chxdb[-1]")

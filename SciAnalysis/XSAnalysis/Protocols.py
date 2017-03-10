@@ -27,14 +27,9 @@ from ..tools import add_events, parse_args
 
 # import the analysis databroker
 from uuid import uuid4
-from functools import partial
 
 import hashlib
 
-
-def partialdec(f):
-    def f2(*args, **kwargs):
-        return partial(f, *args, **kwargs)
 
 class ProcessorXS(Processor):
 
@@ -101,11 +96,8 @@ class thumbnails(Protocol):
         data.plot_image(outfile, **run_args)
         datum_kwargs = {}  #kwargs for data if needed
 
-        # first set to FILENAME:, let filestore intercept it
-        # make entries of results
-        extinfo = {'type' : 'filename', 'spec' : 'PNG', 'kwargs' : {}}
-        results['thumb'] = {'data' : outfile, 'dtype' : 'array', 'shape' : (),
-                            'source' : 'thumbnail', 'external' : extinfo,}
+        # the databroker saving
+        self.make_file_metadata(results, "thumb", dtype="array", spec="PNG", filename=outfile)
         # save to databroker
         # could maybe be decorator
         if run_args['db_analysis'] is not None:
@@ -148,21 +140,19 @@ class circular_average(Protocol):
             line.plot(save=outfile, show=False, **run_args)
             # first set to FILENAME:, let filestore intercept it make entries of
             # results
-            extinfo = {'type' : 'filename', 'spec' : 'PNG', 'resource_kwargs' : {'comments' :["#"], 'delimiter' : " "},
-                            'datum_kwargs' : {}}
-            results['sqplot'] = {'data' : outfile, 'dtype' : 'array', 'shape' : (),
-                                'source' : 'thumbnail', 'external' : extinfo,}
+            #extinfo = {'type' : 'filename', 'spec' : 'PNG', 'resource_kwargs' : {'comments' :["#"], 'delimiter' : " "},
+                            #'datum_kwargs' : {}}
+            #results['sqplot'] = {'data' : outfile, 'dtype' : 'array', 'shape' : (),
+                                #'source' : self.name, 'external' : extinfo, 'filename' : outfile}
+            self.make_file_metadata(results, "sqplot", dtype="array", filename=outfile)
         except ValueError:
             pass
 
         outfile = self.get_outfile(data.name, output_dir, ext='.dat')
         line.save_data(outfile)
+        self.make_file_metadata(results, "sqdat", dtype="array", spec="DAT", filename=outfile)
 
         # first set to FILENAME:, let filestore intercept it make entries of
-        # results
-        extinfo = {'type' : 'filename', 'spec' : 'DAT', 'resource_kwargs' : {}, 'datum_kwargs' : {}}
-        results['sqdat'] = {'data' : outfile, 'dtype' : 'array', 'shape' : (),
-                            'source' : 'thumbnail', 'external' : extinfo,}
         # save to databroker
         # could maybe be decorator
         if run_args['db_analysis'] is not None:
