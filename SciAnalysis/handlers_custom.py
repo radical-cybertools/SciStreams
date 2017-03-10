@@ -1,3 +1,4 @@
+import tifffile
 from filestore.handlers_base import HandlerBase
 class AreaDetectorTiffHandler(HandlerBase):
     specs = {'AD_TIFF'} | HandlerBase.specs

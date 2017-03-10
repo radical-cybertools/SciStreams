@@ -97,11 +97,14 @@ class thumbnails(Protocol):
         datum_kwargs = {}  #kwargs for data if needed
 
         # the databroker saving
-        self.make_file_metadata(results, "thumb", dtype="array", spec="PNG", filename=outfile)
         # save to databroker
         # could maybe be decorator
         if run_args['db_analysis'] is not None:
+            # first prep metadata for filestore
+            self.make_file_metadata(results, "thumb", dtype="array", spec="PNG", filename=outfile)
             fs = run_args['db_analysis'].fs
+            # then write to filestore and prep metadata for databroker (handled
+            # in Processor.store_results)
             results = add_events(results, fs, **run_args)
 
         return results
@@ -134,29 +137,24 @@ class circular_average(Protocol):
         line = data.circular_average_q_bin(error=True)
         #line.smooth(2.0, bins=10)
 
-        outfile = self.get_outfile(data.name, output_dir)
+        outfile_png = self.get_outfile(data.name, output_dir)
 
         try:
-            line.plot(save=outfile, show=False, **run_args)
-            # first set to FILENAME:, let filestore intercept it make entries of
-            # results
-            #extinfo = {'type' : 'filename', 'spec' : 'PNG', 'resource_kwargs' : {'comments' :["#"], 'delimiter' : " "},
-                            #'datum_kwargs' : {}}
-            #results['sqplot'] = {'data' : outfile, 'dtype' : 'array', 'shape' : (),
-                                #'source' : self.name, 'external' : extinfo, 'filename' : outfile}
-            self.make_file_metadata(results, "sqplot", dtype="array", filename=outfile)
+            line.plot(save=outfile_png, show=False, **run_args)
         except ValueError:
             pass
+        outfile_dat = self.get_outfile(data.name, output_dir, ext='.dat')
+        line.save_data(outfile_dat)
 
-        outfile = self.get_outfile(data.name, output_dir, ext='.dat')
-        line.save_data(outfile)
-        self.make_file_metadata(results, "sqdat", dtype="array", spec="DAT", filename=outfile)
 
-        # first set to FILENAME:, let filestore intercept it make entries of
-        # save to databroker
-        # could maybe be decorator
+        # this is the databroker stuff
         if run_args['db_analysis'] is not None:
+            # first prep metadata for filestore
+            self.make_file_metadata(results, "sqdat", dtype="array", spec="DAT", filename=outfile_dat)
+            self.make_file_metadata(results, "sqplot", dtype="array", filename=outfile_png)
             fs = run_args['db_analysis'].fs
+            # then write to filestore and prep metadata for databroker (handled
+            # in Processor.store_results)
             results = add_events(results, fs, **run_args)
 
         # TODO: Fit 1D data

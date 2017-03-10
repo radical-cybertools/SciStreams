@@ -40,14 +40,14 @@ def cmsdb(HOST_DATA='xf11bm-ca1', PORT_DATA=27017,
             'host': HOST_DATA,
                       #'port': 27017,
             'port': PORT_DATA,
-            'database': 'filestore-production-v1'})
+            'database': 'filestore-production-v1'}, root_map=ROOTMAP_DATA)
     
     cmsdb = Broker(mds, fs)
     print("Set up the cms database at `cmsdb`. Please test if connection is"
           "successful by running chxdb[-1]")
     
     from SciAnalysis.handlers_custom import AreaDetectorTiffHandler  
-    cmsdb.fs.register_handler('AD_TIFF', partial(AreaDetectorTiffHandler, ROOTMAP=ROOTMAP_DATA))
+    cmsdb.fs.register_handler('AD_TIFF', AreaDetectorTiffHandler)  #partial(AreaDetectorTiffHandler, ROOTMAP=ROOTMAP_DATA))
 
     cmsdb_analysis = cmsdb_anal_tmp(HOST_ANALYSIS=HOST_ANALYSIS,
           PORT_ANALYSIS=PORT_ANALYSIS,
@@ -77,7 +77,7 @@ def cmsdb_anal(HOST_ANALYSIS="localhost",
     # if first time, run this:
     #from filestore.utils import install_sentinels
     #install_sentinels(fs_analysis_conf, version_number)
-    fs_analysis = FileStore(fs_analysis_conf)
+    fs_analysis = FileStore(fs_analysis_conf, root_map=ROOTMAP_ANALYSIS)
     
     cmsdb_analysis = Broker(mds_analysis, fs_analysis)
 

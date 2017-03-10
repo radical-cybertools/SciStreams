@@ -246,27 +246,11 @@ def test_qt(db):
     
     return BrowserWindow(db, fig_dispatch, text_summary, search_result)
 
-def test_qt_plotting(db):
-    from databroker_browser.qt import BrowserWindow, CrossSection, StackViewer
-    
-    
-    search_result = lambda h: "{start[plan_name]} ['{start[uid]:.6}']".format(**h)
-    text_summary = lambda h: "This is a {start[plan_name]}.".format(**h)
-    
-    
-    def fig_dispatch(header, factory):
-        plan_name = header['start']['plan_name']
-        if 'pilatus300' in header['start']['detectors']:
-            fig = factory('Image Series')
-            cs = CrossSection(fig)
-            sv = StackViewer(cs, db.get_images(header, 'pilatus300_image'))
-        elif len(header['start'].get('motors', [])) == 1:
-            motor, = header['start']['motors']
-            main_det, *_ = header['start']['detectors']
-            fig = factory("{} vs {}".format(main_det, motor))
-            ax = fig.gca()
-            lp = LivePlot(main_det, motor, ax=ax)
-            db.process(header, lp)
-    
-    
-    return BrowserWindow(db, fig_dispatch, text_summary, search_result)
+def test_database():
+    ''' Test reading of initialized databases.
+    '''
+    start_uid = '3245d466-e59c-4449-bf21-f1e8b3563662'
+    from databases import databases
+    cmsdb = databases['cms']['data']
+    cmsdb.fs.set_root_map({"foo":"bar"})
+    imgs = cmsdb.get_images(cmsdb[start_uid], 'pilatus300_image')
