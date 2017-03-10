@@ -44,6 +44,41 @@ class ProcessorXS(Processor):
 
         return data
 
+class load_SAXS_img(Protocol):
+    ''' This protocol is meant to simply load an image.
+        The intended structure is to have protocols do all
+        saving/loading/processing. The internals should be opaque to the
+        pipeline. It will likely be convenient for the internal data to
+        be saved as objects etc (Data2DScattering etc.). This is fine,
+        but the object will have to be well defined from this internal
+        data.
+    '''
+    def __init__(self, name="load_img", **kwargs):
+        pass
+
+    @run_default
+    def run(self):
+        ''' Returns a result document. This is then processed by the
+            xml saver and databroker, if specified.'''
+        pass
+
+    def get_id(self):
+        ''' get the id for this protocol. This is to use for caching
+        across multiple machines. etc. Simple way is to has whatever
+        is being used in the processing.
+        '''
+        pass
+
+   def get(self, key):
+        ''' Get some object key from the protocol.
+            This is loosely defined.
+        '''
+        pass
+
+    
+
+
+        
 
 
 class thumbnails(Protocol):
