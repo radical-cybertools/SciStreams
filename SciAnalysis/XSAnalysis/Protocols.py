@@ -23,7 +23,6 @@
 from .Data import Data2DScattering
 from ..tools import *
 # databroker stuff
-from ..tools import add_events, parse_args
 
 # import the analysis databroker
 from uuid import uuid4
@@ -96,16 +95,17 @@ class thumbnails(Protocol):
         data.plot_image(outfile, **run_args)
         datum_kwargs = {}  #kwargs for data if needed
 
-        # the databroker saving
-        # save to databroker
-        # could maybe be decorator
+        # this is the databroker stuff
         if run_args['db_analysis'] is not None:
             # first prep metadata for filestore
-            self.make_file_metadata(results, "thumb", dtype="array", spec="PNG", filename=outfile)
-            fs = run_args['db_analysis'].fs
-            # then write to filestore and prep metadata for databroker (handled
-            # in Processor.store_results)
-            results = add_events(results, fs, **run_args)
+            # keep track of files saved here
+            files = {
+                        'thumb' : {'dtype' : 'array', 'spec' : 'PNG', 'filename'
+                                   : outfile},
+                       }
+            # 'resource_kwargs' : [], 'datum_kwargs' : [], etc
+            results['_files'] = files
+            results['_run_args'] = dict(**run_args)
 
         return results
 
@@ -150,12 +150,15 @@ class circular_average(Protocol):
         # this is the databroker stuff
         if run_args['db_analysis'] is not None:
             # first prep metadata for filestore
-            self.make_file_metadata(results, "sqdat", dtype="array", spec="DAT", filename=outfile_dat)
-            self.make_file_metadata(results, "sqplot", dtype="array", filename=outfile_png)
-            fs = run_args['db_analysis'].fs
-            # then write to filestore and prep metadata for databroker (handled
-            # in Processor.store_results)
-            results = add_events(results, fs, **run_args)
+            # keep track of files saved here
+            files = {
+                        'sqdat' : {'dtype' : 'array', 'spec' : 'DAT', 'filename'
+                                   : outfile_dat},
+                        'sqplot' : {'dtype' : 'array', 'filename' : outfile_dat}
+                       }
+            # 'resource_kwargs' : [], 'datum_kwargs' : [], etc
+            results['_files'] = files
+            results['_run_args'] = dict(**run_args)
 
         # TODO: Fit 1D data
 

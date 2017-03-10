@@ -306,10 +306,12 @@ class Processor(object):
         ''' Save results to a databroker instance.'''
         # saving to databroker
         mds = db.mds # metadatastore
+
         # Store in databroker, make the documents
         start_doc = dict()
-        for key, val in attributes.items():
-            start_doc[key] = val
+
+        start_doc.update(attributes)
+
         start_doc['time'] = time.time()
         start_doc['uid'] = str(uuid4())
         start_doc['plan_name'] = 'analysis'
@@ -318,38 +320,41 @@ class Processor(object):
         start_doc['end_timestamp'] = protocol.end_timestamp
         start_doc['runtime'] = protocol.end_timestamp - protocol.start_timestamp
         start_doc['save_timestamp'] = time.time()
-        start_doc['output_dir'] = attributes['output_dir']
-        if 'outfile' in attributes:
-            start_doc['outfile'] = attributes['outfile']
-        if '_start' in results:
-            start_doc.update(results['_start'])
 
+        if '_run_args' in results:
+            parse_args(results['_run_args'])
+            start_doc['run_args'] = results['_run_args']
+
+        # just make one descriptor and event document for now
+        # initialize both event and descriptor
         descriptor_doc = dict()
-        # results['_descriptors'] contains the descriptors
-        for key, val in results['_descriptors'].items():
-            descriptor_doc[key] = val
+        event_doc = dict()
+        event_doc['data'] = dict()
+        event_doc['timestamps'] = dict()
+        descriptor_doc['data_keys'] = dict()
         descriptor_doc['time'] = time.time()
         descriptor_doc['uid'] = str(uuid4())
         descriptor_doc['run_start'] = start_doc['uid']
-
-        if 'data_keys' not in descriptor_doc:
-            raise ValueError("Error, 'data_keys' missing for descriptors")
-
-        event_docs = list()
-        # results['_events'] contains events
-        for event in results['_events']:
-            event_doc = dict()
-            for key, val in event.items():
-                event_doc[key] = val
-            event_doc['time'] = time.time()
-            event_doc['uid'] = str(uuid4())
-            event_docs.append(event_doc)
-
-            if 'data' not in event_doc:
-                raise ValueError("Error, key 'data' missing for event document")
-
+        event_doc['time'] = time.time()
+        event_doc['uid'] = str(uuid4())
         event_doc['descriptor'] = descriptor_doc['uid']
         event_doc['seq_num'] = 1
+
+        # first parse data
+        for key, val in results.items():
+            if key[0] == '_':
+                continue # ignore hidden keys
+            # guess descriptor from data
+            descriptor_doc['data_keys'][key] = make_descriptor(val)
+            event_doc['data'][key] = val
+            event_doc['timestamps'][key] = time.time()
+
+        # then parse files, val is a dict
+        for key, val in results['_files'].items():
+            datum, desc = parse_file_event(val, db)
+            descriptor_doc['data_keys'][key] = desc
+            event_doc['data'][key] = datum
+            event_doc['timestamps'][key] = time.time()
 
 
         stop_doc = dict()
@@ -360,9 +365,9 @@ class Processor(object):
 
         mds.insert('start', start_doc)
         mds.insert('descriptor', descriptor_doc)
-        for event_doc in event_docs:
-            mds.insert('event', event_doc)
+        mds.insert('event', event_doc)
         mds.insert('stop', stop_doc)
+
 
 
 
@@ -521,33 +526,6 @@ class Protocol(object):
 
         return results
 
-    def make_file_metadata(self, results, entryname, filename=None, dtype="array",
-                shape=(), source=None, spec=None, type='filename',
-                resource_kwargs={}, datum_kwargs={}):
-        ''' Creates keys to results for add_events to understand.
-            Modifies results in place.
-        '''
-        if entryname not in results:
-            results[entryname] = dict()
-        entry = results[entryname]
-        extinfo = dict()
-        extinfo['type'] = type
-        if source is None:
-            entry['source'] = self.name
-        else:
-            entry['source'] = source
-        if spec is not None:
-            extinfo['spec'] = spec
-        extinfo['resource_kwargs'] = resource_kwargs
-        extinfo['datum_kwargs'] = datum_kwargs
-
-        # doesn't matter for what's in data, will be replaced in filestore
-        entry['data'] = filename
-        entry['dtype'] = dtype
-        entry['shape'] = shape 
-        entry['external'] = extinfo
-        if filename is not None:
-            entry['filename'] = filename
 
 
     # End class Protocol(object)
@@ -628,86 +606,6 @@ def get_result_xml(infile, protocol):
 ##################################################################
 # add to results for filestore to handle
 # see saveschematic.txt for deails
-def add_events(data, fs, **run_args):
-    ''' Add data as an event.
-        Requires the following keys:
-            results : the dictionary of the saved result
-            dtype : the data type
-            shape  : the shape
-            source  : the source
-            external : information about external storage
-
-        Filestore handling is done here as well.
-        Automatically saves to data (assumes it's a dictionary)
-    '''
-    # this makes a new copy at upper level (not lower)
-    results = dict(**data)
-    if '_events' not in results:
-        results['_events'] = list()
-    if '_descriptors' not in results:
-        results['_descriptors'] = dict()
-        results['_descriptors']['data_keys'] = dict()
-    if '_start' not in results:
-        results['_start'] = dict()
-    
-    # this identifies the run arguments
-    results['_start']['run_args'] = dict(**run_args)
-    parse_args(results['_start']['run_args'])
-
-    event = dict()
-    event['data'] = dict()
-    event['timestamps'] = dict()
-
-    descriptors = dict()
-    descriptors['data_keys'] = dict()
-
-
-
-    for key, val in data.items():
-        # if entry is more complicated than a string, intercept and check
-        # Assumes a dict() type is automatically saved to filestore
-        if isinstance(val['external'], dict):
-            extinfo = val['external']
-            if 'type' in extinfo and extinfo['type'] == 'filename':
-                # it's a filename, so save to filestore
-                # replace with uid
-                filename = val['data']
-                dat_uid = str(uuid4())
-                val['data'] = dat_uid
-                if 'spec' in extinfo:
-                    spec = extinfo['spec']
-                else:
-                    extension = os.path.splitext(filename)[1]
-                    if len(extension) > 1:
-                        spec = extension[1:].upper()
-                    else:
-                        raise ValueError("Error could not figure out file type for {}".format(filename))
-                extinfo.setdefault('resource_kwargs', {})
-                extinfo.setdefault('datum_kwargs', {})
-                resource_kwargs = extinfo['resource_kwargs']
-                datum_kwargs = extinfo['datum_kwargs']
-                # could also add datum_kwargs
-                # databroker : two step process: 1. insert resource 2. Save data
-                resource_document = fs.insert_resource(spec, filename, resource_kwargs)
-                fs.insert_datum(resource_document, dat_uid, datum_kwargs)
-                # overwrite with correct argument
-                val['external'] = "FILESTORE:"
-
-        event['data'][key] = val['data']
-        event['timestamps'][key] = time.time()
-        descriptors['data_keys'][key] = {'dtype' : val['dtype'],
-                            'shape' : val['shape'],
-                            'source' : val['source'],
-                            'external' : val['external'],}
-
-    # TODO : need to check that this doesn't overwrite previously
-    # existing key
-    results['_descriptors'].update(descriptors)
-    results['_events'].append(event)
-
-    return results
-
-    
 
 def parse_args(argsdict):
     ''' Parse args and make sure they are databroker friendly.
@@ -730,7 +628,74 @@ def parse_args(argsdict):
         else:
             argsdict[key] = str(type(val))
             
+
+def make_descriptor(val):
+    ''' make a descriptor from value through guessing.'''
+    shape = ()
+    if np.isscalar(val):
+        dtype = 'number'
+    elif isinstance(val, np.ndarray):
+        dtype = 'array'
+        shape = val.shape
+    elif isinstance(val, list):
+        dtype = 'list'
+        shape = (len(val),)
+    elif isinstance(val, dict):
+        dtype = 'dict'
+    else:
+        dtype = 'unknown'
+
+    return dict(dtype=dtype, shape=shape)
+
     
+def parse_file_event(entry, db):
+    ''' Parse a file event descriptor (our custom descriptor),
+        and translate into a datum (could be uid, or actual data)
+        and a datum_dict (dictionary descriptor for the datum)
+
+        Returns
+        -------
+        datum : the result 
+        datum_dict : the dictionary describing the result
+    '''
+    dat_dict = dict()
+    if 'dtype' in entry:
+        dat_dict['dtype'] = entry['dtype']
+    if 'shape' in entry:
+        dat_dict['shape'] = entry['shape']
+    if 'source' in entry:
+        dat_dict['source'] = entry['source']
+    if 'external' in entry:
+        dat_dict['external'] = entry['external']
+    if 'filename' in entry:
+        dat_dict['filename'] = entry['filename']
+
+    # this is for filestore instance
+    if 'filename' in entry:
+        fs = db.fs # get filestore
+        filename = entry['filename']
+        dat_uid = str(uuid4())
+        # try to guess some parameters here
+        if 'spec' in entry:
+            spec = entry['spec']
+        else:
+            extension = os.path.splitext(filename)[1]
+            if len(extension) > 1:
+                spec = extension[1:].upper()
+            else:
+                raise ValueError("Error could not figure out file type for {}".format(filename))
+        entry.setdefault('resource_kwargs', {})
+        entry.setdefault('datum_kwargs', {})
+        resource_kwargs = entry['resource_kwargs']
+        datum_kwargs = entry['datum_kwargs']
+        # could also add datum_kwargs
+        # databroker : two step process: 1. insert resource 2. Save data
+        resource_document = fs.insert_resource(spec, filename, resource_kwargs)
+        fs.insert_datum(resource_document, dat_uid, datum_kwargs)
+        # overwrite with correct argument
+        dat_dict['external'] = "FILESTORE:"
+
+    return dat_uid, dat_dict
 
 
 # Notes
