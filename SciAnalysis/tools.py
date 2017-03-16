@@ -31,7 +31,6 @@ import numpy as np
 
 _ANALYSIS_STORE_VERSION = 'beta-v1'
 
-
 def make_dir(directory):
     if not os.path.isdir(directory):
         #os.mkdir( directory )
