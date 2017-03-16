@@ -459,7 +459,7 @@ class Processor(object):
 ################################################################################
 def run_default(inner_function):
     '''Standard book-keeping required for the 'run' method of any protocol.'''
-    def _run_default(self, data, output_dir, **kwargs):
+    def _run_default(self, *args, **kwargs):
 
         run_args = self.run_args.copy()
         run_args.update(kwargs)
@@ -467,7 +467,7 @@ def run_default(inner_function):
         self.ir = 1
         self.start_timestamp = time.time()
 
-        results = inner_function(self, data, output_dir, **run_args)
+        results = inner_function(self, *args, **run_args)
 
         self.end_timestamp = time.time()
 

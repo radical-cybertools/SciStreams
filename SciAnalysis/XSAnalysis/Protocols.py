@@ -29,6 +29,8 @@ from uuid import uuid4
 
 import hashlib
 
+from dask import delayed
+
 
 class ProcessorXS(Processor):
 
@@ -54,13 +56,20 @@ class load_SAXS_img(Protocol):
         data.
     '''
     def __init__(self, name="load_img", **kwargs):
-        pass
+        self.filename = kwargs.pop('infile')
+        self.data = Data2DScattering(**kwargs)
 
+    @delayed
     @run_default
-    def run(self):
+    def run(self, **kwargs):
         ''' Returns a result document. This is then processed by the
-            xml saver and databroker, if specified.'''
-        pass
+            xml saver and databroker, if specified.
+            Key is either a string (filename)
+            or a header file.
+        '''
+        self.data.load(self.filename, **kwargs)
+        return self.data.data
+        
 
     def get_id(self):
         ''' get the id for this protocol. This is to use for caching
@@ -69,19 +78,16 @@ class load_SAXS_img(Protocol):
         '''
         pass
 
-   def get(self, key):
+    def get(self, key):
         ''' Get some object key from the protocol.
             This is loosely defined.
         '''
         pass
 
-    
-
-
-        
-
 
 class thumbnails(Protocol):
+    _name = "XSAnalysis-thumbnails"
+    _depends = {'_arg0' : 'load_SAXS_img'}
     def __init__(self, name='thumbnails', **kwargs):
 
         self.name = self.__class__.__name__ if name is None else name
