@@ -2,6 +2,7 @@
 # NOTE : cmsdb makes temporary analysis database for now...
 from metadatastore.mds import MDS
 from filestore.fs import FileStore
+from filestore.handlers import DATHandler
 from portable_mds.sqlite.mds import MDS as MDS_SQLITE
 from portable_fs.sqlite.fs import FileStore as FileStore_SQLITE
 from databroker import Broker
@@ -10,6 +11,7 @@ import numpy as np
 import tempfile
 import os
 from functools import partial
+from .handlers_custom import PNGHandler
 
 def cmsdb(HOST_DATA='xf11bm-ca1', PORT_DATA=27017,
           ROOTMAP_DATA = {"/GPFS/xf11bm/Pilatus300": "/media/cmslive"},
@@ -117,6 +119,9 @@ def cmsdb_anal_tmp(HOST_ANALYSIS="localhost",
     #from filestore.utils import install_sentinels
     #install_sentinels(fs_analysis_conf, version_number)
     fs_analysis = FileStore_SQLITE(fs_analysis_conf)
+    fs_analysis.register_handler('PNG', PNGHandler, overwrite=True)
+    fs_analysis.register_handler('JPG', PNGHandler, overwrite=True)
+    fs_analysis.register_handler('DAT', DATHandler, overwrite=True)
 
     cmsdb_analysis = Broker(mds_analysis, fs_analysis)
 

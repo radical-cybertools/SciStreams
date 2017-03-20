@@ -154,7 +154,7 @@ class circular_average(Protocol):
             files = {
                         'sqdat' : {'dtype' : 'array', 'spec' : 'DAT', 'filename'
                                    : outfile_dat},
-                        'sqplot' : {'dtype' : 'array', 'filename' : outfile_dat}
+                        'sqplot' : {'dtype' : 'array', 'filename' : outfile_png}
                        }
             # 'resource_kwargs' : [], 'datum_kwargs' : [], etc
             results['_files'] = files

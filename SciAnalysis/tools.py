@@ -678,7 +678,8 @@ def parse_file_event(entry, db):
     # this is for filestore instance
     if 'filename' in entry:
         fs = db.fs # get filestore
-        filename = entry['filename']
+        # make sure it's absolute path
+        filename = os.path.abspath(os.path.expanduser(entry['filename']))
         dat_uid = str(uuid4())
         # try to guess some parameters here
         if 'spec' in entry:

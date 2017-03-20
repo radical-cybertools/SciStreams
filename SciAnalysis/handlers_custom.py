@@ -1,5 +1,8 @@
 import tifffile
 from filestore.handlers_base import HandlerBase
+import numpy as np
+from PIL import Image
+
 class AreaDetectorTiffHandler(HandlerBase):
     specs = {'AD_TIFF'} | HandlerBase.specs
     def __init__(self, fpath, template, filename, frame_per_point=1,
@@ -29,3 +32,11 @@ class AreaDetectorTiffHandler(HandlerBase):
         for d_kw in datum_kwargs:
             ret.extend(self._fnames_for_point(**d_kw))
         return ret
+
+# create quick handler
+class PNGHandler:
+    def __init__(self, fpath, **kwargs):
+        self.fpath = fpath
+
+    def __call__(self, **kwargs):
+        return np.array(Image.open(self.fpath))
