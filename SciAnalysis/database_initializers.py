@@ -82,17 +82,22 @@ def cmsdb_anal(HOST_ANALYSIS="localhost",
     cmsdb_analysis = Broker(mds_analysis, fs_analysis)
 
 
+# HARD CODED temporary database
 def cmsdb_anal_tmp(HOST_ANALYSIS="localhost",
           PORT_ANALYSIS=27021,
           ROOTMAP={}):
     ''' this one just ignores and creates sandbox anal db.
         for temporary use
     '''
-    tmpfile = tempfile.NamedTemporaryFile().name
-    tmpdir_analysis = tempfile.TemporaryDirectory().name
-    os.mkdir(tmpdir_analysis)
-    tmpdir_data = tempfile.TemporaryDirectory().name
-    os.mkdir(tmpdir_data)
+    #tmpfile = tempfile.NamedTemporaryFile().name
+    #tmpdir_analysis = tempfile.TemporaryDirectory().name
+    #os.mkdir(tmpdir_analysis)
+    #tmpdir_data = tempfile.TemporaryDirectory().name
+    #os.mkdir(tmpdir_data)
+    tmpfile = "/home/lhermitte/sqlite/cmsdb_analysis/cmsdb_analysis.tmp"
+    tmpdir_analysis = "/home/lhermitte/sqlite/cmsdb_analysis"
+    tmpdir_data = "/home/lhermitte/sqlite/cmsdb_data"
+    
 
     mds_analysis_conf = {
                          'database': 'metadatastore-production-v1',

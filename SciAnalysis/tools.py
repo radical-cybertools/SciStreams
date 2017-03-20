@@ -134,8 +134,6 @@ class Processor(object):
                     If set, then processor will save to this databroker instance
             
         '''
-        self.load_args = load_args
-        self.run_args = run_args
 
         # xml saving setup
         if 'save_xml' in run_args:
@@ -148,6 +146,9 @@ class Processor(object):
             self.db_analysis = run_args['db_analysis']
         else:
             run_args['db_analysis'] = None
+
+        self.load_args = load_args
+        self.run_args = run_args
 
 
     def set_files(self, infiles):
@@ -254,12 +255,12 @@ class Processor(object):
 
         # save_xml needs to be first. if saved, it modifies attributes
         # (adds xml filename)
-        if self.save_xml:
+        if self.run_args['save_xml']:
             self.store_results_xml(results, attributes, output_dir, name, protocol)
 
-        if self.db_analysis is not None:
+        if self.run_args['db_analysis'] is not None:
             self.store_results_databroker(results, attributes, 
-                                          name, protocol, self.db_analysis)
+                                          name, protocol, self.run_args['db_analysis'])
 
 
     def store_results_xml(self, results, attributes, output_dir, name, protocol):
