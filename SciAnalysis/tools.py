@@ -29,6 +29,9 @@ import xml.dom.minidom as minidom
 from uuid import uuid4
 import numpy as np
 
+_ANALYSIS_STORE_VERSION = 'beta-v1'
+
+
 def make_dir(directory):
     if not os.path.isdir(directory):
         #os.mkdir( directory )
@@ -321,6 +324,7 @@ class Processor(object):
         start_doc['end_timestamp'] = protocol.end_timestamp
         start_doc['runtime'] = protocol.end_timestamp - protocol.start_timestamp
         start_doc['save_timestamp'] = time.time()
+        start_doc['analysis_store_version'] = _ANALYSIS_STORE_VERSION
 
         if '_run_args' in results:
             parse_args(results['_run_args'])
