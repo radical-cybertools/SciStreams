@@ -92,7 +92,7 @@ class load_saxs_image:
     def __init__(self, infile=None):
         self.infile = infile
 
-    @run_default
+    #@run_default
     def run(self):
         return self.run_explicit(infile=self.infile)
 
@@ -224,10 +224,10 @@ def test_circavg():
     # I randomly chose some header
     header = cmsdb['89e8caf6-8059-43ff-9a9e-4bf461ee95b5']
 
-    tmpdir_data = tempfile.TemporaryDirectory().name
-    os.mkdir(tmpdir_data)
 
     # make dummy data
+    tmpdir_data = tempfile.TemporaryDirectory().name
+    os.mkdir(tmpdir_data)
     img_shape = (100,100)
     data = np.ones(img_shape, dtype=np.uint8)
     data[50:60] = 0
