@@ -5,32 +5,25 @@ import numpy as np
 
 import time
 
-from SciAnalysis.XSAnalysis.Data import Calibration
-
 from databases import databases
 from detectors import detectors2D
 
-from copy import deepcopy
-
-
-#from SciAnalysis.XSAnalysis.Protocols import load_SAXS_img
-
-#import dask
 from dask import delayed
 from dask.delayed import Delayed
+
+from cache import cache
+
 from toolz import curry
 
 from databroker.broker import Header
 #from distributed import Client
 #_pipeline_client = Client('127.0.0.1:8788')
 
+# testing
 from nose.tools import assert_true, assert_false
 from numpy.testing import assert_array_almost_equal
 
-# caching stuff
-#import chest
-#_CACHE = chest.Chest()
-#dask.set_options(cache=_CACHE)
+from SciAnalysis.SciResult import SciResult, parse_sciresults
 
 # base class
 class Protocol:
@@ -41,7 +34,8 @@ class Protocol:
 # TODO : how to handle implicit arguments? (Some global maybe?)
 # TODO : add databroker keymap
 
-''' For now, assume all incoming arguments are well defined each step.
+'''
+For now, assume all incoming arguments are well defined each step.
 
 There will be a case where this is not true.
 For ex : linecut -> need to backpropagate until the latest data set that
@@ -58,63 +52,13 @@ Ideas introduced:
         _argn means nth argument, rest are keywords
     _func_args : the explicit arguments for function
     _keymap : the keymap of results
-
-
-PROBLEMS : 
-1. Delayed object will modify instances of classes
-
-
-QUESTIONS:
-1.Object oriented or functional approach?
-2. Two possible conventions for two step process:
-    - explicit, using objects
-    - curry function func(arg, **kwargs)
-        only when arg is supplied does it compute
-
-
-
+3. two step run process:
+    result = myclass(**kwargs).run(**moreoverridingargs).compute()
 '''
 
 #
 
-# this is like a dict but I can identify it
-# also, hashes well in dask (for nested dicts/SciResults too)
-class SciResult(dict):
-    ''' Something to distinguish a dictionary from
-        but in essence, it's just a dictionary.'''
-
-    def __init__(self, **kwargs):
-        super(SciResult, self).__init__(**kwargs)
-        # identifier, needed for Dask which transforms SciResult into a dict
-        # TODO : Suggest to dask that classes should not be modified
-        self['_SciResult'] = 'SciResult-version1'
-
-# This decorator parses SciResult objects, indexes properly
-# takes a keymap for args
-# this unravels into arguments if necessary
-# TODO : Allow nested keymaps
-def parse_sciresults(keymap, output_names):
-    # from keymap, make the decorator
-    def decorator(f):
-        # from function modify args, kwargs before computing
-        def _f(*args, **kwargs):
-            for i, val in enumerate(args):
-                if isinstance(val, SciResult):
-                    key = "_arg{}".format(i)
-                    args[i] = val[keymap[key]]
-            for key, val in kwargs.items():
-                if isinstance(val, SciResult):
-                    kwargs[key] = val[keymap[key]]
-            result = f(*args, **kwargs)
-            if len(output_names) == 1:
-                result = {output_names[0] : result}
-            else:
-                result = {output_names[i] : res for i, res in enumerate(result)}
-
-            return SciResult(**result)
-        return _f
-    return decorator
-
+    
     
 class load_saxs_image:
     _accepted_args = ['infile']
@@ -274,10 +218,11 @@ class circular_average:
     @parse_sciresults(_keymap, _output_names)
     def run_explicit(image=None, calibration=None, bins=100, mask=None, **kwargs):
         #print(calibration)
+        #print("computing")
         x0, y0 = calibration['beamx0']['value'], calibration['beamy0']['value']
         from skbeam.core.accumulators.binned_statistic import RadialBinnedStatistic
         img_shape = calibration['shape']['value']
-        print(img_shape)
+        #print(img_shape)
         rbinstat = RadialBinnedStatistic(img_shape, bins=bins, origin=(y0,x0), mask=mask)
         sq = rbinstat(image)
         sqx = rbinstat.bin_centers
@@ -288,35 +233,6 @@ class circular_average:
 
 
     
-def test_circular_average(plot=False):
-    cmsdb = databases['cms']['data']
-    # I randomly chose some header
-    header = cmsdb['89e8caf6-8059-43ff-9a9e-4bf461ee95b5']
-
-
-    # make dummy data
-    tmpdir_data = tempfile.TemporaryDirectory().name
-    os.mkdir(tmpdir_data)
-    img_shape = (100,100)
-    data = np.ones(img_shape, dtype=np.uint8)
-    data[50:60] = 0
-    data_filename = tmpdir_data + "/test_data.png"
-    im = Image.fromarray(data)
-    im.save(data_filename)
-
-
-    calibres = load_calibration(calibration=header).run()
-    image = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database=cmsdb).run()
-    sq = circular_average(image=image, calibration=calibres).run().compute()
-
-    if plot:
-        import matplotlib.pyplot as plt
-        plt.ion()
-        plt.figure(0);plt.clf()
-        plt.loglog(sq['sqx'], sq['sqy'])
-
-    return sq
-
 # Completed tests (above are WIP)
 #
 def test_sciresult_parser():
@@ -370,13 +286,13 @@ def test_calibration():
     assert isinstance(calibres, Delayed)
     calibres = calibres.compute()
     assert isinstance(calibres, SciResult)
-    print(calibres)
+    #print(calibres)
 
     calibres = load_calibration()
     calibres.add(name='beamx0', value=50, unit='pixel')
     calibres.add(name='beamy0', value=50, unit='pixel')
     calibres.run().compute()
-    print(calibres)
+    #print(calibres)
     
 def test_load_saxs_img(plot=False):
     ''' test the load_saxs_img class'''
@@ -422,3 +338,34 @@ def test_load_saxs_img(plot=False):
         plt.ion()
         plt.figure(0);plt.clf()
         plt.imshow(res_headerinput['image'])
+
+def test_circular_average(plot=False):
+    cmsdb = databases['cms']['data']
+    # I randomly chose some header
+    header = cmsdb['89e8caf6-8059-43ff-9a9e-4bf461ee95b5']
+
+
+    # make dummy data
+    tmpdir_data = tempfile.TemporaryDirectory().name
+    os.mkdir(tmpdir_data)
+    img_shape = (100,100)
+    data = np.ones(img_shape, dtype=np.uint8)
+    data[50:60] = 0
+    data_filename = tmpdir_data + "/test_data.png"
+    im = Image.fromarray(data)
+    im.save(data_filename)
+
+
+    calibres = load_calibration(calibration=header).run()
+    image = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database=cmsdb).run()
+    sq = circular_average(image=image, calibration=calibres).run().compute()
+    sq = circular_average(image=image, calibration=calibres).run().compute()
+
+    if plot:
+        import matplotlib.pyplot as plt
+        plt.ion()
+        plt.figure(0);plt.clf()
+        plt.loglog(sq['sqx'], sq['sqy'])
+
+    #return sq
+
