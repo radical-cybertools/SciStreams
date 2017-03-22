@@ -5,7 +5,7 @@ from filestore.fs import FileStore
 from filestore.handlers import DATHandler
 from portable_mds.sqlite.mds import MDS as MDS_SQLITE
 from portable_fs.sqlite.fs import FileStore as FileStore_SQLITE
-from databroker import Broker
+from databroker.broker import Broker
 import tifffile
 import numpy as np
 import tempfile

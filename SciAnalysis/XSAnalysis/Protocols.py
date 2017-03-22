@@ -30,125 +30,96 @@ from uuid import uuid4
 import hashlib
 
 from dask import delayed
+from scipy import ndimage
+
+'''
+    Notes : load should be a separate function
+
+'''
+# TODO : add pixel procesing/thresholding threshold_pixels((2**32-1)-1) # Eiger inter-module gaps
+# 
+# TODO : have kwargs intercepted by databroker and saved
+
+from ..Protocol import Protocol
 
 
-class ProcessorXS(Processor):
+name = "XS:thumb"
+defaults = {
+    'gamma' : 0.3,
+    'crop' : None,
+    'blur' : 2.0,
+    'resize' : 0.2,
+    'ztrim' : [0.05, 0.005],
+    'default_ext' : '.jpg'
+}
+output_names = ['thumb']
+keymap = {'data' : 'data', 'output_dir' : 'output_dir'}
+accepted_args = list(keymap.keys())
+for name in defaults.keys():
+    if name not in accepted_args:
+        accepted_args.append(defaults)
+@Protocol(name=name, output_names=output_names, keymap=keymap, accepted_args=accepted_args,
+            defaults = defaults)
+def thumb(self, data=None, output_dir=None, **run_args):
+    ''' This run saves the data and outputs it to a png file.'''
+    # TODO : Add documentation that we don't want functions that modify the
+    # data objects BEWARE of calling outside functions that may change.  here,
+    # cropping and blurring/resizing is not so big of a deal but we may want to
+    # be ware of other methods
+    def crop(data, size):
+        '''Crop the data, centered about the q-origin. I.e. this throws away
+        some of the high-q information. The size specifies the size of the new
+        image (as a fraction of the original full image width).'''
 
+        height, width = data.shape
 
-    def load(self, infile, **kwargs):
+        x0, y0 = self.get_origin()
+        xi = max( int(x0 - size*width/2), 0 )
+        xf = min( int(x0 + size*width/2), width )
+        yi = max( int(y0 - size*height/2), 0 )
+        yf = min( int(y0 + size*height/2), height )
 
-        calibration = kwargs['calibration'] if 'calibration' in kwargs else None
-        mask = kwargs['mask'] if 'mask' in kwargs else None
+        return data[ yi:yf, xi:xf ]
 
-        data = Data2DScattering(infile, calibration=calibration, mask=mask)
+    #TODO : make mask aware
+    def resize(data, zoom):
+        return ndimage.interpolation.zoom(data, zoom=zoom)
 
-        data.threshold_pixels(4294967295-1) # Eiger inter-module gaps
+    def blur(data, sigma=1.0):
+        '''Apply a Gaussian smoothing/blurring to the 2D data. The sigma
+        argument specifies the size (in terms of the sigma width of the
+        Gaussian, in pixels).'''
+        return ndimage.filters.gaussian_filter( self.data, sigma )
 
-        return data
+    if run_args['crop'] is not None:
+        data = crop(data, run_args['crop'])
+    if run_args['blur'] is not None:
+        data = blur(data, run_args['blur'])
+    if run_args['resize'] is not None:
+        data = resize(data, run_args['resize']) # Shrink
 
-class load_SAXS_img(Protocol):
-    ''' This protocol is meant to simply load an image.
-        The intended structure is to have protocols do all
-        saving/loading/processing. The internals should be opaque to the
-        pipeline. It will likely be convenient for the internal data to
-        be saved as objects etc (Data2DScattering etc.). This is fine,
-        but the object will have to be well defined from this internal
-        data.
-    '''
-    def __init__(self, name="load_img", **kwargs):
-        self.filename = kwargs.pop('infile')
-        self.data = Data2DScattering(**kwargs)
+    data.set_z_display([None, None, 'gamma', 0.3])
+    if 'file_extension' in run_args and run_args['file_extension'] is not None:
+        outfile = self.get_outfile(data.name, output_dir, ext=run_args['file_extension'])
+    else:
+        outfile = self.get_outfile(data.name, output_dir)
 
-    @delayed
-    @run_default
-    def run(self, **kwargs):
-        ''' Returns a result document. This is then processed by the
-            xml saver and databroker, if specified.
-            Key is either a string (filename)
-            or a header file.
-        '''
-        self.data.load(self.filename, **kwargs)
-        return self.data.data
-        
+    data.plot_image(outfile, **run_args)
+    datum_kwargs = {}  #kwargs for data if needed
 
-    def get_id(self):
-        ''' get the id for this protocol. This is to use for caching
-        across multiple machines. etc. Simple way is to has whatever
-        is being used in the processing.
-        '''
-        pass
+    # this is the databroker stuff
+    if run_args['db_analysis'] is not None:
+        # first prep metadata for filestore
+        # keep track of files saved here
+        files = {
+                    'thumb' : {'dtype' : 'array', 'spec' : 'PNG', 'filename'
+                               : outfile},
+                   }
+        # 'resource_kwargs' : [], 'datum_kwargs' : [], etc
+        results['_files'] = files
+        results['_run_args'] = dict(**run_args)
 
-    def get(self, key):
-        ''' Get some object key from the protocol.
-            This is loosely defined.
-        '''
-        pass
-
-
-class thumbnails(Protocol):
-    _name = "XSAnalysis-thumbnails"
-    _depends = {'_arg0' : 'load_SAXS_img'}
-    def __init__(self, name='thumbnails', **kwargs):
-
-        self.name = self.__class__.__name__ if name is None else name
-
-        if 'db_analysis' in kwargs:
-            self.db_analysis = kwargs['db_analysis']
-        else:
-            self.db_analysis = None
-
-        self.default_ext = '.jpg'
-        self.run_args = {
-                        'crop' : None,
-                        'blur' : 2.0,
-                        'resize' : 0.2,
-                        'ztrim' : [0.05, 0.005]
-                        }
-        self.run_args.update(kwargs)
-
-    # run_explicity is meant to run with all parameters input explicitly
-    @run_default
-    def run(self, data, output_dir, **run_args):
-        # update run args with internal run_args first
-        for key, val in self.run_args.items():
-            if key not in run_args:
-                run_args[key] = val
-        return self.run_explicit(data, output_dir, **run_args)
-
-    def run_explicit(self, data, output_dir, **run_args):
-        ''' This run saves the data and outputs it to a png file.'''
-
-        results = {}
-
-        if run_args['crop'] is not None:
-            data.crop(run_args['crop'])
-        if run_args['blur'] is not None:
-            data.blur(run_args['blur'])
-        if run_args['resize'] is not None:
-            data.resize(run_args['resize']) # Shrink
-
-        data.set_z_display([None, None, 'gamma', 0.3])
-        if 'file_extension' in run_args and run_args['file_extension'] is not None:
-            outfile = self.get_outfile(data.name, output_dir, ext=run_args['file_extension'])
-        else:
-            outfile = self.get_outfile(data.name, output_dir)
-
-        data.plot_image(outfile, **run_args)
-        datum_kwargs = {}  #kwargs for data if needed
-
-        # this is the databroker stuff
-        if run_args['db_analysis'] is not None:
-            # first prep metadata for filestore
-            # keep track of files saved here
-            files = {
-                        'thumb' : {'dtype' : 'array', 'spec' : 'PNG', 'filename'
-                                   : outfile},
-                       }
-            # 'resource_kwargs' : [], 'datum_kwargs' : [], etc
-            results['_files'] = files
-            results['_run_args'] = dict(**run_args)
-
-        return results
+    return results
 
 
 class circular_average(Protocol):

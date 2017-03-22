@@ -11,49 +11,18 @@ import numpy as np
 from PIL import Image
 from SciAnalysis.detectors import detectors2D
 
-from SciResult import SciResult, parse_sciresults
+from SciAnalysis.SciResult import SciResult
+from SciAnalysis.decorators import parse_sciresults
 from numpy.testing import assert_array_almost_equal
  
-def Protocol(name="", output_names=list(), keymap = dict(), accepted_args=list()):
-    @simple_func2classdecorator
-    def decorator(f):
-        class MyClass:
-            _accepted_args = accepted_args
-            _keymap = keymap
-            _output_names = output_names
-            _name = name
-    
-            def __init__(self, **kwargs):
-                    self.kwargs = kwargs
-        
-            def run(self, **kwargs):
-                new_kwargs = self.kwargs.copy()
-                new_kwargs.update(kwargs)
-                return self.run_explicit(_accepted_args=self._accepted_args, _name=self._name, **new_kwargs)
-        
-            @delayed(pure=True)
-            @parse_sciresults(_keymap, _output_names)
-            # need **kwargs to allow extra args to be passed
-            def run_explicit(*args, **kwargs):
-                # only pass accepted args
-                new_kwargs = dict()
-                for key in kwargs['_accepted_args']:
-                    if key in kwargs:
-                        new_kwargs[key] = kwargs[key]
-                return f(*args, **new_kwargs)
-    
-        return MyClass
-    return decorator
 
-def foo(self, g):
-    print("foo")
+from Protocol import Protocol
 
-@NewClassMethod(foo)
 # transform function to class
 @Protocol(name="XS:load_saxs_image", 
           output_names=["image"], keymap={"infile" : "infile"},
           accepted_args=["infile", 'detector', 'database'])
-# Now define the function
+# Now define the function, make sure arguments make operation uniquely defined
 def load_saxs_image(infile=None, **kwargs):
     if isinstance(infile, Header):
         if 'detector' not in kwargs:
@@ -68,13 +37,20 @@ def load_saxs_image(infile=None, **kwargs):
         img = infile
     elif isinstance(infile, str):
         img = np.array(Image.open(infile))
+    elif isinstance(infile, SciResult):
+        raise ValueError("Error, got a SciResult. Make sure your keymap is well defined.")
     else:
         raise ValueError("Sorry, did not understand the input argument: {}".format(infile))
     
     return img
 
+# test addition of bound methods (should eventually be decorator)
+class load_saxs_image(load_saxs_image):
+    def foo(self):
+        pass
 
-def test_load_saxs_img(plot=False):
+
+def test_load_saxs_img(plot=False, output=False):
     ''' test the load_saxs_img class'''
     cmsdb = databases['cms']['data']
     # I randomly chose some header
@@ -118,4 +94,7 @@ def test_load_saxs_img(plot=False):
         plt.ion()
         plt.figure(0);plt.clf()
         plt.imshow(res_headerinput['image'])
+
+    if output:
+        return res_headerinput['image']
 

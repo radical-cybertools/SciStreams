@@ -1,3 +1,4 @@
+# same as test_pipeline but distributed
 import tempfile
 from PIL import Image
 import os
@@ -16,8 +17,8 @@ from cache import cache
 from toolz import curry
 
 from databroker.broker import Header
-#from distributed import Client
-#_pipeline_client = Client('127.0.0.1:8788')
+from distributed import Client
+_pipeline_client = Client("10.11.128.3:8786")
 
 # testing
 from nose.tools import assert_true, assert_false
@@ -71,13 +72,15 @@ class load_saxs_image:
         self.kwargs= kwargs
 
     def run(self, **kwargs):
-        new_kwargs = self.kwargs.copy()
+        new_kwargs = dict()
+        new_kwargs.update(self.kwargs.copy())
         new_kwargs.update(kwargs)
+        print(new_kwargs)
         return self.run_explicit(_name=self._name, **new_kwargs)
 
+    # need **kwargs to allow extra args to be passed
     @delayed(pure=True)
     @parse_sciresults(_keymap, _output_names)
-    # need **kwargs to allow extra args to be passed
     def run_explicit(infile = None, **kwargs):
         if isinstance(infile, Header):
             if 'detector' not in kwargs:
@@ -86,6 +89,7 @@ class load_saxs_image:
                 raise ValueError("Sorry, database must be passed if supplying a header")
             detector = kwargs.pop('detector')
             database = kwargs.pop('database')
+            database = databases[database]['data']
             img = database.get_images(infile, detector['image_key']['value'])[0]
             img = np.array(img)
         elif isinstance(infile, np.ndarray):
@@ -319,7 +323,7 @@ def test_load_saxs_img(plot=False):
     head = SciResult(infile=data_filename)
     res_sciresinput = load_saxs_image(infile=head).run()
 
-    res_headerinput = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database=cmsdb).run()
+    res_headerinput = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database='cms').run()
 
     assert_true(isinstance(res_sciresinput, Delayed))
     assert_true(isinstance(res_fileinput, Delayed))
@@ -340,7 +344,7 @@ def test_load_saxs_img(plot=False):
         plt.figure(0);plt.clf()
         plt.imshow(res_headerinput['image'])
 
-def test_circular_average(plot=False):
+def test_circular_average(plot=False, output=False):
     cmsdb = databases['cms']['data']
     # I randomly chose some header
     header = cmsdb['89e8caf6-8059-43ff-9a9e-4bf461ee95b5']
@@ -357,16 +361,18 @@ def test_circular_average(plot=False):
     im.save(data_filename)
 
 
-    calibres = load_calibration(calibration=header).run()
-    image = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database=cmsdb).run()
-    sq = circular_average(image=image, calibration=calibres).run().compute()
-    sq = circular_average(image=image, calibration=calibres).run().compute()
+    calibres = load_calibration(calibration=header).run().compute()
+    #image = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database='cms').run().compute()
+    image = load_saxs_image(infile=data_filename).run().compute()
+    #sq = circular_average(image=image, calibration=calibres).run().compute()
+    #sq = circular_average(image=image, calibration=calibres).run().compute()
 
-    if plot:
-        import matplotlib.pyplot as plt
-        plt.ion()
-        plt.figure(0);plt.clf()
-        plt.loglog(sq['sqx'], sq['sqy'])
+    #if plot:
+        #import matplotlib.pyplot as plt
+        #plt.ion()
+        #plt.figure(0);plt.clf()
+        #plt.loglog(sq['sqx'], sq['sqy'])
 
-    #return sq
+    if output:
+        return calibres
 
