@@ -94,8 +94,8 @@ class Data2DScattering(Data2D):
         if self.mask is not None:
             self.name = tools.Filename(infile).get_filebase()
             if self.mask.data.shape != self.data.shape:
-                raise ValueError("Shape mismatch between mask and data"
-                        "{},{} versus {},{}".format(*self.data.shape, *self.mask.data.shape))
+                raise ValueError("Shape mismatch between mask and data")
+                        #"{},{} versus {},{}".format(*self.data.shape, *self.mask.data.shape))
 
             self.data = self.data*self.mask.data
 

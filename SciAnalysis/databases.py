@@ -15,7 +15,7 @@ database_setups = {
     'cms' : {'initializer' : cmsdb,
              'kwargs' : dict(HOST_DATA='xf11bm-ca1',
                              PORT_DATA=27017,
-                             ROOTMAP_DATA= {"/GPFS/xf11bm/Pilatus300": "/media/cmslive"},
+                             ROOTMAP_DATA= {},#{"/GPFS/xf11bm/Pilatus300": "/media/cmslive"},
                              HOST_ANALYSIS="localhost",
                              PORT_ANALYSIS=27021,
                              ROOTMAP_ANALYSIS={}),

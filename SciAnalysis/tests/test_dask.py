@@ -2,6 +2,14 @@
 from dask import compute, delayed
 import numpy as np
 from functools import wraps
+from dask.cache import Cache
+
+_cache = Cache(1e9)
+_cache.register()
+
+# data is in
+# _cache.cache.data 
+
 
 @delayed(pure=True)
 def circavg(img, calibration):
