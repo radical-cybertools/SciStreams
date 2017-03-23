@@ -18,7 +18,7 @@ from toolz import curry
 
 from databroker.broker import Header
 from distributed import Client
-_pipeline_client = Client("10.11.128.3:8786")
+#_pipeline_client = Client("10.11.128.3:8786")
 
 # testing
 from nose.tools import assert_true, assert_false
@@ -31,10 +31,19 @@ from SciAnalysis.Protocol import Protocol, run_default
 
 from SciAnalysis.dbtools import store_results_databroker
 
+from SciAnalysis import databases as dblib
+
+from SciAnalysis.writers_custom import NpyWriter
+
+databases = dblib.initialize()
+cddb = databases['cms']['data']
+cadb = databases['cms']['analysis']
+
 # TODO : add run_default
 # TODO : add run_explicit
 # TODO : how to handle implicit arguments? (Some global maybe?)
 # TODO : add databroker keymap
+# TODO : Header should have .get() routine which gives function output
 
 '''
 For now, assume all incoming arguments are well defined each step.
@@ -60,13 +69,13 @@ Ideas introduced:
 
 #
 
-def store_results(dbname):
+def store_results(dbname, external_writers={}):
     def decorator(f):
         def newf(*args, **kwargs):
             results = f(*args, **kwargs)
             # TODO : fill in (after working on xml storage)
             attributes = {}
-            store_results_databroker(results, attributes, dbname)
+            store_results_databroker(results, attributes, dbname, external_writers=external_writers)
             return results
         return newf
     return decorator
@@ -90,7 +99,7 @@ class load_saxs_image:
 
     # need **kwargs to allow extra args to be passed
     @delayed(pure=False)
-    @store_results('cms')
+    #@store_results('cms')
     @run_default
     @parse_sciresults(_keymap, _output_names)
     def run_explicit(infile = None, **kwargs):
@@ -136,9 +145,10 @@ class load_calibration:
         self.kwargs.update({name : {'value' : value, 'unit' : unit}})
 
     @delayed(pure=True)
+    @store_results('cms')
     @run_default
     @parse_sciresults(_keymap, _output_names)
-    def run_explicit(calibration={}, **kwargs):
+    def run_explicit( calibration={}, **kwargs):
         '''
             Load calibration data.
             The data must be a dictionary.
@@ -240,6 +250,8 @@ class circular_average:
         return self.run_explicit(_name=self._name, **new_kwargs)
 
     @delayed(pure=True)
+    @store_results('cms', {'sqx' : 'npy', 'sqy' : 'npy'})
+    @run_default
     @parse_sciresults(_keymap, _output_names)
     def run_explicit(image=None, calibration=None, bins=100, mask=None, **kwargs):
         #print(calibration)
@@ -251,11 +263,36 @@ class circular_average:
         rbinstat = RadialBinnedStatistic(img_shape, bins=bins, origin=(y0,x0), mask=mask)
         sq = rbinstat(image)
         sqx = rbinstat.bin_centers
+        #files = {
+                    #'thumb' : {'dtype' : 'array', 'spec' : 'PNG', 'filename'
+                               #: outfile},
+                   #}
+        # 'resource_kwargs' : [], 'datum_kwargs' : [], etc
+        #results['_files'] = files
+        #results['_run_args'] = dict(**run_args)
         return sqx, sq
 
 
+def header2SciResult(header,events=None):
+    ''' Convert databroker header to a SciResult.'''
+    pass
     
+def lookup(dbname, protocol_name=None, **kwargs):
+    # Returns a SciResult Basically the SciResult constructor for databroker
+    # TODO : Should be delayed computation to conform with others
+    from SciAnalysis.databases import initialize
+    dbs = initialize()
+    db = dbs[dbname]['analysis']
+    kwargs['protocol_name'] = protocol_name
+    # search and get latest
+    hdr = db(**kwargs)[0]
+    output_names = hdr['start']['_output_names']
+    res = list()
+    for output_name in output_names:
+        # TODO is it really get_images or something else?
+        res.append(next(db.get_events(hdr, fill=True)))
 
+    return res
 
     
 # Completed tests (above are WIP)
@@ -319,7 +356,7 @@ def test_calibration():
     calibres.run().compute()
     #print(calibres)
     
-def test_load_saxs_img(plot=False):
+def test_load_saxs_img(plot=False,output=False):
     ''' test the load_saxs_img class'''
     cmsdb = databases['cms']['data']
     # I randomly chose some header
@@ -365,9 +402,9 @@ def test_load_saxs_img(plot=False):
         plt.imshow(res_headerinput['image'])
 
 def test_circular_average(plot=False, output=False):
-    cmsdb = databases['cms']['data']
+
     # I randomly chose some header
-    header = cmsdb['89e8caf6-8059-43ff-9a9e-4bf461ee95b5']
+    header = cddb['89e8caf6-8059-43ff-9a9e-4bf461ee95b5']
 
 
     # make dummy data
@@ -381,10 +418,29 @@ def test_circular_average(plot=False, output=False):
     im.save(data_filename)
 
 
+    #calibres = load_calibration(calibration=header).run()
     calibres = load_calibration(calibration=header).run().compute()
-    image = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database='cms').run().compute()
+    # retrieve the latest calibration
+    latest_calib = cadb(name="XS:calibration")[0]
+    calibkey = 'calibration'
+    latest_calib = next(cadb.get_events(latest_calib))['data'][calibkey]
+    #print(latest_calib)
+
+    image = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database='cms').run()
+    #latest_image= cadb(name="XS:calibration")[0]
+    #key = 'image'
+    #latest_image = next(cadb.get_events(latest_image))['data'][key]
+    #print(latest_image)
     ##image = load_saxs_image(infile=data_filename).run().compute()
-    sq = circular_average(image=image, calibration=calibres).run().compute()
+    sqres = circular_average(image=image, calibration=calibres).run().compute()
+    # the output is a SciResult. To transform into what the function output
+    # would have been, call sqres.get()
+    sqx,sqy = sqres.get()
+
+    # make sure we can lookup latest results
+    #sqres = lookup('cms', protocol_name='XS:circular_average')
+
+    #prev_calibration = lookup('cms', protocol_name='XS:calibration')
     #sq = circular_average(image=image, calibration=calibres).run().compute()
 
     #if plot:
@@ -394,5 +450,5 @@ def test_circular_average(plot=False, output=False):
         #plt.loglog(sq['sqx'], sq['sqy'])
 
     if output:
-        return calibres
+        return sqres
 

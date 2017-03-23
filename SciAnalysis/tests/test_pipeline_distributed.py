@@ -61,6 +61,34 @@ Ideas introduced:
 #
 
     
+class lookup:
+    _accepted_args = ['infile']
+    _keymap = {'infile' : 'infile'}
+    _output_names = ['image']
+    _name = "XS:load_saxs_image"
+
+    def __init__(self, **kwargs):
+        self.kwargs= kwargs
+
+    def run(self, **kwargs):
+        new_kwargs = dict()
+        new_kwargs.update(self.kwargs.copy())
+        new_kwargs.update(kwargs)
+        return self.run_explicit(_name=self._name, **new_kwargs)
+
+    # need **kwargs to allow extra args to be passed
+    @delayed(pure=False)
+    @parse_sciresults(_keymap, _output_names)
+    def run_explicit(database=None, protocol_name=None, sample=None, **kwargs):
+        # Need to import inside for distributed
+        from SciAnalysis.databases import databases
+        if isinstance(header, Header):
+            uid = header['start']['uid']
+        elif not isinstance(header, str):
+            raise ValueError("Sorry, is not a string or header")
+        # find the latest analysis run of the sample using protocol_name
+
+        return None
     
 class load_saxs_image:
     _accepted_args = ['infile']

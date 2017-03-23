@@ -2,7 +2,7 @@
 # NOTE : cmsdb makes temporary analysis database for now...
 from metadatastore.mds import MDS
 from filestore.fs import FileStore
-from filestore.handlers import DATHandler
+from filestore.handlers import DATHandler, NpyHandler
 from portable_mds.sqlite.mds import MDS as MDS_SQLITE
 from portable_fs.sqlite.fs import FileStore as FileStore_SQLITE
 from databroker.broker import Broker
@@ -122,6 +122,7 @@ def cmsdb_anal_tmp(HOST_ANALYSIS="localhost",
     fs_analysis.register_handler('PNG', PNGHandler, overwrite=True)
     fs_analysis.register_handler('JPG', PNGHandler, overwrite=True)
     fs_analysis.register_handler('DAT', DATHandler, overwrite=True)
+    fs_analysis.register_handler('npy', NpyHandler, overwrite=True)
 
     cmsdb_analysis = Broker(mds_analysis, fs_analysis)
 

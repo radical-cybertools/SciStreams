@@ -40,3 +40,12 @@ class PNGHandler:
 
     def __call__(self, **kwargs):
         return np.array(Image.open(self.fpath))
+
+# create quick handler for dicts, basically write json file
+class DICTHandler:
+    def __init__(self, fpath, **kwargs):
+        self.fpath = fpath
+
+    def __call__(self, **kwargs):
+        return np.array(Image.open(self.fpath))
+
