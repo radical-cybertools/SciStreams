@@ -8,7 +8,7 @@ import time
 def run_default(inner_function):
     '''Standard book-keeping required for the 'run' method of any protocol.'''
     def _run_default(*args, **kwargs):
-        if '_run_stats' not in kwargs:
+        if '_run_stats' not in kwargs or not isinstance(kwargs['_run_stats'], dict):
             kwargs['_run_stats'] = dict()
 
         run_stats = kwargs['_run_stats']

@@ -2,6 +2,11 @@
 ##################################################################
 # add to results for filestore to handle
 # see saveschematic.txt for deails
+import time
+from uuid import uuid4
+import numpy as np
+
+_ANALYSIS_STORE_VERSION = 'beta-v1'
 
 def parse_args_databroker(argsdict):
     ''' Parse args and make sure they are databroker friendly.
@@ -43,8 +48,11 @@ def make_descriptor(val):
 
     return dict(dtype=dtype, shape=shape)
 
-def store_results_databroker(results, attributes, name, protocol, db):
+def store_results_databroker(results, attributes, dbname):
     ''' Save results to a databroker instance.'''
+    from SciAnalysis.databases import databases
+    # TODO : check for time out on database access, return an erorr tha tmakes sense
+    db = databases[dbname]['analysis']
     # saving to databroker
     mds = db.mds # metadatastore
 
@@ -56,11 +64,12 @@ def store_results_databroker(results, attributes, name, protocol, db):
     start_doc['time'] = time.time()
     start_doc['uid'] = str(uuid4())
     start_doc['plan_name'] = 'analysis'
-    start_doc['name'] = protocol._name
-    start_doc['start_timestamp'] = protocol.start_timestamp
-    start_doc['end_timestamp'] = protocol.end_timestamp
-    start_doc['runtime'] = protocol.end_timestamp - protocol.start_timestamp
+    start_doc['name'] = results['_name']
+    start_doc['start_timestamp'] = results['_run_stats']['start_timestamp']
+    start_doc['end_timestamp'] = results['_run_stats']['end_timestamp']
+    start_doc['runtime'] = start_doc['start_timestamp'] - start_doc['end_timestamp']
     start_doc['save_timestamp'] = time.time()
+    # TODO : replace with version lookup in database
     start_doc['analysis_store_version'] = _ANALYSIS_STORE_VERSION
 
     if '_run_args' in results:
@@ -92,11 +101,13 @@ def store_results_databroker(results, attributes, name, protocol, db):
         event_doc['timestamps'][key] = time.time()
 
     # then parse files, val is a dict
-    for key, val in results['_files'].items():
-        datum, desc = parse_file_event(val, db)
-        descriptor_doc['data_keys'][key] = desc
-        event_doc['data'][key] = datum
-        event_doc['timestamps'][key] = time.time()
+    # if files were saved, store info in filestore
+    if '_files' in results:
+        for key, val in results['_files'].items():
+            datum, desc = parse_file_event(val, db)
+            descriptor_doc['data_keys'][key] = desc
+            event_doc['data'][key] = datum
+            event_doc['timestamps'][key] = time.time()
 
 
     stop_doc = dict()
@@ -160,4 +171,3 @@ def parse_file_event(entry, db):
         dat_dict['external'] = "FILESTORE:"
 
     return dat_uid, dat_dict
-

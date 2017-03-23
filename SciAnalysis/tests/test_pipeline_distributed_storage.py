@@ -27,9 +27,9 @@ from numpy.testing import assert_array_almost_equal
 from SciAnalysis.SciResult import SciResult
 from SciAnalysis.decorators import parse_sciresults
 
-# base class
-class Protocol:
-    pass
+from SciAnalysis.Protocol import Protocol, run_default
+
+from SciAnalysis.dbtools import store_results_databroker
 
 # TODO : add run_default
 # TODO : add run_explicit
@@ -60,6 +60,16 @@ Ideas introduced:
 
 #
 
+def store_results(dbname):
+    def decorator(f):
+        def newf(*args, **kwargs):
+            results = f(*args, **kwargs)
+            # TODO : fill in (after working on xml storage)
+            attributes = {}
+            store_results_databroker(results, attributes, dbname)
+            return results
+        return newf
+    return decorator
     
     
 class load_saxs_image:
@@ -67,6 +77,7 @@ class load_saxs_image:
     _keymap = {'infile' : 'infile'}
     _output_names = ['image']
     _name = "XS:load_saxs_image"
+    _dbname = 'cms'
 
     def __init__(self, **kwargs):
         self.kwargs= kwargs
@@ -79,6 +90,8 @@ class load_saxs_image:
 
     # need **kwargs to allow extra args to be passed
     @delayed(pure=False)
+    @store_results('cms')
+    @run_default
     @parse_sciresults(_keymap, _output_names)
     def run_explicit(infile = None, **kwargs):
         # Need to import inside for distributed
@@ -102,6 +115,7 @@ class load_saxs_image:
 
         return img
 
+
 class load_calibration:
     # TODO: reevaluate if _accepted_args necessary
     _accepted_args = ['calibration']
@@ -122,6 +136,7 @@ class load_calibration:
         self.kwargs.update({name : {'value' : value, 'unit' : unit}})
 
     @delayed(pure=True)
+    @run_default
     @parse_sciresults(_keymap, _output_names)
     def run_explicit(calibration={}, **kwargs):
         '''
