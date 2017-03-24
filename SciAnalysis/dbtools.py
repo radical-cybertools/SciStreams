@@ -7,16 +7,22 @@ from uuid import uuid4
 import numpy as np
 from databroker.broker import Header
 import json
-from writers_custom import writers_dict as _writers_dict
+from SciAnalysis.writers_custom import writers_dict as _writers_dict
 
 _ANALYSIS_STORE_VERSION = 'beta-v1'
 
+
+# this is an attempt to make databroker object portable and identifiable
+#
+class HeaderDict(dict):
+    def __init__(self, hdr):
+        super(HeaderDict, self).__init__(hdr)
 
 def safe_parse_databroker(val, nested=False):
     ''' Parse an arg, make sure it's safe for databroker.'''
     if isinstance(val, dict):
         for key, subval in val.items():
-            val[key] = safe_parse_databroker(subval,nested=True)
+            val[key] = safe_parse_databroker(subval, nested=True)
     elif isinstance(val, tuple):
         newval = tuple([safe_parse_databroker(v,nested=True) for v in val])
         val = newval

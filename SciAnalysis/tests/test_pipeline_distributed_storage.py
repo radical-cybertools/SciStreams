@@ -18,7 +18,7 @@ from toolz import curry
 
 from databroker.broker import Header
 from distributed import Client
-#_pipeline_client = Client("10.11.128.3:8786")
+_pipeline_client = Client("10.11.128.3:8786")
 
 # testing
 from nose.tools import assert_true, assert_false
@@ -29,7 +29,7 @@ from SciAnalysis.decorators import parse_sciresults
 
 from SciAnalysis.Protocol import Protocol, run_default
 
-from SciAnalysis.dbtools import store_results_databroker
+from SciAnalysis.dbtools import store_results_databroker, HeaderDict
 
 from SciAnalysis import databases as dblib
 
@@ -105,7 +105,7 @@ class load_saxs_image:
     def run_explicit(infile = None, **kwargs):
         # Need to import inside for distributed
         from SciAnalysis.databases import databases
-        if isinstance(infile, Header):
+        if isinstance(infile, HeaderDict):
             if 'detector' not in kwargs:
                 raise ValueError("Sorry, detector must be passed if supplying a header")
             if 'database' not in kwargs:
@@ -113,7 +113,8 @@ class load_saxs_image:
             detector = kwargs.pop('detector')
             database = kwargs.pop('database')
             database = databases[database]['data']
-            img = database.get_images(infile, detector['image_key']['value'])[0]
+            hdr = database[infile['start']['uid']]
+            img = database.get_images(hdr, detector['image_key']['value'])[0]
             img = np.array(img)
         elif isinstance(infile, np.ndarray):
             img = infile
@@ -178,7 +179,7 @@ class load_calibration:
     
                     }
     
-        if isinstance(calibration, Header):
+        if isinstance(calibration, HeaderDict):
             # a map from Header start doc to data
             # TODO : move out of function
             calib_keymap = {'wavelength' : {'key' : 'calibration_wavelength_A',
@@ -405,6 +406,7 @@ def test_circular_average(plot=False, output=False):
 
     # I randomly chose some header
     header = cddb['89e8caf6-8059-43ff-9a9e-4bf461ee95b5']
+    header = HeaderDict(header)
 
 
     # make dummy data
@@ -419,6 +421,8 @@ def test_circular_average(plot=False, output=False):
 
 
     #calibres = load_calibration(calibration=header).run()
+    if isinstance(header, Header):
+        print(header)
     calibres = load_calibration(calibration=header).run().compute()
     # retrieve the latest calibration
     latest_calib = cadb(name="XS:calibration")[0]
@@ -427,14 +431,18 @@ def test_circular_average(plot=False, output=False):
     #print(latest_calib)
 
     image = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database='cms').run()
+
     #latest_image= cadb(name="XS:calibration")[0]
     #key = 'image'
     #latest_image = next(cadb.get_events(latest_image))['data'][key]
     #print(latest_image)
     ##image = load_saxs_image(infile=data_filename).run().compute()
+
     sqres = circular_average(image=image, calibration=calibres).run().compute()
+
     # the output is a SciResult. To transform into what the function output
     # would have been, call sqres.get()
+
     sqx,sqy = sqres.get()
 
     # make sure we can lookup latest results
