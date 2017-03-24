@@ -45,6 +45,7 @@ cadb = databases['cms']['analysis']
 # TODO : how to handle implicit arguments? (Some global maybe?)
 # TODO : add databroker keymap
 # TODO : Header should have .get() routine which gives function output
+# TODO : decorator for file storage
 
 '''
 For now, assume all incoming arguments are well defined each step.
@@ -102,7 +103,7 @@ class load_saxs_image:
     @delayed(pure=False)
     #@store_results('cms')
     @run_default
-    @parse_sciresults(_keymap, _output_names)
+    @parse_sciresults(_keymap, _output_names, _attributes)
     def run_explicit(infile = None, **kwargs):
         # Need to import inside for distributed
         from SciAnalysis.interfaces.databroker import databases as dblib

@@ -3,10 +3,6 @@
         Also, hashes well in dask (for nested dicts/SciResults too)
 
  Assumed paramters:
-    _name : the protocol name
-    _output_names
-    _run_stats
-    _files
     _SciResult : to identify it
 
 All conversions to SciResult are in the respective interface libraries.
@@ -16,6 +12,8 @@ TODO :
     1. Allow nested keymaps in parse_sciresults?
     2. Explain this also cleans all other parameters not specified by output
 '''
+
+from collections import OrderedDict
 
 
 class SciResult(dict):
@@ -28,25 +26,33 @@ class SciResult(dict):
                 SciResult
     '''
 
+    # TODO : MAJOR rewrite of SciResult right now
     def __init__(self, *args, **kwargs):
 
         if len(args) == 1:
             kwargs.update(dict(args))
         super(SciResult, self).__init__(**kwargs)
-        self['_name'] = ""
-        self['_output_names'] = list() # name of the data
-        self['_run_stats'] = dict()
-        self['_attributes'] = dict() #metadata
-        self['_files'] = dict()
-        # identifier, needed for Dask which transforms SciResult into a dict
-        # TODO : Suggest to dask that classes should not be modified
+        # the metadata. This should contain a few defaults
+        self['attributes'] = dict() #metadata
+        attributes = self['attributes']
+        # these need to be overwritten
+        attributes['procotol_name'] = "N/A"
+
+        # the outputs and output names
+        self['outputs'] = dict() # outputs
+        self['output_names'] = list() # ordering of names of outputs
+
+        # run-specific stuff
+        self['run_stats'] = dict()
+
+        # identifier
         self['_SciResult'] = 'SciResult-version1'
 
     def printrunstats(self):
-        if '_run_stats' not in self:
+        if 'run_stats' not in self:
             print("Sorry, no run stats saved, cannot print")
             return 
-        runstats = self['_run_stats']
+        runstats = self['run_stats']
         if 'start_timestamp' not in runstats or 'end_timestamp' not in runstats:
             print("Sorry, no information about timing, cannot print")
             return
@@ -55,53 +61,67 @@ class SciResult(dict):
         print("Time Elapsed : {} s".format(time_el))
 
     def addoutput(self, name, val):
-        pass
+        '''
+            Add an output
+                name : the name of the output
+                val : the value of the output
+        '''
+        self['outputs'][name] = val
+        self['output_names'].append(name)
 
     def get(self):
         ''' return the results as would be expected from the function
         itself.'''
         args = list()
-        for output_name in self['_output_names']:
-            args.append(self[output_name])
+        for output_name in self['output_names']:
+            args.append(self[outputs][output_name])
         return args
 
     def num_outputs(self):
-        return len(self['_output_names'])
+        return len(self['output_names'])
 
     def verify(self):
         ''' Verify that this is a valid SciResult.'''
-        # TODO : write this
+        # TODO : write this. Not necessary maybe?
         pass
 
 '''
     This decorator parses SciResult objects, indexes properly takes a keymap for
     args this unravels into arguments if necessary.
 '''
-def parse_sciresults(keymap, output_names):
-    # from keymap, make the decorator
+def parse_sciresults(input_map, output_names, attributes={}):
+    # from input_map, make the decorator
     def decorator(f):
         # from function modify args, kwargs before computing
         def _f(*args, **kwargs):
-            for i, val in enumerate(args):
+            # Initialize new SciResult
+            scires = SciResult()
+            scires['attributes'] = dict()
+
+            # First transform any SciResult into data, based on input_map
+            # grab attributes if entries were SciResults
+            for i, entry in enumerate(args):
                 # checks if it's a SciResult
-                if isinstance(val, dict) and '_SciResult' in val:
+                if isinstance(entry, dict) and '_SciResult' in entry:
                     key = "_arg{}".format(i)
-                    args[i] = val[keymap[key]]
-            for key, val in kwargs.items():
+                    args[i] = entry['outputs'][input_map[key]]
+                    scires['attributes'][key] = entry['attributes']
+
+            for key, entry in kwargs.items():
                 # checks if it's a SciResult
-                if isinstance(val, dict) and '_SciResult' in val:
-                    kwargs[key] = val[keymap[key]]
-            resultdict = kwargs.copy()
-            for key, val in list(resultdict.items()):
-                if not key.startswith("_"):
-                    resultdict.pop(key)
+                if isinstance(entry, dict) and '_SciResult' in entry:
+                    kwargs[key] = entry['outputs'][input_map[key]]
+                    scires['attributes'][key] = entry['attributes']
+
+            # Run function
             result = f(*args, **kwargs)
+
+            # Save outputs to SciResult
             if len(output_names) == 1:
-                resultdict.update({output_names[0] : result})
+                scires.addoutput(output_names[0], result)
             else:
-                resultdict.update({output_names[i] : res for i, res in enumerate(result)})
-            # this is so databroker can know how to reproduce function result
-            resultdict['_output_names'] = output_names
+                for i, res in enumerate(result):
+                    scires.addoutput(output_names[i], res)
 
             return SciResult(**resultdict)
         return _f
