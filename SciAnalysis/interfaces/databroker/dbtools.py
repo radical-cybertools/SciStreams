@@ -11,6 +11,10 @@ import json
 from SciAnalysis.interfaces.databroker.writers_custom import writers_dict as _writers_dict
 
 _ANALYSIS_STORE_VERSION = 'beta-v1'
+# TODO : Ask Dan if databroker is smart enough to know if connection was already made?
+# for ex: running Broker(config) multiple times, should not recreate connection
+# I am thinking of in distributed regime where multiple nodes will be running
+# some of them may have already started a db conection, others not
 
 
 # this is an attempt to make databroker object portable and identifiable
@@ -18,6 +22,21 @@ _ANALYSIS_STORE_VERSION = 'beta-v1'
 class HeaderDict(dict):
     def __init__(self, hdr):
         super(HeaderDict, self).__init__(hdr)
+
+'''
+    This routine looks up the last entry of a certain type
+'''
+def lookup(dbname, protocol_name=None, **kwargs):
+    # Returns a SciResult Basically the SciResult constructor for databroker
+    # TODO : Should be delayed computation to conform with others
+    from SciAnalysis.interfaces.databroker.databases import initialize
+    dbs = initialize()
+    db = dbs[dbname]['analysis']
+    kwargs['protocol_name'] = protocol_name
+    # search and get latest
+    scires = SciResult(db(**kwargs)[0])
+
+    return scires
 
 def safe_parse_databroker(val, nested=False):
     ''' Parse an arg, make sure it's safe for databroker.'''

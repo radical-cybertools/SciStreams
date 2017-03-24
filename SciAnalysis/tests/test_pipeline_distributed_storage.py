@@ -48,7 +48,7 @@ cadb = databases['cms']['analysis']
 
 '''
 For now, assume all incoming arguments are well defined each step.
-/bin/bash: j: command not found
+
 There will be a case where this is not true.
 For ex : linecut -> need to backpropagate until the latest data set that
 is computed is found. It will be necessary to figure out what to fill in
@@ -280,17 +280,6 @@ def header2SciResult(header,events=None):
     ''' Convert databroker header to a SciResult.'''
     pass
     
-def lookup(dbname, protocol_name=None, **kwargs):
-    # Returns a SciResult Basically the SciResult constructor for databroker
-    # TODO : Should be delayed computation to conform with others
-    from SciAnalysis.interfaces.databroker.databases import initialize
-    dbs = initialize()
-    db = dbs[dbname]['analysis']
-    kwargs['protocol_name'] = protocol_name
-    # search and get latest
-    scires = SciResult(db(**kwargs)[0])
-
-    return scires
 
     
 # Completed tests (above are WIP)

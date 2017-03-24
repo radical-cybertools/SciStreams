@@ -11,28 +11,27 @@ class Mask(dict):
     ''' 
         Mask is just a dict with extra details
 
-        Takes a fileobj. This fileobj can be anythin (not necessary a file)
-            Only requirement is that it has a `get` and `identify` routine.
-            fileobj.`get` should return raw data
-            fileobj.`identify` should return a dictionary of metadata
+        Takes a SciResult. The SciResult is assumed to contain just one output.
 
     Typical usage:
-        mask = Mask(filename)
+        scires = FileDesc("foo.png").get()
+        mask = Mask(scires)
         
     To get:
         mask_data = mask.get()
     
     '''
-    def __init__(self, fileobj=None, threshold=None, dtype=None, invert=None, **kwargs):
-        self.load(fileobj)
-        self['_data_attrs'] = fileobj.identify()
+    def __init__(self, scires=None, threshold=None, dtype=None, invert=None, **kwargs):
+        self.load(scires)
         # create attributes for mask
         self['_mask_attrs'] = dict()
         self.set_threshold(threshold=threshold)
         self.set_dtype(dtype=dtype)
 
-    def load(self, fileobj=None):
-        self['_data'] = fileobj.get()
+    def load(self, scires=None):
+        if scires.num_outputs() != 1:
+            raise ValueError("Sorry, this SciResult contains too many outputs")
+        self['_data'] = scires.get()
 
     def get(self):
         return self['_data']

@@ -1,5 +1,6 @@
 from .core import jpegloader, pngloader, hdf5loader
 import numpy as np
+from SciAnalysis.interfaces import SciResult
 
 # Simple cloass to normalize way files are read
 # Add to _FORMATSPECS and _REQUIREDKEYS to handle more files
@@ -42,6 +43,7 @@ class FileDesc(dict):
         self['_data'] = np.array(res)
 
     def get(self):
+        scires = SciResult()
         if '_data' not in self:
             self.load()
         return self['_data']

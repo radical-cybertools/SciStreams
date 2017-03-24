@@ -33,6 +33,11 @@ class SciResult(dict):
         if len(args) == 1:
             kwargs.update(dict(args))
         super(SciResult, self).__init__(**kwargs)
+        self['_name'] = ""
+        self['_output_names'] = list() # name of the data
+        self['_run_stats'] = dict()
+        self['_attributes'] = dict() #metadata
+        self['_files'] = dict()
         # identifier, needed for Dask which transforms SciResult into a dict
         # TODO : Suggest to dask that classes should not be modified
         self['_SciResult'] = 'SciResult-version1'
@@ -49,6 +54,9 @@ class SciResult(dict):
         print("Run stats")
         print("Time Elapsed : {} s".format(time_el))
 
+    def addoutput(self, name, val):
+        pass
+
     def get(self):
         ''' return the results as would be expected from the function
         itself.'''
@@ -56,6 +64,14 @@ class SciResult(dict):
         for output_name in self['_output_names']:
             args.append(self[output_name])
         return args
+
+    def num_outputs(self):
+        return len(self['_output_names'])
+
+    def verify(self):
+        ''' Verify that this is a valid SciResult.'''
+        # TODO : write this
+        pass
 
 '''
     This decorator parses SciResult objects, indexes properly takes a keymap for
