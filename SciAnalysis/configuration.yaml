@@ -1,0 +1,20 @@
+# configuration of each database data and analysis
+databases:
+    cms:
+        data:
+            HOST: 'xf11bm-ca1'
+            PORT: 27017
+            ROOTMAP: {}
+        analysis:
+            HOST: 'localhost'
+            PORT: 27021
+            ROOTMAP: {}
+    chx:
+        data:
+            HOST: 'xf11id-srv1'
+            PORT: 27017
+            ROOTMAP: {}
+        analysis:
+            HOST: 'N/A'
+            PORT: -1
+            ROOTMAP: {}

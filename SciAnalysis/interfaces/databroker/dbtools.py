@@ -7,7 +7,8 @@ from uuid import uuid4
 import numpy as np
 from databroker.broker import Header
 import json
-from SciAnalysis.writers_custom import writers_dict as _writers_dict
+
+from SciAnalysis.interfaces.databroker.writers_custom import writers_dict as _writers_dict
 
 _ANALYSIS_STORE_VERSION = 'beta-v1'
 
@@ -66,7 +67,7 @@ def make_descriptor(val):
 
 def store_results_databroker(results, attributes, dbname, external_writers={}):
     ''' Save results to a databroker instance.'''
-    import SciAnalysis.databases as dblib
+    import SciAnalysis.interfaces.databroker.databases as dblib
     # TODO : remove this when in mongodb
     databases = dblib.initialize()
     # TODO : check for time out on database access, return an erorr tha tmakes sense

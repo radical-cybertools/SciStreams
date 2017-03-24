@@ -1,9 +1,9 @@
-from SciAnalysis.contrib.decorators import simple_func2classdecorator
 from dask import delayed
-from SciAnalysis.SciResult import SciResult
-from SciAnalysis.decorators import parse_sciresults
 from copy import copy
 import time
+
+from SciAnalysis.contrib.decorators import simple_func2classdecorator
+from SciAnalysis.interfaces.SciResult import SciResult, parse_sciresults
 
 def run_default(inner_function):
     '''Standard book-keeping required for the 'run' method of any protocol.'''

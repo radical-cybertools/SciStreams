@@ -3,38 +3,39 @@ import tempfile
 from PIL import Image
 import os
 import numpy as np
-
 import time
-
-from SciAnalysis.databases import databases
-from detectors import detectors2D
-
-from dask import delayed
-from dask.delayed import Delayed
-
 from cache import cache
-
 from toolz import curry
 
-from databroker.broker import Header
-from distributed import Client
-_pipeline_client = Client("10.11.128.3:8786")
-
-# testing
 from nose.tools import assert_true, assert_false
 from numpy.testing import assert_array_almost_equal
 
-from SciAnalysis.SciResult import SciResult
-from SciAnalysis.decorators import parse_sciresults
+# Dask stuff
+from dask import delayed
+from dask.delayed import Delayed
+from distributed import Client
+_pipeline_client = Client("10.11.128.3:8786")
 
-from SciAnalysis.Protocol import Protocol, run_default
 
-from SciAnalysis.dbtools import store_results_databroker, HeaderDict
 
-from SciAnalysis import databases as dblib
+from databroker.broker import Header
 
-from SciAnalysis.writers_custom import NpyWriter
+# SciAnalysis Stuff
 
+# I/O stuff
+import SciAnalysis.interfaces.databroker.databases as dblib
+from SciAnalysis.interfaces.databroker.dbtools import store_results_databroker, HeaderDict
+from SciAnalysis.interfaces.databroker.writers_custom import NpyWriter
+from SciAnalysis.interfaces.databroker.dbtools import HeaderDict
+from SciAnalysis.interfaces.detectors import detectors2D
+
+# this is the intermediate interface
+from SciAnalysis.interfaces.SciResult import SciResult, parse_sciresults
+
+from SciAnalysis.protocols.Protocol import Protocol, run_default
+
+
+# initialize database
 databases = dblib.initialize()
 cddb = databases['cms']['data']
 cadb = databases['cms']['analysis']
@@ -47,7 +48,7 @@ cadb = databases['cms']['analysis']
 
 '''
 For now, assume all incoming arguments are well defined each step.
-
+/bin/bash: j: command not found
 There will be a case where this is not true.
 For ex : linecut -> need to backpropagate until the latest data set that
 is computed is found. It will be necessary to figure out what to fill in
@@ -104,7 +105,7 @@ class load_saxs_image:
     @parse_sciresults(_keymap, _output_names)
     def run_explicit(infile = None, **kwargs):
         # Need to import inside for distributed
-        from SciAnalysis.databases import databases
+        from SciAnalysis.interfaces.databroker import databases as dblib
         if isinstance(infile, HeaderDict):
             if 'detector' not in kwargs:
                 raise ValueError("Sorry, detector must be passed if supplying a header")
@@ -112,6 +113,7 @@ class load_saxs_image:
                 raise ValueError("Sorry, database must be passed if supplying a header")
             detector = kwargs.pop('detector')
             database = kwargs.pop('database')
+            databases = dblib.initialize()
             database = databases[database]['data']
             hdr = database[infile['start']['uid']]
             img = database.get_images(hdr, detector['image_key']['value'])[0]
@@ -281,19 +283,14 @@ def header2SciResult(header,events=None):
 def lookup(dbname, protocol_name=None, **kwargs):
     # Returns a SciResult Basically the SciResult constructor for databroker
     # TODO : Should be delayed computation to conform with others
-    from SciAnalysis.databases import initialize
+    from SciAnalysis.interfaces.databroker.databases import initialize
     dbs = initialize()
     db = dbs[dbname]['analysis']
     kwargs['protocol_name'] = protocol_name
     # search and get latest
-    hdr = db(**kwargs)[0]
-    output_names = hdr['start']['_output_names']
-    res = list()
-    for output_name in output_names:
-        # TODO is it really get_images or something else?
-        res.append(next(db.get_events(hdr, fill=True)))
+    scires = SciResult(db(**kwargs)[0])
 
-    return res
+    return scires
 
     
 # Completed tests (above are WIP)
@@ -446,7 +443,7 @@ def test_circular_average(plot=False, output=False):
     sqx,sqy = sqres.get()
 
     # make sure we can lookup latest results
-    #sqres = lookup('cms', protocol_name='XS:circular_average')
+    sqres = lookup('cms', protocol_name='XS:circular_average')
 
     #prev_calibration = lookup('cms', protocol_name='XS:calibration')
     #sq = circular_average(image=image, calibration=calibres).run().compute()

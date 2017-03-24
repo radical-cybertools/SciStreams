@@ -3,7 +3,8 @@
     Eventually this should be in some connection file.
 
 '''
-from SciAnalysis.database_initializers import cmsdb, chxdb
+from SciAnalysis.interfaces.databroker.database_initializers import cmsdb, chxdb
+
 
 def initialize():
     # when these flags set true, enables these databases

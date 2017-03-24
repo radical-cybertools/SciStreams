@@ -48,7 +48,7 @@ def cmsdb(HOST_DATA='xf11bm-ca1', PORT_DATA=27017,
     print("Set up the cms database at `cmsdb`. Please test if connection is"
           "successful by running chxdb[-1]")
     
-    from SciAnalysis.handlers_custom import AreaDetectorTiffHandler  
+    from SciAnalysis.interfaces.databroker.handlers_custom import AreaDetectorTiffHandler  
     cmsdb.fs.register_handler('AD_TIFF', AreaDetectorTiffHandler)  #partial(AreaDetectorTiffHandler, ROOTMAP=ROOTMAP_DATA))
 
     cmsdb_analysis = cmsdb_anal_tmp(HOST_ANALYSIS=HOST_ANALYSIS,

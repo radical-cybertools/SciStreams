@@ -40,7 +40,6 @@ from .Eiger import *
 
 
 
-
 # Data2DScattering
 ################################################################################
 class Data2DScattering(Data2D):
@@ -784,6 +783,96 @@ class Mask(object):
     # End class Mask(object)
     ########################################
 
+
+# Mask
+################################################################################
+class MasterMask(dict):
+    ''' Stores information to re-construct a mask from a master mask and information on 
+            beam center location.
+
+        There are three types of masks:
+            detector_flatfield : detector flatfield (can be float, but just zeros and ones is a mask)
+
+            master_mask : a mask array larger than the detector size
+                this encodes information that is not detector or sample specific (i.e. beamstop etc)
+    
+            user_mask : if set, multiply this in too 
+                default, None
+
+        We also need some extra paramters to specify the mask:
+
+            master_beam_center : beam center location for master mask
+
+            boundary : what to fill in for boundaries
+                default, 0
+
+        To generate mask:
+            generate_mask(beam_center)
+                this will generate a mask centered on beam center
+    '''
+
+    def __init__(self, detector_mask=None, master_mask=None,
+                 master_center=None, user_mask=None):
+        '''Creates a new mask object, storing a matrix of the pixels to be
+        excluded from further analysis.'''
+        self.load(detector_mask, type='detector')
+        self.load(master_mask, type='master')
+        self.load(user_mask, type='user')
+        self.master_center = master_center
+
+    def load(self, infile, type='detector'):
+        '''Loads a mask from a a file. If this object already has some masking
+        defined, then the new mask is 'added' to it. Thus, one can load multiple
+        masks to exlude various pixels.'''
+        if isinstance(infile, np.ndarray):
+            self[type] = infile
+        elif infile is str:
+            if nfile.endswith('.png'):
+                self.load_png(infile, type=type)
+            elif infile.endswith('.h5') or infile.endswith('.hd5'):
+                self.load_hdf5(infile, type=type)
+
+    def load_png(self, infile, threshold=127, invert=False):
+        '''Load a mask from a PNG image file. High values (white) are included,
+        low values (black) are exluded.'''
+
+        # Image should be black (0) for excluded pixels, white (255) for included pixels
+        img = PIL.Image.open(infile).convert("L") # black-and-white
+        img2 = img.point(lambda p: p > threshold and 255)
+        data = np.asarray(img2)/255
+        data = data.astype(np.uint8)
+
+        if invert:
+            data = -1*(data-1)
+
+        if self.data is None:
+            self.data = data
+        else:
+            self.data *= data
+
+
+    def load_hdf5(self, infile, invert=False):
+
+        with h5py.File(infile, 'r') as f:
+            data = np.asarray( f['mask'] )
+
+        if invert:
+            data = -1*(data-1)
+
+        if self.data is None:
+            self.data = data
+        else:
+            self.data *= data
+
+
+    def invert(self):
+        '''Inverts the mask. Can be used if the mask file was written using the
+        opposite convention.'''
+        self.data = -1*(self.data-1)
+
+
+    # End class Mask(object)
+    ########################################
 
 
 
