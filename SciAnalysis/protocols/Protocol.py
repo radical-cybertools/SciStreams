@@ -17,11 +17,10 @@ def run_default(inner_function):
         run_stats = dict()
         #run_stats = kwargs['_run_stats']
         run_stats['start_timestamp'] = time.time()
-
         # results should be a SciResult
         results = inner_function(*args, **kwargs)
-
         run_stats['end_timestamp'] = time.time()
+        run_stats['runtime'] = run_stats['end_timestamp'] - run_stats['start_timestamp']
 
         results['run_stats'] = run_stats
 

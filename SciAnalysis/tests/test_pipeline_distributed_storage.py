@@ -94,18 +94,18 @@ class load_saxs_image:
     def __init__(self, **kwargs):
         self.kwargs= kwargs
 
-    def run(self, **kwargs):
+    def init(self, **kwargs):
         new_kwargs = dict()
         new_kwargs.update(self.kwargs.copy())
         new_kwargs.update(kwargs)
-        return self.run_explicit(_name=self._name, **new_kwargs)
+        return self.run(_name=self._name, **new_kwargs)
 
     # need **kwargs to allow extra args to be passed
     @delayed(pure=False)
     #@store_results('cms')
     @run_default
     @parse_sciresults(_keymap, _output_names, _attributes)
-    def run_explicit(infile = None, **kwargs):
+    def run(infile = None, **kwargs):
         # Need to import inside for distributed
         from SciAnalysis.interfaces.databroker import databases as dblib
         if isinstance(infile, HeaderDict):
@@ -140,11 +140,11 @@ class load_calibration:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
 
-    def run(self, **kwargs):
+    def init(self, **kwargs):
         new_kwargs = dict()
         new_kwargs.update(self.kwargs.copy())
         new_kwargs.update(kwargs)
-        return self.run_explicit(_name=self._name, **new_kwargs)
+        return self.run(_name=self._name, **new_kwargs)
 
     def add(self, name=None, value=None, unit=None):
         self.kwargs.update({name : {'value' : value, 'unit' : unit}})
@@ -153,7 +153,7 @@ class load_calibration:
     @store_results('cms')
     @run_default
     @parse_sciresults(_keymap, _output_names)
-    def run_explicit( calibration={}, **kwargs):
+    def run( calibration={}, **kwargs):
         '''
             Load calibration data.
             The data must be a dictionary.
@@ -248,17 +248,17 @@ class circular_average:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
 
-    def run(self, **kwargs):
+    def init(self, **kwargs):
         new_kwargs = dict()
         new_kwargs.update(self.kwargs.copy())
         new_kwargs.update(kwargs)
-        return self.run_explicit(_name=self._name, **new_kwargs)
+        return self.run(_name=self._name, **new_kwargs)
 
     @delayed(pure=True)
     @store_results('cms', {'sqx' : 'npy', 'sqy' : 'npy'})
     @run_default
     @parse_sciresults(_keymap, _output_names)
-    def run_explicit(image=None, calibration=None, bins=100, mask=None, **kwargs):
+    def run(image=None, calibration=None, bins=100, mask=None, **kwargs):
         #print(calibration)
         #print("computing")
         x0, y0 = calibration['beamx0']['value'], calibration['beamy0']['value']
@@ -365,13 +365,13 @@ def test_load_saxs_img(plot=False,output=False):
 
     # testing that protocol can take a SciResult or data
     # test with data
-    res_fileinput = load_saxs_image(infile=data_filename).run()
+    res_fileinput = load_saxs_image(infile=data_filename).init()
     # test with sciresult
     head = SciResult(infile=data_filename)
     print(head)
-    res_sciresinput = load_saxs_image(infile=head).run()
+    res_sciresinput = load_saxs_image(infile=head).init()
 
-    res_headerinput = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database='cms').run()
+    res_headerinput = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database='cms').init()
 
     assert_true(isinstance(res_sciresinput, Delayed))
     assert_true(isinstance(res_fileinput, Delayed))
@@ -415,22 +415,22 @@ def test_circular_average(plot=False, output=False):
     #calibres = load_calibration(calibration=header).run()
     if isinstance(header, Header):
         print(header)
-    calibres = load_calibration(calibration=header).run().compute()
+    calibres = load_calibration(calibration=header).init().compute()
     # retrieve the latest calibration
     latest_calib = cadb(name="XS:calibration")[0]
     calibkey = 'calibration'
     latest_calib = next(cadb.get_events(latest_calib))['data'][calibkey]
     #print(latest_calib)
 
-    image = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database='cms').run()
+    image = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database='cms').init()
 
     #latest_image= cadb(name="XS:calibration")[0]
     #key = 'image'
     #latest_image = next(cadb.get_events(latest_image))['data'][key]
     #print(latest_image)
-    ##image = load_saxs_image(infile=data_filename).run().compute()
+    ##image = load_saxs_image(infile=data_filename).init().compute()
 
-    sqres = circular_average(image=image, calibration=calibres).run().compute()
+    sqres = circular_average(image=image, calibration=calibres).init().compute()
 
     # the output is a SciResult. To transform into what the function output
     # would have been, call sqres.get()
@@ -441,7 +441,7 @@ def test_circular_average(plot=False, output=False):
     sqres = lookup('cms', protocol_name='XS:circular_average')
 
     #prev_calibration = lookup('cms', protocol_name='XS:calibration')
-    #sq = circular_average(image=image, calibration=calibres).run().compute()
+    #sq = circular_average(image=image, calibration=calibres).init().compute()
 
     #if plot:
         #import matplotlib.pyplot as plt

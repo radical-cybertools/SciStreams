@@ -126,9 +126,10 @@ def store_results_databroker(scires, dbname, external_writers={}):
     start_doc['uid'] = str(uuid4())
     start_doc['plan_name'] = 'analysis'
     start_doc['protocol_name'] = scires['attributes']['function_name']
-    start_doc['start_timestamp'] = scires['run_stats']['start_timestamp']
-    start_doc['end_timestamp'] = scires['run_stats']['end_timestamp']
-    start_doc['runtime'] = start_doc['start_timestamp'] - start_doc['end_timestamp']
+    #start_doc['start_timestamp'] = scires['run_stats']['start_timestamp']
+    #start_doc['end_timestamp'] = scires['run_stats']['end_timestamp']
+    start_doc['run_stats'] = scires['run_stats']
+    #start_doc['runtime'] = start_doc['start_timestamp'] - start_doc['end_timestamp']
     start_doc['save_timestamp'] = time.time()
     start_doc['output_names'] = scires['output_names']
     # TODO : replace with version lookup in database
