@@ -47,4 +47,7 @@ class NpyWriter:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+# TODO : Add a BlankWriter, basically takes a filename but outputs nothing.
+#   It also writes in the correct file handler (which should be an input)
+
 writers_dict = {'npy' : NpyWriter}

@@ -6,12 +6,16 @@ from SciAnalysis.contrib.decorators import simple_func2classdecorator
 from SciAnalysis.interfaces.SciResult import SciResult, parse_sciresults
 
 def run_default(inner_function):
-    '''Standard book-keeping required for the 'run' method of any protocol.'''
+    '''Standard book-keeping required for the 'run' method of any protocol.
+        Note : only works on a SciResult returned result.
+        Make sure function outputs SciResult (usually by just decorating it)
+    '''
     def _run_default(*args, **kwargs):
-        if '_run_stats' not in kwargs or not isinstance(kwargs['_run_stats'], dict):
-            kwargs['_run_stats'] = dict()
+        #if '_run_stats' not in kwargs or not isinstance(kwargs['_run_stats'], dict):
+            #kwargs['_run_stats'] = dict()
 
-        run_stats = kwargs['_run_stats']
+        run_stats = dict()
+        #run_stats = kwargs['_run_stats']
         run_stats['start_timestamp'] = time.time()
 
         # results should be a SciResult
@@ -19,7 +23,7 @@ def run_default(inner_function):
 
         run_stats['end_timestamp'] = time.time()
 
-        results['_run_stats'] = run_stats
+        results['run_stats'] = run_stats
 
         return results
 

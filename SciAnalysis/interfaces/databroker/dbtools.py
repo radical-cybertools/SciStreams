@@ -9,6 +9,7 @@ from databroker.broker import Header
 import json
 
 from SciAnalysis.interfaces.databroker.writers_custom import writers_dict as _writers_dict
+from SciAnalysis.interfaces.SciResult import SciResult
 
 _ANALYSIS_STORE_VERSION = 'beta-v1'
 # TODO : Ask Dan if databroker is smart enough to know if connection was already made?
@@ -16,6 +17,22 @@ _ANALYSIS_STORE_VERSION = 'beta-v1'
 # I am thinking of in distributed regime where multiple nodes will be running
 # some of them may have already started a db conection, others not
 
+
+def Header2SciResult(header, db=None):
+    ''' Convert a header to a SciResult. '''
+    # TODO : write
+    scires =  SciResult()
+    scires['attributes'] = dict(**header['start'])
+    scires['output_names'] = header['descriptors'][0]['data_keys']
+    # TODO : pass conf information for database instead and reconstruct here
+    if db is None:
+        raise ValueError("Error, need to specify db")
+    event = list(db.get_events(header, fill=True))[0]
+    output_names = scires['output_names']
+    for output_name in output_names:
+        scires['outputs'][output_name] = event['data'][output_name]
+    scires['run_stats'] = dict() # no run stats for a conversion
+    return scires
 
 # this is an attempt to make databroker object portable and identifiable
 #
@@ -34,7 +51,8 @@ def lookup(dbname, protocol_name=None, **kwargs):
     db = dbs[dbname]['analysis']
     kwargs['protocol_name'] = protocol_name
     # search and get latest
-    scires = SciResult(db(**kwargs)[0])
+    header = db(**kwargs)[0]
+    scires = Header2SciResult(header, db=db)
 
     return scires
 
@@ -61,7 +79,10 @@ def safe_parse_databroker(val, nested=False):
         val = str(type(val))
 
     if not nested:
-        val = json.dumps(val)
+        try:
+            val = json.dumps(val)
+        except TypeError:
+            val = json.dumps(repr(val))
 
     return val
 
@@ -84,8 +105,10 @@ def make_descriptor(val):
 
     return dict(dtype=dtype, shape=shape)
 
-def store_results_databroker(results, attributes, dbname, external_writers={}):
-    ''' Save results to a databroker instance.'''
+def store_results_databroker(scires, dbname, external_writers={}):
+    ''' Save results to a databroker instance.
+        Takes a sciresult instance.
+    '''
     import SciAnalysis.interfaces.databroker.databases as dblib
     # TODO : remove this when in mongodb
     databases = dblib.initialize()
@@ -97,23 +120,23 @@ def store_results_databroker(results, attributes, dbname, external_writers={}):
     # Store in databroker, make the documents
     start_doc = dict()
 
-    start_doc.update(attributes)
+    #start_doc.update(attributes)
 
     start_doc['time'] = time.time()
     start_doc['uid'] = str(uuid4())
     start_doc['plan_name'] = 'analysis'
-    start_doc['protocol_name'] = results['_name']
-    start_doc['start_timestamp'] = results['_run_stats']['start_timestamp']
-    start_doc['end_timestamp'] = results['_run_stats']['end_timestamp']
+    start_doc['protocol_name'] = scires['attributes']['function_name']
+    start_doc['start_timestamp'] = scires['run_stats']['start_timestamp']
+    start_doc['end_timestamp'] = scires['run_stats']['end_timestamp']
     start_doc['runtime'] = start_doc['start_timestamp'] - start_doc['end_timestamp']
     start_doc['save_timestamp'] = time.time()
-    start_doc['_output_names'] = results['_output_names']
+    start_doc['output_names'] = scires['output_names']
     # TODO : replace with version lookup in database
     start_doc['analysis_store_version'] = _ANALYSIS_STORE_VERSION
 
-    if '_run_args' in results:
-        results['_run_args'] = safe_parse_databroker(results['_run_args'])
-        start_doc['run_args'] = results['_run_args']
+    #if '_run_args' in scires:
+        #results['_run_args'] = safe_parse_databroker(results['_run_args'])
+        #start_doc['run_args'] = results['_run_args']
 
     # just make one descriptor and event document for now
     # initialize both event and descriptor
@@ -131,7 +154,7 @@ def store_results_databroker(results, attributes, dbname, external_writers={}):
     event_doc['seq_num'] = 1
 
     # then parse remaining data
-    for key, val in results.items():
+    for key, val in scires['outputs'].items():
         if key[0] == '_':
             continue # ignore hidden keys
         # guess descriptor from data
@@ -150,15 +173,13 @@ def store_results_databroker(results, attributes, dbname, external_writers={}):
             event_doc['data'][key] = safe_parse_databroker(val)
         event_doc['timestamps'][key] = time.time()
 
-    if '_files' not in results:
-        results['_files'] = dict()
-
+    # TODO : decide if we do need a feature to give filenames
     # NOTE : This is an alternative option. User can write
     # files themselves and specify that the file was written
     # then parse files, val is a dict
     # if files were saved, store info in filestore
-    if '_files' in results:
-        for key, val in results['_files'].items():
+    if '_files' in scires:
+        for key, val in scires['_files'].items():
             datum, desc = parse_file_event(val, db)
             descriptor_doc['data_keys'][key] = desc
             event_doc['data'][key] = datum

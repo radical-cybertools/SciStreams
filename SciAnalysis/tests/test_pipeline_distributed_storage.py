@@ -24,7 +24,7 @@ from databroker.broker import Header
 
 # I/O stuff
 import SciAnalysis.interfaces.databroker.databases as dblib
-from SciAnalysis.interfaces.databroker.dbtools import store_results_databroker, HeaderDict
+from SciAnalysis.interfaces.databroker.dbtools import store_results_databroker, HeaderDict, lookup
 from SciAnalysis.interfaces.databroker.writers_custom import NpyWriter
 from SciAnalysis.interfaces.databroker.dbtools import HeaderDict
 from SciAnalysis.interfaces.detectors import detectors2D
@@ -77,7 +77,7 @@ def store_results(dbname, external_writers={}):
             results = f(*args, **kwargs)
             # TODO : fill in (after working on xml storage)
             attributes = {}
-            store_results_databroker(results, attributes, dbname, external_writers=external_writers)
+            store_results_databroker(results, dbname, external_writers=external_writers)
             return results
         return newf
     return decorator
@@ -89,6 +89,7 @@ class load_saxs_image:
     _output_names = ['image']
     _name = "XS:load_saxs_image"
     _dbname = 'cms'
+    _attributes = {}
 
     def __init__(self, **kwargs):
         self.kwargs= kwargs
@@ -130,7 +131,7 @@ class load_saxs_image:
 
 
 class load_calibration:
-    # TODO: reevaluate if _accepted_args necessary
+    # TODO: re-evaluate if _accepted_args necessary
     _accepted_args = ['calibration']
     _keymap = {'calibration' : 'calibration'}
     _output_names = ['calibration']
@@ -349,6 +350,7 @@ def test_load_saxs_img(plot=False,output=False):
     cmsdb = databases['cms']['data']
     # I randomly chose some header
     header = cmsdb['89e8caf6-8059-43ff-9a9e-4bf461ee95b5']
+    header = HeaderDict(header)
 
     tmpdir_data = tempfile.TemporaryDirectory().name
     os.mkdir(tmpdir_data)
@@ -366,6 +368,7 @@ def test_load_saxs_img(plot=False,output=False):
     res_fileinput = load_saxs_image(infile=data_filename).run()
     # test with sciresult
     head = SciResult(infile=data_filename)
+    print(head)
     res_sciresinput = load_saxs_image(infile=head).run()
 
     res_headerinput = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database='cms').run()
@@ -380,14 +383,16 @@ def test_load_saxs_img(plot=False,output=False):
     res_sciresinput = res_sciresinput.compute()
     res_headerinput = res_headerinput.compute()
 
-    assert_array_almost_equal(data, res_fileinput['image'])
-    assert_array_almost_equal(data, res_sciresinput['image'])
+    assert_array_almost_equal(data, res_fileinput['outputs']['image'])
+    assert_array_almost_equal(data, res_sciresinput['outputs']['image'])
 
     if plot:
         import matplotlib.pyplot as plt
         plt.ion()
         plt.figure(0);plt.clf()
         plt.imshow(res_headerinput['image'])
+
+    return res_sciresinput
 
 def test_circular_average(plot=False, output=False):
 

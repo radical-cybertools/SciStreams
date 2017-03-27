@@ -2,10 +2,19 @@
     A SciResult is like a dict but I can identify it
         Also, hashes well in dask (for nested dicts/SciResults too)
 
- Assumed paramters:
+ Assumed paramters passed in functions:
     _SciResult : to identify it
+    _name : function name passed
 
 All conversions to SciResult are in the respective interface libraries.
+
+Structure of SciResult:
+    - attributes : the attributes (metadata)
+        NOTE : Not necessarily unique, up to user. However, for computations,
+            dask does ensure uniqueness of computations by hasing arguments.
+    - run_stats : statistics specific to the run instance
+    - outputs : the outputs (in a dictionary)
+    - output_names : a list showing the ordering of the outputs
 
 
 TODO : 
@@ -15,6 +24,8 @@ TODO :
 
 from collections import OrderedDict
 
+
+_MAX_STR_LEN = 72
 
 class SciResult(dict):
     ''' Something to distinguish a dictionary from but in essence, it's just a
@@ -31,16 +42,23 @@ class SciResult(dict):
 
         if len(args) == 1:
             kwargs.update(dict(args))
-        super(SciResult, self).__init__(**kwargs)
-        # the metadata. This should contain a few defaults
-        self['attributes'] = dict() #metadata
-        attributes = self['attributes']
-        # these need to be overwritten
-        attributes['procotol_name'] = "N/A"
+        super(SciResult, self).__init__()
 
         # the outputs and output names
         self['outputs'] = dict() # outputs
         self['output_names'] = list() # ordering of names of outputs
+
+        # if there are args and kwargs, they get saved to output
+        for i, arg in enumerate(args):
+            key = "_arg{}".format(i)
+            self.addoutput(key, arg)
+        for key, val in kwargs.items():
+            self.addoutput(key, val)
+
+        # the metadata. This should contain a few defaults
+        self['attributes'] = dict() #metadata
+        attributes = self['attributes']
+
 
         # run-specific stuff
         self['run_stats'] = dict()
@@ -74,7 +92,7 @@ class SciResult(dict):
         itself.'''
         args = list()
         for output_name in self['output_names']:
-            args.append(self[outputs][output_name])
+            args.append(self['outputs'][output_name])
         return args
 
     def num_outputs(self):
@@ -98,20 +116,30 @@ def parse_sciresults(input_map, output_names, attributes={}):
             scires = SciResult()
             scires['attributes'] = dict()
 
+
             # First transform any SciResult into data, based on input_map
             # grab attributes if entries were SciResults
             for i, entry in enumerate(args):
                 # checks if it's a SciResult
+                key = "_arg{}".format(i)
                 if isinstance(entry, dict) and '_SciResult' in entry:
-                    key = "_arg{}".format(i)
                     args[i] = entry['outputs'][input_map[key]]
                     scires['attributes'][key] = entry['attributes']
+                else:
+                    scires['attributes'][key] = repr(entry)[:_MAX_STR_LEN]
 
             for key, entry in kwargs.items():
                 # checks if it's a SciResult
                 if isinstance(entry, dict) and '_SciResult' in entry:
                     kwargs[key] = entry['outputs'][input_map[key]]
                     scires['attributes'][key] = entry['attributes']
+                else:
+                    scires['attributes'][key] = repr(entry)
+
+            if '_name' not in kwargs:
+                scires['attributes']['function_name'] = 'N/A'
+            else:
+                scires['attributes']['function_name'] = kwargs['_name']
 
             # Run function
             result = f(*args, **kwargs)
@@ -123,6 +151,6 @@ def parse_sciresults(input_map, output_names, attributes={}):
                 for i, res in enumerate(result):
                     scires.addoutput(output_names[i], res)
 
-            return SciResult(**resultdict)
+            return scires
         return _f
     return decorator
