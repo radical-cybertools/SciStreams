@@ -43,15 +43,39 @@ class HeaderDict(dict):
 '''
     This routine looks up the last entry of a certain type
 '''
-def lookup(dbname, protocol_name=None, **kwargs):
+def pull(dbname, protocol_name=None, **kwargs):
+    ''' Pull from a databroker database
+
+        Parameters
+        ----------
+
+        dbname : str
+            Input name is of format "dbname:subdbname"
+            For example : "cms:data", or "cms:analysis"
+            if just database name supplied, then it's assumed
+            to be analysis.
+
+        Returns
+        -------
+        SciResult of data
+
+    '''
     # Returns a SciResult Basically the SciResult constructor for databroker
-    # TODO : Should be delayed computation to conform with others
     from SciAnalysis.interfaces.databroker.databases import initialize
+    # TODO : Remove the initialization when moving from sqlite to other
+    if ":" in dbname:
+        dbname = dbname.split(":")
+    else:
+        dbname = [dbname, 'analysis']
     dbs = initialize()
-    db = dbs[dbname]['analysis']
+    db = dbs[dbname[0]][dbname[1]]
     kwargs['protocol_name'] = protocol_name
     # search and get latest
-    header = db(**kwargs)[0]
+    headers = db(**kwargs)
+    if len(headers) > 0:
+        header = headers[0]
+    else:
+        raise IndexError("Error, no headers found for database lookup")
     scires = Header2SciResult(header, db=db)
 
     return scires

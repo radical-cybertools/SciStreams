@@ -24,9 +24,10 @@ from databroker.broker import Header
 
 # I/O stuff
 import SciAnalysis.interfaces.databroker.databases as dblib
-from SciAnalysis.interfaces.databroker.dbtools import store_results_databroker, HeaderDict, lookup
-from SciAnalysis.interfaces.databroker.writers_custom import NpyWriter
-from SciAnalysis.interfaces.databroker.dbtools import HeaderDict
+#from SciAnalysis.interfaces.databroker.dbtools import store_results_databroker, HeaderDict, pull
+# each source/sink should be named source_something by convention
+import SciAnalysis.interfaces.databroker.dbtools as source_dbtools
+import SciAnalysis.interfaces.file.reading as source_file
 from SciAnalysis.interfaces.detectors import detectors2D
 
 # this is the intermediate interface
@@ -77,19 +78,18 @@ def store_results(dbname, external_writers={}):
             results = f(*args, **kwargs)
             # TODO : fill in (after working on xml storage)
             attributes = {}
-            store_results_databroker(results, dbname, external_writers=external_writers)
+            source_dbtools.store_results_databroker(results, dbname, external_writers=external_writers)
             return results
         return newf
     return decorator
     
     
 class load_saxs_image:
-    _accepted_args = ['infile']
     _keymap = {'infile' : 'infile'}
     _output_names = ['image']
     _name = "XS:load_saxs_image"
-    _dbname = 'cms'
     _attributes = {}
+    _dbname = 'cms'
 
     def __init__(self, **kwargs):
         self.kwargs= kwargs
@@ -108,7 +108,7 @@ class load_saxs_image:
     def run(infile = None, **kwargs):
         # Need to import inside for distributed
         from SciAnalysis.interfaces.databroker import databases as dblib
-        if isinstance(infile, HeaderDict):
+        if isinstance(infile, source_dbtools.HeaderDict):
             if 'detector' not in kwargs:
                 raise ValueError("Sorry, detector must be passed if supplying a header")
             if 'database' not in kwargs:
@@ -183,7 +183,7 @@ class load_calibration:
     
                     }
     
-        if isinstance(calibration, HeaderDict):
+        if isinstance(calibration, source_dbtools.HeaderDict):
             # a map from Header start doc to data
             # TODO : move out of function
             calib_keymap = {'wavelength' : {'key' : 'calibration_wavelength_A',
@@ -345,13 +345,14 @@ def test_calibration():
     calibres.run().compute()
     #print(calibres)
     
-def test_load_saxs_img(plot=False,output=False):
+def test_load_saxs_img(plot=False, output=False):
     ''' test the load_saxs_img class'''
-    cmsdb = databases['cms']['data']
     # I randomly chose some header
-    header = cmsdb['89e8caf6-8059-43ff-9a9e-4bf461ee95b5']
-    header = HeaderDict(header)
+    uid = '89e8caf6-8059-43ff-9a9e-4bf461ee95b5'
+    scires_header = source_dbtools.pull('cms:data', uid=uid)
+    scires_header = scires_header.select('pilatus300_image')
 
+    # making temporary data
     tmpdir_data = tempfile.TemporaryDirectory().name
     os.mkdir(tmpdir_data)
 
@@ -363,28 +364,28 @@ def test_load_saxs_img(plot=False,output=False):
     im = Image.fromarray(data)
     im.save(data_filename)
 
+    scires_datafile = source_file.FileDesc(data_filename).get()
+
     # testing that protocol can take a SciResult or data
     # test with data
-    res_fileinput = load_saxs_image(infile=data_filename).init()
+    res_fileinput = load_saxs_image(infile=scires_datafile).init()
     # test with sciresult
-    head = SciResult(infile=data_filename)
-    print(head)
-    res_sciresinput = load_saxs_image(infile=head).init()
+    print(scires_header)
+    # TODO : try adding attributes
+    #sample_name = scires_header['attributes']['sample_name']
+    #sample_uid = scires_header['attributes']['uid']
 
-    res_headerinput = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database='cms').init()
+    res_headerinput = load_saxs_image(infile=scires_header, detector=detectors2D['pilatus300']).init()
 
-    assert_true(isinstance(res_sciresinput, Delayed))
     assert_true(isinstance(res_fileinput, Delayed))
     assert_true(isinstance(res_headerinput, Delayed))
 
     # test with data
-    res_fileinput = res_fileinput.compute()
+    #res_fileinput = res_fileinput.compute()
     # test with sciresult
-    res_sciresinput = res_sciresinput.compute()
     res_headerinput = res_headerinput.compute()
 
-    assert_array_almost_equal(data, res_fileinput['outputs']['image'])
-    assert_array_almost_equal(data, res_sciresinput['outputs']['image'])
+    #assert_array_almost_equal(data, res_fileinput['outputs']['image'])
 
     if plot:
         import matplotlib.pyplot as plt
@@ -392,13 +393,13 @@ def test_load_saxs_img(plot=False,output=False):
         plt.figure(0);plt.clf()
         plt.imshow(res_headerinput['image'])
 
-    return res_sciresinput
+    #return res_sciresinput
 
 def test_circular_average(plot=False, output=False):
 
     # I randomly chose some header
     header = cddb['89e8caf6-8059-43ff-9a9e-4bf461ee95b5']
-    header = HeaderDict(header)
+    header = source_dbtools.HeaderDict(header)
 
 
     # make dummy data
@@ -438,9 +439,9 @@ def test_circular_average(plot=False, output=False):
     sqx,sqy = sqres.get()
 
     # make sure we can lookup latest results
-    sqres = lookup('cms', protocol_name='XS:circular_average')
+    sqres = source_dbtools.pull('cms', protocol_name='XS:circular_average')
 
-    #prev_calibration = lookup('cms', protocol_name='XS:calibration')
+    #prev_calibration = dbtools.pull('cms', protocol_name='XS:calibration')
     #sq = circular_average(image=image, calibration=calibres).init().compute()
 
     #if plot:
@@ -451,4 +452,3 @@ def test_circular_average(plot=False, output=False):
 
     if output:
         return sqres
-

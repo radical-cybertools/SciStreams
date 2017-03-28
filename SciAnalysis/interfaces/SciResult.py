@@ -35,38 +35,46 @@ class SciResult(dict):
             printrunstats : get the timing of a run that produced this SciResult
             get : get the actual raw data that would have been returned by this
                 SciResult
+
+        This should also be serializable.
     '''
 
     # TODO : MAJOR rewrite of SciResult right now
     def __init__(self, *args, **kwargs):
-
-        if len(args) == 1:
-            kwargs.update(dict(args))
         super(SciResult, self).__init__()
+        if len(args) == 1 and "_SciResult" in args[0]:
+            self.update(dict(args[0]))
+        else:
+            # the outputs and output names
+            self['outputs'] = dict() # outputs
+            self['output_names'] = list() # ordering of names of outputs
+    
+            # if there are args and kwargs, they get saved to output
+            for i, arg in enumerate(args):
+                key = "_arg{}".format(i)
+                self.addoutput(key, arg)
+            for key, val in kwargs.items():
+                self.addoutput(key, val)
+    
+            # the metadata. This should contain a few defaults
+            self['attributes'] = dict() #metadata
+            attributes = self['attributes']
+    
+    
+            # run-specific stuff
+            self['run_stats'] = dict()
+    
+            # identifier
+            self['_SciResult'] = 'SciResult-version1'
 
-        # the outputs and output names
-        self['outputs'] = dict() # outputs
-        self['output_names'] = list() # ordering of names of outputs
-
-        # if there are args and kwargs, they get saved to output
-        for i, arg in enumerate(args):
-            key = "_arg{}".format(i)
-            self.addoutput(key, arg)
-        for key, val in kwargs.items():
-            self.addoutput(key, val)
-
-        # the metadata. This should contain a few defaults
-        self['attributes'] = dict() #metadata
-        attributes = self['attributes']
-
-
-        # run-specific stuff
-        self['run_stats'] = dict()
-
-        # identifier
-        self['_SciResult'] = 'SciResult-version1'
 
     def printrunstats(self):
+        ''' Print some useful statistics of this SciResult.'''
+
+        print("SciResult information:")
+        if 'selected_outputs' not in self or self['selected_outputs'] is None:
+            print("Note outputs are currently selected. get() method won't return all outputs.")
+
         if 'run_stats' not in self:
             print("Sorry, no run stats saved, cannot print")
             return 
@@ -87,13 +95,36 @@ class SciResult(dict):
         self['outputs'][name] = val
         self['output_names'].append(name)
 
-    def get(self):
+    def get(self, name=None):
         ''' return the results as would be expected from the function
-        itself.'''
-        args = list()
-        for output_name in self['output_names']:
-            args.append(self['outputs'][output_name])
-        return args
+        itself.
+            Note : returns object if one output, or a tuple otherwise
+        '''
+        if name is None:
+            if 'selected_outputs' in self and self['selected_outputs'] is not None:
+                name = self['selected_outputs']
+
+        if name is not None:
+            if isinstance(name, str):
+                result = self['outputs'][name]
+            elif isinstance(name, tuple) or isinstance(name, list):
+                names = name
+                result = [self['outputs'][name] for name in names]
+            else:
+                raise ValueError("Sorry could not understand the entry to get."
+                        "Please verify this SciResult")
+        else:
+            print("outputs")
+            print(self['outputs'])
+            args = list()
+            for output_name in self['output_names']:
+                args.append(self['outputs'][output_name])
+            result = args
+
+        if len(result) == 1:
+            result = result[0]
+
+        return result
 
     def num_outputs(self):
         return len(self['output_names'])
@@ -102,6 +133,26 @@ class SciResult(dict):
         ''' Verify that this is a valid SciResult.'''
         # TODO : write this. Not necessary maybe?
         pass
+
+    def valid(self, name):
+        ''' verify that name is a valid entry.'''
+        if name in self['output_names']:
+            return True
+        else:
+            return False
+
+
+    def select(self, outputs):
+        ''' This returns an instance of scires whose outputs are chosen to be
+            different from its normal output.  This does not copy the data, just
+            the higher level dictionary-related data.
+        '''
+        # only copies the top layer
+        scires = SciResult(self)
+        scires['selected_outputs'] = outputs
+        return scires
+
+
 
 '''
     This decorator parses SciResult objects, indexes properly takes a keymap for
@@ -123,7 +174,10 @@ def parse_sciresults(input_map, output_names, attributes={}):
                 # checks if it's a SciResult
                 key = "_arg{}".format(i)
                 if isinstance(entry, dict) and '_SciResult' in entry:
-                    args[i] = entry['outputs'][input_map[key]]
+                    if key in input_map and entry.valid(input_map[key]):
+                        args[i] = entry.get(name=input_map[key])
+                    else:
+                        args[i] = entry.get()
                     scires['attributes'][key] = entry['attributes']
                 else:
                     scires['attributes'][key] = repr(entry)[:_MAX_STR_LEN]
@@ -131,7 +185,10 @@ def parse_sciresults(input_map, output_names, attributes={}):
             for key, entry in kwargs.items():
                 # checks if it's a SciResult
                 if isinstance(entry, dict) and '_SciResult' in entry:
-                    kwargs[key] = entry['outputs'][input_map[key]]
+                    if key in input_map and entry.valid(input_map[key]):
+                        kwargs[key] = entry.get(name=input_map[key])
+                    else:
+                        kwargs[key] = entry.get()
                     scires['attributes'][key] = entry['attributes']
                 else:
                     scires['attributes'][key] = repr(entry)

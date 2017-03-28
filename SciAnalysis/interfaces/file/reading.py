@@ -1,29 +1,33 @@
 from .core import jpegloader, pngloader, hdf5loader
 import numpy as np
-from SciAnalysis.interfaces import SciResult
+from SciAnalysis.interfaces.SciResult import SciResult
 
 # Simple cloass to normalize way files are read
 # Add to _FORMATSPECS and _REQUIREDKEYS to handle more files
-# need a 'get' and 'identify' set of routines to make compatible with SciAnalysis
+# need a 'get' and 'identify' set of routines to make compatible with
+# SciAnalysis
+
+
 class FileDesc(dict):
-    ''' Some normal way of reading files from filenames.'''
+    ''' Some normalized way of reading files from filenames.'''
     # case insensitive
     _FORMATSPECS = {
-            '.jpg' : 'jpg',
-            '.h5' : 'hdf5',
-            '.hd5' : 'hdf5',
-            '.png' : 'png',
+            '.jpg': 'jpg',
+            '.h5': 'hdf5',
+            '.hd5': 'hdf5',
+            '.png': 'png',
     }
     # required keys per format specifier
     _KEYINFO = {
-            'jpg' : {'required' : ['filename'],
-                    'loader' : jpegloader,
-                        },
-            'png' : {'required' : ['filename'],
-                    'loader' : pngloader},
-            'hdf5' : {'required' : ['filename', 'hdf5key'],
-                    'loader' : hdf5loader},
+            'jpg': {'required': ['filename'],
+                    'loader': jpegloader,
+                    },
+            'png': {'required': ['filename'],
+                    'loader': pngloader},
+            'hdf5': {'required': ['filename', 'hdf5key'],
+                     'loader': hdf5loader},
     }
+
     def __init__(self, filename, format=None, **kwargs):
         super(FileDesc, self).__init__()
         if format is None:
@@ -43,7 +47,23 @@ class FileDesc(dict):
         self['_data'] = np.array(res)
 
     def get(self):
+        ''' Get returns a SciResult.
+
+        '''
         scires = SciResult()
+        if '_data' not in self:
+            self.load()
+        scires['output_names'] = ['data']
+        scires['outputs']['data'] = self['_data']
+        scires['attributes'] = self.identify()
+        return scires
+
+    def get_raw(self):
+        ''' get_raw returns raw result (if needed).
+            This is discouraged and recommended only for debugging.
+            We should separate data from processing through the use
+            of SciResult.
+        '''
         if '_data' not in self:
             self.load()
         return self['_data']
@@ -68,8 +88,10 @@ class FileDesc(dict):
             if filename.endswith(key.lower()):
                 format = val
         if format is None:
-            errorstr = "Error, extension of {} is not one of supported types".format(filename)
-            errorstr = errorstr + "\n Supported are : {}".format(list(self._FORMATSPECS.keys()))
+            errorstr = "Error, extension of {} is not one of supported types".\
+                format(filename)
+            errorstr = errorstr + "\n Supported are : {}".\
+                format(list(self._FORMATSPECS.keys()))
             raise ValueError(errorstr)
 
         return format
@@ -80,4 +102,6 @@ class FileDesc(dict):
         req_keys = self._KEYINFO[format]['required']
         for key in req_keys:
             if key not in self:
-                raise ValueError("Sorry, {} specifier requires a {} parameter".format(self['format'], key))
+                errorstr = "Sorry, {} specifier requires a {} parameter".\
+                    format(self['format'], key)
+                raise ValueError(errorstr)
