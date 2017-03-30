@@ -34,12 +34,6 @@ def Header2SciResult(header, db=None):
     scires['run_stats'] = dict() # no run stats for a conversion
     return scires
 
-# this is an attempt to make databroker object portable and identifiable
-#
-class HeaderDict(dict):
-    def __init__(self, hdr):
-        super(HeaderDict, self).__init__(hdr)
-
 '''
     This routine looks up the last entry of a certain type
 '''

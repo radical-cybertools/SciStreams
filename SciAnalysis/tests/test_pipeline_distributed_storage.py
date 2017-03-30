@@ -75,6 +75,7 @@ Ideas introduced:
 def store_results(dbname, external_writers={}):
     def decorator(f):
         def newf(*args, **kwargs):
+            import SciAnalysis.interfaces.databroker.dbtools as source_dbtools
             results = f(*args, **kwargs)
             # TODO : fill in (after working on xml storage)
             attributes = {}
@@ -82,8 +83,9 @@ def store_results(dbname, external_writers={}):
             return results
         return newf
     return decorator
+
     
-    
+# interface side stuff
 class load_saxs_image:
     _keymap = {'infile' : 'infile'}
     _output_names = ['image']
@@ -105,22 +107,9 @@ class load_saxs_image:
     #@store_results('cms')
     @run_default
     @parse_sciresults(_keymap, _output_names, _attributes)
-    def run(infile = None, **kwargs):
-        # Need to import inside for distributed
-        from SciAnalysis.interfaces.databroker import databases as dblib
-        if isinstance(infile, source_dbtools.HeaderDict):
-            if 'detector' not in kwargs:
-                raise ValueError("Sorry, detector must be passed if supplying a header")
-            if 'database' not in kwargs:
-                raise ValueError("Sorry, database must be passed if supplying a header")
-            detector = kwargs.pop('detector')
-            database = kwargs.pop('database')
-            databases = dblib.initialize()
-            database = databases[database]['data']
-            hdr = database[infile['start']['uid']]
-            img = database.get_images(hdr, detector['image_key']['value'])[0]
-            img = np.array(img)
-        elif isinstance(infile, np.ndarray):
+    def run(infile=None, **kwargs):
+        import SciAnalysis.interfaces.databroker.dbtools as source_dbtools
+        if isinstance(infile, np.ndarray):
             img = infile
         elif isinstance(infile, str):
             img = np.array(Image.open(infile))
@@ -130,9 +119,8 @@ class load_saxs_image:
         return img
 
 
-class load_calibration:
-    # TODO: re-evaluate if _accepted_args necessary
-    _accepted_args = ['calibration']
+class load_cms_calibration:
+    # TODO: re-es = ['calibration']
     _keymap = {'calibration' : 'calibration'}
     _output_names = ['calibration']
     _name = "XS:calibration"
@@ -153,18 +141,16 @@ class load_calibration:
     @store_results('cms')
     @run_default
     @parse_sciresults(_keymap, _output_names)
-    def run( calibration={}, **kwargs):
+    def run(calibration={}, **kwargs):
         '''
-            Load calibration data.
+            Load calibration data from a SciResult's attributes.
+
             The data must be a dictionary.
             either:
                 load_calibration(calibration=myCalib)
             or:
                 load_calibration(wavelength=fdsa) etc
             
-            It is curried so you can keep overriding parameters.
-    
-    
             This is area detector specific.
         '''
         # defaults of function
@@ -180,52 +166,22 @@ class load_calibration:
                      'pixel_size_y' : {'value' : None, 'unit' : 'pixel'},
                        #TODO : This assumes data has this detector, not good to use, remove eventually
                      'detectors' : {'value' : ['pilatus300'], 'unit' : None},
-    
                     }
     
-        if isinstance(calibration, source_dbtools.HeaderDict):
-            # a map from Header start doc to data
-            # TODO : move out of function
-            calib_keymap = {'wavelength' : {'key' : 'calibration_wavelength_A',
-                                            'unit' : 'Angstrom'},
-                            'detectors' : {'key' : 'detectors',
-                                            'unit' : 'N/A'},
-                            'beamx0' : {'key' : 'detector_SAXS_x0_pix', 
-                                        'unit' : 'pixel'},
-                            'beamy0' : {'key' : 'detector_SAXS_y0_pix',
-                                        'unit' : 'pixel'},
-                            'sample_det_distance' : {'key' : 'detector_SAXS_distance_m',
-                                                     'unit' : 'pixel'}
-                            }
-    
-            start_doc = calibration['start']
-            calib_tmp = dict()
-            # walk through defaults
-            for key, entry in calib_keymap.items():
-                start_key = entry['key'] # get name of key
-                unit = entry['unit']
-                val = start_doc.get(start_key, _defaults[key]['value'])
-                calib_tmp[key] = {'value' : val,
-                                  'unit' : unit}
-    
-            # finally, get the width and height by looking at first detector in header
-            # TODO : add ability to read more than one detector, maybe in calib_keymap
-            first_detector = start_doc[calib_keymap['detectors']['key']][0]
-            detector_key = detectors2D[first_detector]['image_key']['value']
-    
-            # look up in local library
-            pixel_size_x = detectors2D[first_detector]['pixel_size_x']['value']
-            pixel_size_x_unit = detectors2D[first_detector]['pixel_size_x']['unit']
-            pixel_size_y = detectors2D[first_detector]['pixel_size_y']['value']
-            pixel_size_y_unit = detectors2D[first_detector]['pixel_size_y']['unit']
-    
-            img_shape = detectors2D[first_detector]['shape']
-    
-            calib_tmp['pixel_size_x'] = dict(value=pixel_size_x, unit=pixel_size_x_unit)
-            calib_tmp['pixel_size_y'] = dict(value=pixel_size_y, unit=pixel_size_y_unit)
-            calib_tmp['shape'] = img_shape.copy() #WARNING : copies only first level, this is one level dict
-            calibration = calib_tmp
-        
+        # a map from Header start doc to data
+        # TODO : move out of function
+        calib_keymap = {'wavelength' : {'key' : 'calibration_wavelength_A',
+                                        'unit' : 'Angstrom'},
+                        'detectors' : {'key' : 'detectors',
+                                        'unit' : 'N/A'},
+                        'beamx0' : {'key' : 'detector_SAXS_x0_pix', 
+                                    'unit' : 'pixel'},
+                        'beamy0' : {'key' : 'detector_SAXS_y0_pix',
+                                    'unit' : 'pixel'},
+                        'sample_det_distance' : {'key' : 'detector_SAXS_distance_m',
+                                                 'unit' : 'pixel'}
+                        }
+
         # update calibration with all keyword arguments
         for key, val in kwargs.items():
             # make sure not a hidden parameter
@@ -235,12 +191,43 @@ class load_calibration:
         for key in _defaults.keys():
             if key in kwargs:
                 calibration[key] = kwargs[key]
+
+        calib_tmp = dict()
+        # walk through defaults
+        for key, entry in calib_keymap.items():
+            start_key = entry['key'] # get name of key
+            unit = entry['unit']
+            val = calibration.get(start_key, _defaults[key]['value'])
+            calib_tmp[key] = {'value' : val,
+                              'unit' : unit}
+
+        # finally, get the width and height by looking at first detector in header
+        # TODO : add ability to read more than one detector, maybe in calib_keymap
+        if isinstance(calibration[calib_keymap['detectors']['key']], dict):
+            first_detector = calibration[calib_keymap['detectors']['key']]['value'][0]
+        else:
+            first_detector = calibration[calib_keymap['detectors']['key']][0]
+
+        detector_key = detectors2D[first_detector]['image_key']['value']
+
+        # look up in local library
+        pixel_size_x = detectors2D[first_detector]['pixel_size_x']['value']
+        pixel_size_x_unit = detectors2D[first_detector]['pixel_size_x']['unit']
+        pixel_size_y = detectors2D[first_detector]['pixel_size_y']['value']
+        pixel_size_y_unit = detectors2D[first_detector]['pixel_size_y']['unit']
+
+        img_shape = detectors2D[first_detector]['shape']
+
+        calib_tmp['pixel_size_x'] = dict(value=pixel_size_x, unit=pixel_size_x_unit)
+        calib_tmp['pixel_size_y'] = dict(value=pixel_size_y, unit=pixel_size_y_unit)
+        calib_tmp['shape'] = img_shape.copy() #WARNING : copies only first level, this is one level dict
+        calibration = calib_tmp
+        
     
         return calibration
         
 
 class circular_average:
-    _accepted_args = ['calib']
     _keymap = {'calibration': 'calibration', 'image' : 'image'}
     _output_names = ['sqx', 'sqy']
     _name = "XS:circular_average"
@@ -268,22 +255,71 @@ class circular_average:
         rbinstat = RadialBinnedStatistic(img_shape, bins=bins, origin=(y0,x0), mask=mask)
         sq = rbinstat(image)
         sqx = rbinstat.bin_centers
-        #files = {
-                    #'thumb' : {'dtype' : 'array', 'spec' : 'PNG', 'filename'
-                               #: outfile},
-                   #}
-        # 'resource_kwargs' : [], 'datum_kwargs' : [], etc
-        #results['_files'] = files
-        #results['_run_args'] = dict(**run_args)
+
+        return sqx, sq
+
+class fitpeaks:
+    _keymap = {'sqx': 'sqx', 'sqy' : 'sqy', 'q0' : 'q0'}
+    _output_names = ['fit_params', 'fit_stats', 'best_fit']
+    _name = "XS:fitpeaks"
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def init(self, **kwargs):
+        new_kwargs = dict()
+        new_kwargs.update(self.kwargs.copy())
+        new_kwargs.update(kwargs)
+        return self.run(_name=self._name, **new_kwargs)
+
+    @delayed(pure=True)
+    @store_results('cms', {'best_fit' : 'npy'})
+    @run_default
+    @parse_sciresults(_keymap, _output_names)
+    def run(sqx=None, sqy=None, init_guess=None, ncurves=None, **kwargs):
+        if sqx is None or sqy is None:
+            raise ValueError("sqx, sqy or q0 not defined")
+        if ncurves is None:
+            ncurves = 1
+
+        if init_guess is None:
+            init_guess = {}
+
+        import lmfit
+        params = lmfit.Parameters()
+        for i in range(ncurves):
+            key = "A-{}".format(i)
+            key = "x0-{}".format(i)
+            key = "sigma-{}".format(i)
+
+            params.add(key, value=1.)
+            params.add(key.format(i), value=0.)
+            params.add(key.format(i), value=0.1)
+            # update with init_guess if exists
+            if key in init_guess:
+                params[key].value = init_guess[key]
+
+        def gausspeaks(x, npeaks, params):
+            res = np.zeros_like(x)
+            for i in range(npeaks):
+                amp = params["A-{}".format(i)]
+                x0 = params["x0-{}".format(i)]
+                sigma = params["sigma-{}".format(i)]
+                res += amp*np.exp(-(x-x0)**2/2./sigma**2)
+            return res
+
+        def minimizer(params, ncurves, sqx, sqy):
+            params = params.valuesdict()
+            res = gausspeaks(sqx, ncurves, params)
+            return np.sum((res-sqy)**2)
+
+        lmfit.minimize(gausspeaks, params, args=(ncurves, sqx, sqy))
+
         return sqx, sq
 
 
-def header2SciResult(header,events=None):
-    ''' Convert databroker header to a SciResult.'''
-    pass
-    
 
-    
+
 # Completed tests (above are WIP)
 #
 def test_sciresult_parser():
@@ -302,7 +338,7 @@ def test_sciresult_parser():
     test = SciResult(a=1)
 
     res = foo(a=test)
-    assert res['a'] == 1
+    assert res.get('a') == 1
 
 
 def test_sciresult():
@@ -312,7 +348,7 @@ def test_sciresult():
     assert_false(isinstance(dict(), SciResult))
 
 
-# this will be False, so don't do, an issue with dask
+# works in dask but not distributed
 def test_delayed_passthrough():
     ''' Test that a class that inherits dict isn't improperly interpreted and
         modified.
@@ -330,24 +366,28 @@ def test_delayed_passthrough():
 
 def test_calibration():
     # TODO : Replace with a portable db to to the db testing
-    cmsdb = databases['cms']['data']
     # I randomly chose some header
-    header = cmsdb['89e8caf6-8059-43ff-9a9e-4bf461ee95b5']
-    calibres = load_calibration(calibration=header).run()
+    uid = '89e8caf6-8059-43ff-9a9e-4bf461ee95b5'
+    scires = source_dbtools.pull(dbname="cms:data", uid=uid)
+    scires_data = SciResult(calibration=scires['attributes']).select("calibration")
+    calibres = load_cms_calibration(calibration=scires_data).init()
     assert isinstance(calibres, Delayed)
     calibres = calibres.compute()
     assert isinstance(calibres, SciResult)
-    #print(calibres)
+    print(calibres)
 
-    calibres = load_calibration()
+    calibres = load_cms_calibration()
     calibres.add(name='beamx0', value=50, unit='pixel')
     calibres.add(name='beamy0', value=50, unit='pixel')
-    calibres.run().compute()
-    #print(calibres)
+    calibres.add(name='detectors', value=['pilatus300'], unit='N/A')
+    calibres = calibres.init().compute()
+    print(calibres)
     
 def test_load_saxs_img(plot=False, output=False):
     ''' test the load_saxs_img class'''
     # I randomly chose some header
+    # TODO : source should be managed in a function, need to think more about
+    # it
     uid = '89e8caf6-8059-43ff-9a9e-4bf461ee95b5'
     scires_header = source_dbtools.pull('cms:data', uid=uid)
     scires_header = scires_header.select('pilatus300_image')
@@ -370,15 +410,15 @@ def test_load_saxs_img(plot=False, output=False):
     # test with data
     res_fileinput = load_saxs_image(infile=scires_datafile).init()
     # test with sciresult
-    print(scires_header)
+    #print(scires_header)
     # TODO : try adding attributes
     #sample_name = scires_header['attributes']['sample_name']
     #sample_uid = scires_header['attributes']['uid']
 
     res_headerinput = load_saxs_image(infile=scires_header, detector=detectors2D['pilatus300']).init()
 
-    assert_true(isinstance(res_fileinput, Delayed))
-    assert_true(isinstance(res_headerinput, Delayed))
+    #assert_true(isinstance(res_fileinput, Delayed))
+    #assert_true(isinstance(res_headerinput, Delayed))
 
     # test with data
     #res_fileinput = res_fileinput.compute()
@@ -398,9 +438,9 @@ def test_load_saxs_img(plot=False, output=False):
 def test_circular_average(plot=False, output=False):
 
     # I randomly chose some header
-    header = cddb['89e8caf6-8059-43ff-9a9e-4bf461ee95b5']
-    header = source_dbtools.HeaderDict(header)
-
+    uid = '89e8caf6-8059-43ff-9a9e-4bf461ee95b5'
+    scires_data = source_dbtools.pull('cms:data', uid = uid)
+    scires_data = SciResult(calibration=scires_data['attributes']).select('calibration')
 
     # make dummy data
     tmpdir_data = tempfile.TemporaryDirectory().name
@@ -414,41 +454,40 @@ def test_circular_average(plot=False, output=False):
 
 
     #calibres = load_calibration(calibration=header).run()
-    if isinstance(header, Header):
-        print(header)
-    calibres = load_calibration(calibration=header).init().compute()
+    calibres = load_cms_calibration(calibration=scires_data).init().compute()
     # retrieve the latest calibration
-    latest_calib = cadb(name="XS:calibration")[0]
-    calibkey = 'calibration'
-    latest_calib = next(cadb.get_events(latest_calib))['data'][calibkey]
+    latest_calib = source_dbtools.pull('cms:analysis',  protocol_name="XS:calibration")
     #print(latest_calib)
 
-    image = load_saxs_image(infile=header, detector=detectors2D['pilatus300'], database='cms').init()
+    image = load_saxs_image(infile=scires_data, detector=detectors2D['pilatus300'], database='cms').init()
 
-    #latest_image= cadb(name="XS:calibration")[0]
-    #key = 'image'
-    #latest_image = next(cadb.get_events(latest_image))['data'][key]
-    #print(latest_image)
-    ##image = load_saxs_image(infile=data_filename).init().compute()
+    latest_calib = source_dbtools.pull('cms:analysis', protocol_name="XS:calibration")
+    latest_circavg = source_dbtools.pull('cms:analysis', protocol_name="XS:circular_average")
 
-    sqres = circular_average(image=image, calibration=calibres).init().compute()
+    if output:
+        return sqres
 
-    # the output is a SciResult. To transform into what the function output
-    # would have been, call sqres.get()
+def test_fit_peaks(plot=False, output=False):
+    # I randomly chose some header
+    uid = '89e8caf6-8059-43ff-9a9e-4bf461ee95b5'
+    scires_data = source_dbtools.pull('cms:data', uid = uid)
 
-    sqx,sqy = sqres.get()
+    # set up calibration by reading from the attributes and filling in info
+    scires_calibration= SciResult(calibration=scires_data['attributes']).select('calibration')
+    #calibres = load_calibration(calibration=header).run()
+    calibres = load_cms_calibration(calibration=scires_calibration).init().compute()
+    # retrieve the latest calibration
+    latest_calib = source_dbtools.pull('cms:analysis',  protocol_name="XS:calibration")
+    #print(latest_calib)
 
-    # make sure we can lookup latest results
-    sqres = source_dbtools.pull('cms', protocol_name='XS:circular_average')
+    #image = load_saxs_image(infile=scires_data, detector=detectors2D['pilatus300'], database='cms').init().compute()
 
-    #prev_calibration = dbtools.pull('cms', protocol_name='XS:calibration')
-    #sq = circular_average(image=image, calibration=calibres).init().compute()
+    #scires_circavg = circular_average(image=image, calibration=latest_calib).init()
 
-    #if plot:
-        #import matplotlib.pyplot as plt
-        #plt.ion()
-        #plt.figure(0);plt.clf()
-        #plt.loglog(sq['sqx'], sq['sqy'])
+    #scires_circavg.compute()
+
+
+    #latest_circavg = source_dbtools.pull('cms:analysis', protocol_name="XS:circular_average")
 
     if output:
         return sqres

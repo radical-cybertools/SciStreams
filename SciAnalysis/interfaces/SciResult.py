@@ -106,7 +106,7 @@ class SciResult(dict):
 
         if name is not None:
             if isinstance(name, str):
-                result = self['outputs'][name]
+                result = [self['outputs'][name]]
             elif isinstance(name, tuple) or isinstance(name, list):
                 names = name
                 result = [self['outputs'][name] for name in names]
@@ -114,8 +114,6 @@ class SciResult(dict):
                 raise ValueError("Sorry could not understand the entry to get."
                         "Please verify this SciResult")
         else:
-            print("outputs")
-            print(self['outputs'])
             args = list()
             for output_name in self['output_names']:
                 args.append(self['outputs'][output_name])
