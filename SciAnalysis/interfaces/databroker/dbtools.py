@@ -23,7 +23,7 @@ def Header2SciResult(header, db=None):
     # TODO : write
     scires =  SciResult()
     scires['attributes'] = dict(**header['start'])
-    scires['output_names'] = header['descriptors'][0]['data_keys']
+    scires['output_names'] = list(header['descriptors'][0]['data_keys'].keys())
     # TODO : pass conf information for database instead and reconstruct here
     if db is None:
         raise ValueError("Error, need to specify db")
