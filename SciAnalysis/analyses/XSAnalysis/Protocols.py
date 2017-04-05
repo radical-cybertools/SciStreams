@@ -30,7 +30,7 @@ from SciAnalysis.config import delayed
 from scipy import ndimage
 
 from SciAnalysis.analyses.Protocol import Protocol, run_default
-from SciAnalysis.interfaces.databroker import dbtools as source_dbtools
+from SciAnalysis.interfaces.databroker import databroker as source_databroker
 from SciAnalysis.interfaces.SciResult import parse_sciresults
 from SciAnalysis.interfaces.file import file as source_file
 from SciAnalysis.interfaces.xml import xml as source_xml
@@ -181,7 +181,7 @@ class LoadCalibration(Protocol):
 
     # this is an unbound method
     @delayed(pure=True)
-    @source_dbtools.store_results('cms')
+    @source_databroker.store_results('cms')
     @run_default
     @parse_sciresults("XS:calibration")
     def run(calibration={}, **kwargs):
@@ -259,7 +259,7 @@ class CircularAverage(Protocol):
     ''' Circular average.'''
 
     @delayed(pure=True)
-    @source_dbtools.store_results('cms:analysis', {'sqx' : 'npy', 'sqy' : 'npy'})
+    @source_databroker.store_results('cms:analysis', {'sqx' : 'npy', 'sqy' : 'npy'})
     @source_xml.store_results
     @source_file.store_results
     @run_default

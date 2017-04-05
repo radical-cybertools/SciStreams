@@ -3,7 +3,7 @@ from copy import copy
 import time
 
 from SciAnalysis.interfaces.SciResult import SciResult, parse_sciresults
-from SciAnalysis.interfaces.databroker import dbtools
+from SciAnalysis.interfaces.databroker import databroker as source_databroker
 
 def run_default(inner_function):
     '''Standard book-keeping required for the 'run' method of any protocol.
@@ -53,7 +53,7 @@ class Protocol:
 
     # This is just an example
     @delayed(pure=True)
-    @dbtools.store_results('cms:analysis')
+    @source_databroker.store_results('cms:analysis')
     @run_default
     @parse_sciresults("XS:calibration")
     def run(calibration={}, **kwargs):

@@ -18,7 +18,7 @@ _pipeline_client = Client("10.11.128.3:8786")
 from databroker.broker import Header
 
 # Sources and Sinks
-import SciAnalysis.interfaces.databroker.dbtools as source_dbtools
+import SciAnalysis.interfaces.databroker.databroker as source_databroker
 import SciAnalysis.interfaces.file.reading as source_file
 
 # Some extra detilas
@@ -71,7 +71,7 @@ def test_calibration():
     # TODO : Replace with a portable db to to the db testing
     # I randomly chose some header
     uid = '89e8caf6-8059-43ff-9a9e-4bf461ee95b5'
-    scires = source_dbtools.pull(dbname="cms:data", uid=uid)
+    scires = source_databroker.pull(dbname="cms:data", uid=uid)
     scires_data = SciResult(calibration=scires['attributes'])
     scires_data = scires_data("calibration")
     calib_protocol = LoadCalibration(calibration=scires_data)
@@ -98,7 +98,7 @@ def test_load_saxs_img(plot=False, output=False):
     # TODO : source should be managed in a function, need to think more about
     # it
     uid = '0b2a6007-ab1f-4f09-99ad-74c1c0a4b391'
-    scires_header = source_dbtools.pull('cms:data', uid=uid)
+    scires_header = source_databroker.pull('cms:data', uid=uid)
     scires_header = scires_header('pilatus300_image')
 
     # making temporary data
@@ -143,7 +143,7 @@ def test_circular_average(plot=False, output=False):
 
     # I randomly chose some header
     uid = '89e8caf6-8059-43ff-9a9e-4bf461ee95b5'
-    scires_header = source_dbtools.pull('cms:data', uid = uid)
+    scires_header = source_databroker.pull('cms:data', uid = uid)
     scires_dbattr = SciResult(calibration=scires_header['attributes'])
     scires_dbattr = scires_dbattr('calibration')
     scires_header = scires_header('pilatus300_image')
@@ -164,7 +164,7 @@ def test_circular_average(plot=False, output=False):
     calibration_protocol.set_keymap("cms")
     scires_calib = calibration_protocol(calibration=scires_dbattr)('calibration').compute()
     # retrieve the latest calibration
-    latest_calib = source_dbtools.pull('cms:analysis',  protocol_name="XS:calibration")
+    latest_calib = source_databroker.pull('cms:analysis',  protocol_name="XS:calibration")
     #print(latest_calib)
 
     image_load_protocol = LoadSAXSImage()
@@ -174,8 +174,8 @@ def test_circular_average(plot=False, output=False):
     scires_circavg = circ_avg_protocol(image = image, calibration=scires_calib)
     scires_circavg = scires_circavg.compute()
 
-    latest_calib = source_dbtools.pull('cms:analysis', protocol_name="XS:calibration")
-    latest_circavg = source_dbtools.pull('cms:analysis', protocol_name="XS:circular_average")
+    latest_calib = source_databroker.pull('cms:analysis', protocol_name="XS:calibration")
+    latest_circavg = source_databroker.pull('cms:analysis', protocol_name="XS:circular_average")
 
     if output:
         return latest_circavg

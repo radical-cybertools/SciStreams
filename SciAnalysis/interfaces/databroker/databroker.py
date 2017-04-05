@@ -166,12 +166,12 @@ def make_descriptor(val):
 def store_results(dbname, external_writers={}):
     def decorator(f):
         def newf(*args, **kwargs):
-            import SciAnalysis.interfaces.databroker.dbtools as source_dbtools
+            import SciAnalysis.interfaces.databroker.databroker as source_databroker
             results = f(*args, **kwargs)
             # TODO : fill in (after working on xml storage)
             attributes = {}
             print(dbname)
-            source_dbtools.store_results_databroker(results, dbname, external_writers=external_writers)
+            source_databroker.store_results_databroker(results, dbname, external_writers=external_writers)
             return results
         return newf
     return decorator
