@@ -3,7 +3,7 @@
     Eventually this should be in some connection file.
 
 '''
-from SciAnalysis.interfaces.databroker.database_initializers import cmsdb, chxdb
+from SciAnalysis.interfaces.databroker.database_initializers import init_cmsdb, init_chxdb
 
 
 def initialize():
@@ -14,7 +14,7 @@ def initialize():
     }
     
     database_setups = {
-        'cms' : {'initializer' : cmsdb,
+        'cms' : {'initializer' : init_cmsdb,
                  'kwargs' : dict(HOST_DATA='xf11bm-ca1',
                                  PORT_DATA=27017,
                                  ROOTMAP_DATA= {},#{"/GPFS/xf11bm/Pilatus300": "/media/cmslive"},
@@ -22,7 +22,15 @@ def initialize():
                                  PORT_ANALYSIS=27021,
                                  ROOTMAP_ANALYSIS={}),
                  },
-        'chx' : {'initializer' : chxdb, 'kwargs' : dict()}
+        'chx' : {'initializer' : init_chxdb, 'kwargs' : dict(HOST_DATA='xf11id-srv1',
+                                                             PORT_DATA=27017,
+                                                             ROOTMAP_DATA= {},
+                                                             HOST_ANALYSIS="localhost",
+                                                             PORT_ANALYSIS=27021,
+                                                             ROOTMAP_ANALYSIS={}
+            
+                                                             )
+                 }
     }
     
     databases = dict()

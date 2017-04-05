@@ -1,5 +1,8 @@
 # test a XS run
 
+# set up the distributed client
+from distributed import Client
+_pipeline_client = Client("10.11.128.3:8786")
 
 
 from config import MASKDIR
@@ -40,8 +43,27 @@ detector_key = 'pilatus300_image'
 scires = scires_gen
 cnt = 0
 nobins = 1000
+
+# some global attributes to inherit
+global_attrs = [
+        "sample_name",
+        "sample_savename",
+        "data_uid",
+        "experiment_alias_directory",
+        "experiment_SAF_number",
+        "experiment_group",
+        "experiment_cycle",
+        "experiment_project",
+        "experiment_proposal_number",
+        "experiment_type",
+        "experiment_user",
+        "filename",
+        "measure_type",
+        ]
+
 for scires in scires_gen:
-    img = scires(detector_key).get()
+    img = scires(detector_key)
+    img.addglobals(global_attrs)
     attributes = scires['attributes']
     calibration = load_calib(calibration=attributes).get()
     beamx0, beamy0 = calibration['beamx0']['value'], calibration['beamy0']['value']
@@ -51,9 +73,6 @@ for scires in scires_gen:
 
     scires_sq = circavg(image=img, calibration=calibration, mask=mask, bins=nobins).compute()
 
-    cnt += 1
-    if cnt > 0:
-        break
 
 
 sqx, sqy = scires_sq(['sqx', 'sqy']).get()

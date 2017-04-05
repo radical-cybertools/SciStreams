@@ -23,6 +23,7 @@ def Header2SciResult(header, db=None):
     # TODO : write
     scires =  SciResult()
     scires['attributes'] = dict(**header['start'])
+    scires['attributes']['data_uid'] = scires['attributes']['uid']
     scires['output_names'] = list(header['descriptors'][0]['data_keys'].keys())
     # TODO : pass conf information for database instead and reconstruct here
     if db is None:
@@ -104,8 +105,6 @@ def pull(dbname, protocol_name=None, **kwargs):
     kwargs['protocol_name'] = protocol_name
     # search and get latest
     headers = db(**kwargs)
-    if len(headers) == 0:
-        raise IndexError("Error, no headers found for database lookup")
 
     for header in headers:
         scires = Header2SciResult(header, db=db)
@@ -195,10 +194,10 @@ def store_results_databroker(scires, dbname, external_writers={}):
 
     #start_doc.update(attributes)
 
+    start_doc.update(**scires['attributes'])
     start_doc['time'] = time.time()
     start_doc['uid'] = str(uuid4())
     start_doc['plan_name'] = 'analysis'
-    start_doc['protocol_name'] = scires['attributes']['function_name']
     #start_doc['start_timestamp'] = scires['run_stats']['start_timestamp']
     #start_doc['end_timestamp'] = scires['run_stats']['end_timestamp']
     start_doc['run_stats'] = scires['run_stats']

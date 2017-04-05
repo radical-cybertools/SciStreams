@@ -13,11 +13,40 @@ import os
 from functools import partial
 from .handlers_custom import PNGHandler
 
-def cmsdb(HOST_DATA='xf11bm-ca1', PORT_DATA=27017,
+
+def init_cmsdb(HOST_DATA='xf11bm-ca1', PORT_DATA=27017,
           ROOTMAP_DATA = {"/GPFS/xf11bm/Pilatus300": "/media/cmslive"},
-          HOST_ANALYSIS="localhost",
-          PORT_ANALYSIS=27021,
+          HOST_ANALYSIS="localhost", PORT_ANALYSIS=27017,
           ROOTMAP_ANALYSIS = dict()):
+    ''' Setup the database.
+        HOST_DATA : the host for the data
+        PORT_DATA : the port of the data
+        ROOTMAP_DATA : the map of strings to new path strings for FileStore
+            for the data database
+        HOST_ANALYSIS : the host for the analysis
+        PORT_ANALYSIS : the port of the analysis
+        ROOTMAP_ANALYSIS : the map of strings to new path strings for FileStore
+            for the analysis database
+    '''
+    
+    cmsdb_data = init_cmsdb_data(HOST=HOST_DATA, PORT=PORT_DATA,
+                                 ROOTMAP=ROOTMAP_DATA)
+
+    from SciAnalysis.interfaces.databroker.handlers_custom import AreaDetectorTiffHandler  
+    cmsdb_data.fs.register_handler('AD_TIFF', AreaDetectorTiffHandler)
+
+
+    cmsdb_analysis = init_cmsdb_anal_tmp(HOST=HOST_ANALYSIS, PORT=PORT_ANALYSIS,
+                                         ROOTMAP=ROOTMAP_ANALYSIS)
+    
+    print("Set up the cms analysis database at `cmsdb`. Please test if connection is"
+          "successful by running chxdb[-1]")
+
+    return cmsdb_data, cmsdb_analysis
+
+
+def init_cmsdb_data(HOST='xf11bm-ca1', PORT=27017,
+               ROOTMAP= {"/GPFS/xf11bm/Pilatus300": "/media/cmslive"}):
     ''' Setup the database.
         HOST_DATA : the host for the data
         PORT_DATA : the port of the data
@@ -30,63 +59,55 @@ def cmsdb(HOST_DATA='xf11bm-ca1', PORT_DATA=27017,
     '''
     mds = MDS({
             #'host': 'xf11bm-ca1',
-            'host': HOST_DATA,
+            'host': HOST,
                  #'port': 27017,
-                 'port': PORT_DATA,
+                 'port': PORT,
                  'database': 'metadatastore-production-v1',
                  'timezone': 'US/Eastern',
                  }, auth=False)
 
     fs = FileStore({
             #'host': 'xf11bm-ca1',
-            'host': HOST_DATA,
+            'host': HOST,
                       #'port': 27017,
-            'port': PORT_DATA,
-            'database': 'filestore-production-v1'}, root_map=ROOTMAP_DATA)
+            'port': PORT,
+            'database': 'filestore-production-v1'}, root_map=ROOTMAP)
     
-    cmsdb = Broker(mds, fs)
+    cmsdb_data = Broker(mds, fs)
     print("Set up the cms database at `cmsdb`. Please test if connection is"
           "successful by running chxdb[-1]")
-    
-    from SciAnalysis.interfaces.databroker.handlers_custom import AreaDetectorTiffHandler  
-    cmsdb.fs.register_handler('AD_TIFF', AreaDetectorTiffHandler)  #partial(AreaDetectorTiffHandler, ROOTMAP=ROOTMAP_DATA))
+    return cmsdb_data
 
-    cmsdb_analysis = cmsdb_anal_tmp(HOST_ANALYSIS=HOST_ANALYSIS,
-          PORT_ANALYSIS=PORT_ANALYSIS,
-          ROOTMAP=ROOTMAP_ANALYSIS)
-    
-    print("Set up the cms analysis database at `cmsdb`. Please test if connection is"
-          "successful by running chxdb[-1]")
-    return cmsdb, cmsdb_analysis
 
-def cmsdb_anal(HOST_ANALYSIS="localhost",
-          PORT_ANALYSIS=27021,
+
+def init_cmsdb_anal(HOST="localhost",
+          PORT=27021,
           ROOTMAP={}):
     ''' Creates connection to analysis database.'''
     ### ANALYSIS STORE SETUP
     mds_analysis = MDS({
-            'host': HOST_ANALYSIS,
-                 'port': PORT_ANALYSIS,
+            'host': HOST,
+                 'port': PORT,
                  'database': 'metadatastore-production-v1',
                  'timezone': 'US/Eastern',
                  }, auth=False)
 
     fs_analysis_conf = {
-            'host': HOST_ANALYSIS,
-            'port': PORT_ANALYSIS,
+            'host': HOST,
+            'port': PORT,
             'database': 'filestore-production-v1'}
     
     # if first time, run this:
     #from filestore.utils import install_sentinels
     #install_sentinels(fs_analysis_conf, version_number)
-    fs_analysis = FileStore(fs_analysis_conf, root_map=ROOTMAP_ANALYSIS)
+    fs_analysis = FileStore(fs_analysis_conf, root_map=ROOTMAP)
     
     cmsdb_analysis = Broker(mds_analysis, fs_analysis)
 
 
 # HARD CODED temporary database
-def cmsdb_anal_tmp(HOST_ANALYSIS="localhost",
-          PORT_ANALYSIS=27021,
+def init_cmsdb_anal_tmp(HOST="localhost",
+          PORT=27021,
           ROOTMAP={}):
     ''' this one just ignores and creates sandbox anal db.
         for temporary use
@@ -128,5 +149,5 @@ def cmsdb_anal_tmp(HOST_ANALYSIS="localhost",
 
     return cmsdb_analysis
 
-def chxdb():
+def init_chxdb():
     return None

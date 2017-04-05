@@ -5,6 +5,7 @@
 '''
 from uuid import uuid4
 from collections import Counter
+from functools import wraps
 
 _MAX_STR_LEN = 72  # Maximum length for string representations of objects
 
@@ -185,6 +186,35 @@ class SciResult(dict):
         # TODO : write this. Not necessary maybe?
         pass
 
+    def addglobals(self, name):
+        '''add a global attribute.'''
+        if not isinstance(name, list):
+            names = [name]
+        else:
+            names = name
+
+        for name in names:
+            if name not in self['global_attributes']:
+                self['global_attributes'].append(name)
+
+    def removeglobals(self, name):
+        '''add a global attribute.'''
+        if not isinstance(name, list):
+            names = [name]
+        else:
+            names = name
+
+        for name in names:
+            if name in self['global_attributes']:
+                found = -1
+                for i, element in enumerate(self['global_attributes']):
+                    if name == element:
+                        found = i
+                if found >= 0:
+                    del self['global_attributes'][found]
+
+        
+
     def valid(self, name):
         ''' verify that name is a valid entry.'''
         if name in self['output_names']:
@@ -295,7 +325,6 @@ class SciResult(dict):
 '''
 # TODO :rewriting sciresult again
 
-
 def parse_sciresults(protocol_name, attributes={}):
     # from input_map, make the decorator
     def decorator(f):
@@ -326,9 +355,11 @@ def parse_sciresults(protocol_name, attributes={}):
                     scires['attributes'][key] = repr(entry)
 
             if '_name' not in kwargs:
-                scires['attributes']['function_name'] = 'N/A'
+                scires['attributes']['function_name'] = f.__name__
             else:
                 scires['attributes']['function_name'] = kwargs['_name']
+
+            scires['attributes']['protocol_name'] = protocol_name
 
             # Run function, if it's a tuple, splay the outputs
             result = f(*args, **kwargs)
