@@ -65,7 +65,7 @@ for scires in scires_gen:
     img = scires(detector_key)
     img.addglobals(global_attrs)
     attributes = scires['attributes']
-    calibration = load_calib(calibration=attributes).get()
+    calibration = load_calib(calibration=attributes).get().compute()
     beamx0, beamy0 = calibration['beamx0']['value'], calibration['beamy0']['value']
     origin = beamy0, beamx0
 
@@ -75,4 +75,4 @@ for scires in scires_gen:
 
 
 
-sqx, sqy = scires_sq(['sqx', 'sqy']).get()
+#sqx, sqy = scires_sq(['sqx', 'sqy']).get()

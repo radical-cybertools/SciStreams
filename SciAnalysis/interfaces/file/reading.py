@@ -2,6 +2,7 @@ from .core import jpegloader, pngloader, hdf5loader, npyloader
 import numpy as np
 from SciAnalysis.interfaces.SciResult import SciResult
 
+
 # Simple cloass to normalize way files are read
 # Add to _FORMATSPECS and _REQUIREDKEYS to handle more files
 # need a 'get' and 'identify' set of routines to make compatible with

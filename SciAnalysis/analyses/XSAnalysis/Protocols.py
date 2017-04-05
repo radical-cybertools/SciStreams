@@ -26,13 +26,14 @@ from uuid import uuid4
 
 import hashlib
 
-from dask import delayed
+from SciAnalysis.config import delayed
 from scipy import ndimage
 
 from SciAnalysis.analyses.Protocol import Protocol, run_default
 from SciAnalysis.interfaces.databroker import dbtools as source_dbtools
 from SciAnalysis.interfaces.SciResult import parse_sciresults
-from SciAnalysis.interfaces.file import reading as source_file
+from SciAnalysis.interfaces.file import file as source_file
+from SciAnalysis.interfaces.xml import xml as source_xml
 
 from SciAnalysis.interfaces.detectors import detectors2D
 
@@ -47,6 +48,7 @@ from PIL import Image
     Notes : load should be a separate function
 
 '''
+
 
 # interface side stuff
 # This is the databroker version
@@ -258,6 +260,8 @@ class CircularAverage(Protocol):
 
     @delayed(pure=True)
     @source_dbtools.store_results('cms:analysis', {'sqx' : 'npy', 'sqy' : 'npy'})
+    @source_xml.store_results
+    @source_file.store_results
     @run_default
     @parse_sciresults("XS:CircularAverage")
     def run(image=None, calibration=None, bins=100, mask=None, **kwargs):

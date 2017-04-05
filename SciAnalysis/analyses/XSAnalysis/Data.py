@@ -24,7 +24,7 @@
 
 #import sys
 import re # Regular expressions
-from dask import delayed
+from SciAnalysis.config import delayed
 
 import numpy as np
 import pylab as plt

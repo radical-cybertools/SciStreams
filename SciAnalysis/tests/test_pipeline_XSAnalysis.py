@@ -10,7 +10,7 @@ from nose.tools import assert_true, assert_false
 from numpy.testing import assert_array_almost_equal
 
 # Dask stuff
-from dask import delayed
+from SciAnalysis.config import delayed
 from dask.delayed import Delayed
 from distributed import Client
 _pipeline_client = Client("10.11.128.3:8786")
