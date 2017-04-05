@@ -37,7 +37,7 @@ def Header2SciResult(header, db=None):
 '''
     This routine looks up the last entry of a certain type
 '''
-def pull(dbname, protocol_name=None, **kwargs):
+def pullrecent(dbname, protocol_name=None, **kwargs):
     ''' Pull from a databroker database
 
         Parameters
@@ -73,6 +73,43 @@ def pull(dbname, protocol_name=None, **kwargs):
     scires = Header2SciResult(header, db=db)
 
     return scires
+
+def pull(dbname, protocol_name=None, **kwargs):
+    ''' Pull from a databroker database
+        keeps yielding results until exhausted
+
+        Parameters
+        ----------
+
+        dbname : str
+            Input name is of format "dbname:subdbname"
+            For example : "cms:data", or "cms:analysis"
+            if just database name supplied, then it's assumed
+            to be analysis.
+
+        Returns
+        -------
+        SciResult of data
+
+    '''
+    # Returns a SciResult Basically the SciResult constructor for databroker
+    from SciAnalysis.interfaces.databroker.databases import initialize
+    # TODO : Remove the initialization when moving from sqlite to other
+    if ":" in dbname:
+        dbname = dbname.split(":")
+    else:
+        dbname = [dbname, 'analysis']
+    dbs = initialize()
+    db = dbs[dbname[0]][dbname[1]]
+    kwargs['protocol_name'] = protocol_name
+    # search and get latest
+    headers = db(**kwargs)
+    if len(headers) == 0:
+        raise IndexError("Error, no headers found for database lookup")
+
+    for header in headers:
+        scires = Header2SciResult(header, db=db)
+        yield scires
 
 def safe_parse_databroker(val, nested=False):
     ''' Parse an arg, make sure it's safe for databroker.'''
@@ -123,6 +160,20 @@ def make_descriptor(val):
 
     return dict(dtype=dtype, shape=shape)
 
+# a decorator
+def store_results(dbname, external_writers={}):
+    def decorator(f):
+        def newf(*args, **kwargs):
+            import SciAnalysis.interfaces.databroker.dbtools as source_dbtools
+            results = f(*args, **kwargs)
+            # TODO : fill in (after working on xml storage)
+            attributes = {}
+            print(dbname)
+            source_dbtools.store_results_databroker(results, dbname, external_writers=external_writers)
+            return results
+        return newf
+    return decorator
+
 def store_results_databroker(scires, dbname, external_writers={}):
     ''' Save results to a databroker instance.
         Takes a sciresult instance.
@@ -131,7 +182,11 @@ def store_results_databroker(scires, dbname, external_writers={}):
     # TODO : remove this when in mongodb
     databases = dblib.initialize()
     # TODO : check for time out on database access, return an erorr tha tmakes sense
-    db = databases[dbname]['analysis']
+    if ":" in dbname:
+        dbname, dbsubname = dbname.split(":")
+    else:
+        dbsubname = 'analysis'
+    db = databases[dbname][dbsubname]
     # saving to databroker
     mds = db.mds # metadatastore
 

@@ -24,3 +24,7 @@ def hdf5loader(filename=None, entryname=None):
     with h5py.File(filename, 'r') as f:
         data = np.asarray(f[entryname])
     return data
+
+def npyloader(filename=None):
+    res = np.load(filename)
+    return res

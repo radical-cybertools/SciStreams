@@ -1,4 +1,4 @@
-from .core import jpegloader, pngloader, hdf5loader
+from .core import jpegloader, pngloader, hdf5loader, npyloader
 import numpy as np
 from SciAnalysis.interfaces.SciResult import SciResult
 
@@ -16,6 +16,8 @@ class FileDesc(dict):
             '.h5': 'hdf5',
             '.hd5': 'hdf5',
             '.png': 'png',
+            '.npz': 'npy',
+            '.npy': 'npy',
     }
     # required keys per format specifier
     _KEYINFO = {
@@ -26,6 +28,8 @@ class FileDesc(dict):
                     'loader': pngloader},
             'hdf5': {'required': ['filename', 'hdf5key'],
                      'loader': hdf5loader},
+            'npy': {'required': ['filename'],
+                     'loader': npyloader},
     }
 
     def __init__(self, filename, format=None, **kwargs):
@@ -44,7 +48,7 @@ class FileDesc(dict):
         for key in self._KEYINFO[format]['required']:
             kwargs[key] = self[key]
         res = loader(**kwargs)
-        self['_data'] = np.array(res)
+        self['_data'] = res
 
     def get(self):
         ''' Get returns a SciResult.

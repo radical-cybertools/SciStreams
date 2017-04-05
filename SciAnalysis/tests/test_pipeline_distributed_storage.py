@@ -72,19 +72,6 @@ Ideas introduced:
 
 #
 
-def store_results(dbname, external_writers={}):
-    def decorator(f):
-        def newf(*args, **kwargs):
-            import SciAnalysis.interfaces.databroker.dbtools as source_dbtools
-            results = f(*args, **kwargs)
-            # TODO : fill in (after working on xml storage)
-            attributes = {}
-            source_dbtools.store_results_databroker(results, dbname, external_writers=external_writers)
-            return results
-        return newf
-    return decorator
-
-    
 # interface side stuff
 # This is the databroker version
 class LoadSAXSImage:
@@ -188,7 +175,7 @@ class LoadCalibration:
 
     # this is an unbound method
     @delayed(pure=True)
-    @store_results('cms')
+    @source_dbtools.store_results('cms')
     @run_default
     @parse_sciresults("XS:calibration")
     def run(calibration={}, **kwargs):
@@ -273,7 +260,7 @@ class CircularAverage:
         return self.run(**new_kwargs)
 
     @delayed(pure=True)
-    @store_results('cms', {'sqx' : 'npy', 'sqy' : 'npy'})
+    @source_dbtools.store_results('cms:analysis', {'sqx' : 'npy', 'sqy' : 'npy'})
     @run_default
     @parse_sciresults("XS:CircularAverage")
     def run(image=None, calibration=None, bins=100, mask=None, **kwargs):
@@ -305,7 +292,7 @@ class FitPeaks:
         return self.run(**new_kwargs)
 
     @delayed(pure=True)
-    @store_results('cms', {'best_fit' : 'npy'})
+    @source_dbtools.store_results('cms', {'best_fit' : 'npy'})
     @run_default
     @parse_sciresults("XS:FitPeaks")
     def run(sqx=None, sqy=None, init_guess=None, npeaks=None, **kwargs):
