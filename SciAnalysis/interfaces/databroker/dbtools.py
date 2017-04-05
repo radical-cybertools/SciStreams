@@ -107,7 +107,10 @@ def pull(dbname, protocol_name=None, **kwargs):
     headers = db(**kwargs)
 
     for header in headers:
-        scires = Header2SciResult(header, db=db)
+        try:
+            scires = Header2SciResult(header, db=db)
+        except FileNotFoundError:
+            continue
         yield scires
 
 def safe_parse_databroker(val, nested=False):

@@ -1,46 +1,46 @@
 # playing around with dask
 from dask import compute, delayed
-import numpy as np
-from functools import wraps
-from dask.cache import Cache
-
-_cache = Cache(1e9)
-_cache.register()
-
-# data is in
-# _cache.cache.data 
-
 
 @delayed(pure=True)
-def circavg(img, calibration):
-    return 1
-
-class Foo:
+class MyClass:
     def __init__(self):
         pass
 
-    @delayed(pure=True)
-    def circavg(img, calib):
-        return 1
+    def func(self, a, b):
+        return a
 
-fooclass = Foo()
+class MyNonDelayedClass:
+    def __init__(self):
+        pass
 
-gg = 10
-a = np.ones((gg,gg))
-b = 3
-res = circavg(a, b)
+    def func(self, a, b):
+        return a
+
+# some made up parameters
+a = 1
+b = 2
 
 # keys should not change
-print("next")
-res_foo = fooclass.circavg(a, b)
-print(res._key)
-print(res_foo._key)
+getfunc1 = MyClass().func
+getfunc2 = MyClass().func
+print("getattr : {}".format(getfunc1._key))
+print("getattr again : {}".format(getfunc2._key))
 
-res_foo.compute()
+call1 = getfunc1(a,b)
+call2 = getfunc2(a,b)
+print("getattr + func call : {}".format(call1._key))
+print("getattr + func call again : {}".format(call2._key))
 
-#res2 = res.compute()
-#print(res2)
+print("forcing purity")
+# make function explicitly pure:
+getfunc1 = delayed(MyNonDelayedClass().func, pure=True)
+getfunc2 = delayed(MyNonDelayedClass().func, pure=True)
 
-#res2_foo = res_foo.compute()
-#print(res2_foo)
+call1 = getfunc1(a,b)
+call2 = getfunc2(a,b)
+print("getattr + func call : {}".format(call1._key))
+print("getattr + func call again : {}".format(call2._key))
 
+
+print("result 1 : {}".format(call1.compute()))
+print("result 2 : {}".format(call2.compute()))

@@ -35,8 +35,8 @@ master_mask_filename = MASKDIR + "/" + master_mask_name
 master_mask = MasterMask(datafile=master_mask_filename, blemish=blemish)
 
 # read in data
-start_time = "2017-03-01"
-stop_time = "2017-03-02"
+start_time = "2017-03-04"
+stop_time = "2017-05-01"
 scires_gen = source_dbtools.pull("cms:data", start_time=start_time, stop_time=stop_time)
 
 detector_key = 'pilatus300_image'
