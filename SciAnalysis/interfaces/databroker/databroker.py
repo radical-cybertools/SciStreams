@@ -58,6 +58,8 @@ def pullrecent(dbname, protocol_name=None, **kwargs):
     # Returns a SciResult Basically the SciResult constructor for databroker
     from SciAnalysis.interfaces.databroker.databases import initialize
     # TODO : Remove the initialization when moving from sqlite to other
+    # (sqlite requires db to be initialized every time... but db it can
+    # be a running instance in the imported library for that process)
     if ":" in dbname:
         dbname = dbname.split(":")
     else:
@@ -111,6 +113,7 @@ def pull(dbname, protocol_name=None, **kwargs):
             scires = Header2SciResult(header, db=db)
         except FileNotFoundError:
             continue
+
         yield scires
 
 def safe_parse_databroker(val, nested=False):
