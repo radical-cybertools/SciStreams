@@ -129,6 +129,7 @@ class LoadCalibration(Protocol):
             2. If using dask, need to run calib.compute() to obtain result
     '''
     # defaults of function
+    # TODO : add error in value
     _defaults= {'wavelength' : {'value' : None, 'unit' : 'Angstrom'},
                  'beamx0' : {'value' : None, 'unit' : 'pixel'},
                  'beamy0' : {'value' : None, 'unit' : 'pixel'},

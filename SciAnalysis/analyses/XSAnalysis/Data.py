@@ -49,10 +49,17 @@ from functools import partial
 @delayed(pure_default=True)
 class MasterMask:
     ''' A  master mask.'''
+    # TODO :kwargs to be required Check if necessary?
+    # TODO :blemish or detector shape?
+    # TODO : Make clear this is a small angle assumption (no tilt etc)
     def __init__(self, master=None, blemish = None, origin=None, datafile=None, **kwargs):
         from SciAnalysis.interfaces.file import reading as source_file
         ''' Either takes a data file or the master mask and origin 
-            as arguments.'''
+            as arguments.
+
+            # TODO : Document each argument more
+            
+            '''
         self.blemish = blemish
 
         if master is not None:
@@ -73,6 +80,7 @@ class MasterMask:
 
     #@parse_sciresults
     def generate(self, shape=None, origin=None, **kwargs):
+        # TODO : Caching?
         if shape is None or origin is None:
             raise ValueError("Need to specify a shape and origin")
         mask = self.make_submask(self.master_mask, self.origin, shape=shape, origin=origin)

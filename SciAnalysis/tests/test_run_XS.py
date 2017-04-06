@@ -36,7 +36,7 @@ master_mask = MasterMask(datafile=master_mask_filename, blemish=blemish)
 
 # read in data
 start_time = "2017-03-04"
-stop_time = "2017-05-01"
+stop_time = "2017-04-05"
 scires_gen = source_databroker.pull("cms:data", start_time=start_time, stop_time=stop_time)
 
 detector_key = 'pilatus300_image'
@@ -61,6 +61,9 @@ global_attrs = [
         "measure_type",
         ]
 
+# save bad files after run, ignore when they rais exceptions
+badfiles = list()
+
 for scires in scires_gen:
     img = scires(detector_key)
     img.addglobals(global_attrs)
@@ -71,8 +74,13 @@ for scires in scires_gen:
 
     mask = master_mask.generate(detector['shape']['value'], origin)
 
-    scires_sq = circavg(image=img, calibration=calibration, mask=mask, bins=nobins).compute()
+    try:
+        scires_sq = circavg(image=img, calibration=calibration, mask=mask, bins=nobins).compute()
+    except Exception:
+        badfiles.append(scires)
+        continue
 
+    
 
 
 #sqx, sqy = scires_sq(['sqx', 'sqy']).get()
