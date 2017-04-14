@@ -23,265 +23,218 @@
 
 # import the analysis databroker
 from uuid import uuid4
+from dask import set_options
+set_options(pure_default=True)
 
 import hashlib
+import numpy as np
+from PIL import Image
 
-from SciAnalysis.config import delayed
 from scipy import ndimage
 
+# internals
+from SciAnalysis.config import delayed
 from SciAnalysis.analyses.Protocol import Protocol, run_default
-from SciAnalysis.interfaces.databroker import databroker as source_databroker
 from SciAnalysis.interfaces.SciResult import parse_sciresults
+
+# Sources
+from SciAnalysis.interfaces.databroker import databroker as source_databroker
 from SciAnalysis.interfaces.file import file as source_file
 from SciAnalysis.interfaces.xml import xml as source_xml
 
 from SciAnalysis.interfaces.detectors import detectors2D
 
-import numpy as np
-from PIL import Image
-
-################## deprecating....
-#from .Data import Data2DScattering
-#from ..tools import *
-
 '''
     Notes : load should be a separate function
-
 '''
 
 
 # interface side stuff
 # This is the databroker version
-class LoadSAXSImage(Protocol):
-    ''' Loading a SAXS image.
-   
-        detector_key : for the header reading
-    '''
-    @delayed(pure=False)
-    #@store_results('cms')
-    @run_default
-    # TODO have it get class name
-    @parse_sciresults("XS:LoadSAXSImage")
-    def run(infile=None, **kwargs):
-        # TODO : Add a databroker interface
-        if isinstance(infile, np.ndarray):
-            img = infile
-        elif isinstance(infile, str):
-            img = np.array(Image.open(infile))
-        else:
-            raise ValueError("Sorry, did not understand the input argument: {}".format(infile))
 
-        return img
-
-class LoadMask(Protocol):
-    ''' Load a mask from an array.'''
-    def __init__(self, **kwargs):
-        # set a default
-        if 'threshold' not in kwargs:
-            kwargs['threshold'] = 1
-        self.kwargs = kwargs
-
-    @delayed(pure=False)
-    #@store_results('cms')
-    @run_default
-    # TODO have it get class name
-    @parse_sciresults("XS:LoadSAXSImage")
-    def run(mask=None, blemish=None, **kwargs):
-        mask = mask > threshold
-        if blemish is not None:
-            mask = (mask*blemish).astype(np.uint8)
-        return mask
-
-class GenerateMask(Protocol):
-    ''' Generate a mask from a master mask.'''
-    def __init__(self, **kwargs):
-        # set a default
-        if 'threshold' not in kwargs:
-            kwargs['threshold'] = 1
-        self.kwargs = kwargs
-
-    @delayed(pure=False)
-    #@store_results('cms')
-    @run_default
-    # TODO have it get class name
-    @parse_sciresults("XS:LoadSAXSImage")
-    def run(master=None, master_origin=None, shape=None, blemish=None, **kwargs):
-        mask = mask > threshold
-        if blemish is not None:
-            mask = (mask*blemish).astype(np.uint8)
-        return mask
-
-
-
-class LoadCalibration(Protocol):
-    '''
-        Loading a calibration, two step process:
-
-        calib_protocol = load_cms_calibration()
-        calib_protocol.add('beamx0', 50, 'pixel')
-        calib_protocol.add('beamy0', 50, 'pixel')
-
-        calib = calib_protocol(energy=13.5)
-
-        Notes
-        -----
-            1. Arguments can be added either with 'add' or during function call
-            2. If using dask, need to run calib.compute() to obtain result
-    '''
-    # defaults of function
-    # TODO : add error in value
-    _defaults= {'wavelength' : {'value' : None, 'unit' : 'Angstrom'},
-                 'beamx0' : {'value' : None, 'unit' : 'pixel'},
-                 'beamy0' : {'value' : None, 'unit' : 'pixel'},
-                 'sample_det_distance' : {'value' : None, 'unit' : 'm'},
-                # Area detector specific entries:
-                 # width is columns, height is rows
-                 #'AD_width' : {'value' : None, 'unit' : 'pixel'},
-                 #'AD_height' : {'value' : None, 'unit' : 'pixel'},
-                 'pixel_size_x' : {'value' : None, 'unit' : 'pixel'},
-                 'pixel_size_y' : {'value' : None, 'unit' : 'pixel'},
-                  #TODO : This assumes data has this detector, not good to use, remove eventually
-                 'detectors' : {'value' : ['pilatus300'], 'unit' : None},
-        }
-    def __init__(self, **kwargs):
-        super(LoadCalibration, self).__init__(**kwargs)
-        self.kwargs['calib_defaults'] = self._defaults
-        self.set_keymap("cms")
-
-    def add(self, name=None, value=None, unit=None):
-        self.kwargs.update({name : {'value' : value, 'unit' : unit}})
-
-    def set_keymap(self, name):
-        if name == "cms":
-            self.kwargs['calib_keymap'] = {'wavelength' : {'key' : 'calibration_wavelength_A',
-                                        'unit' : 'Angstrom'},
-                        'detectors' : {'key' : 'detectors',
-                                        'unit' : 'N/A'},
-                        'beamx0' : {'key' : 'detector_SAXS_x0_pix', 
-                                    'unit' : 'pixel'},
-                        'beamy0' : {'key' : 'detector_SAXS_y0_pix',
-                                    'unit' : 'pixel'},
-                        'sample_det_distance' : {'key' : 'detector_SAXS_distance_m',
-                                                 'unit' : 'pixel'}
-            }
-        elif name == "None":
-            self.kwargs['calib_keymap'] = {'wavelength' : {'key' : 'wavelength',
-                                        'unit' : 'Angstrom'},
-                        'detectors' : {'key' : 'detectors',
-                                        'unit' : 'N/A'},
-                        'beamx0' : {'key' : 'beamx0', 
-                                    'unit' : 'pixel'},
-                        'beamy0' : {'key' : 'beamy0',
-                                    'unit' : 'pixel'},
-                        'sample_det_distance' : {'key' : 'sample_det_distance',
-                                                 'unit' : 'pixel'}
-            }
-        else:
-            raise ValueError("Error, cannot find keymap for loading calibration")
-
-
-    # this is an unbound method
-    @delayed(pure=True)
-    @source_databroker.store_results('cms')
-    @run_default
-    @parse_sciresults("XS:calibration")
-    def run(calibration={}, **kwargs):
-        '''
-            Load calibration data from a SciResult's attributes.
-
-            The data must be a dictionary.
-            either:
-                load_calibration(calibration=myCalib)
-            or:
-                load_calibration(wavelength=dict(value=13.5, unit='keV')) etc
-            
-            This is area detector specific.
-        '''
-        calib_keymap = kwargs['calib_keymap']
-        calib_defaults = kwargs['calib_defaults']
-    
-        # a map from Header start doc to data
-        # TODO : move out of function
-
-        calibration = calibration.copy()
-        # update calibration with all keyword arguments
-        # fill in the defaults
-        for key, val in calib_defaults.items():
-            if key not in calibration:
-                calibration[key] = val
-        # now override with kwargs
-        for key, val in kwargs.items():
-            calibration[key] = val
-
-        calib_tmp = dict()
-        # walk through defaults
-        for key in calib_defaults.keys():
-            if key in calib_keymap:
-                entry = calib_keymap[key]
-                start_key = entry['key'] # get name of key
-            else:
-                entry = calib_defaults[key]
-                start_key = key # get name of key
-
-            unit = entry['unit']
-            val = calibration.get(start_key, calib_defaults[key])
-            # it can be a number (like from header) or a dict, check
-            if isinstance(val, dict) and 'value' in val:
-                val = val['value']
-            calib_tmp[key] ={'value' : val, 'unit' : unit}
-
-        # finally, get the width and height by looking at first detector in header
-        # TODO : add ability to read more than one detector, maybe in calib_keymap
-        if isinstance(calibration[calib_keymap['detectors']['key']], dict):
-            first_detector = calibration[calib_keymap['detectors']['key']]['value'][0]
-        else:
-            first_detector = calibration[calib_keymap['detectors']['key']][0]
-
-        detector_key = detectors2D[first_detector]['image_key']['value']
-
-        # look up in local library
-        pixel_size_x = detectors2D[first_detector]['pixel_size_x']['value']
-        pixel_size_x_unit = detectors2D[first_detector]['pixel_size_x']['unit']
-        pixel_size_y = detectors2D[first_detector]['pixel_size_y']['value']
-        pixel_size_y_unit = detectors2D[first_detector]['pixel_size_y']['unit']
-
-        img_shape = detectors2D[first_detector]['shape']
-
-        calib_tmp['pixel_size_x'] = dict(value=pixel_size_x, unit=pixel_size_x_unit)
-        calib_tmp['pixel_size_y'] = dict(value=pixel_size_y, unit=pixel_size_y_unit)
-        calib_tmp['shape'] = img_shape.copy() #WARNING : copies only first level, this is one level dict
-        calibration = calib_tmp
-        
-    
-        return dict(calibration=calibration)
-        
-
+# TODO : Add in documentation that kwargs helps document the arguments when saved
+# Just helpful, that's all
+# TODO : document that if kwargs are used, they need be explicitly written
+# or else handle this on your own : i.e. foo(1, b=1) versus foo(1,1)
 class CircularAverage(Protocol):
-    ''' Circular average.'''
+    ''' Circular average.
 
-    @delayed(pure=True)
-    @source_databroker.store_results('cms:analysis', {'sqx' : 'npy', 'sqy' : 'npy'})
-    @source_xml.store_results
-    @source_file.store_results
-    @run_default
-    @parse_sciresults("XS:CircularAverage")
-    def run(image=None, calibration=None, bins=100, mask=None, **kwargs):
-        #print(calibration)
-        #print("computing")
-        # TODO : remove when switched to mongodb
-        # This is an sqlite problem
-        if isinstance(calibration, str):
-            import json
-            calibration = json.loads(calibration)
-        x0, y0 = calibration['beamx0']['value'], calibration['beamy0']['value']
+        Note : Assumes square pixels
+            Also assumes variance comes from shot noise only (by taking average along ring/Npixels)
+
+        if bins is None, it does it's best to estimate pixel sizes and make the bins a pixel
+            in size. Note, for Ewald curvature this is not straightforward. You need both a 
+            r_map in pixels from the center and the q_map for the actual q values.
+    '''
+    #TODO : extend file to mltiple writers?
+    @run_default("XS:CircularAverage", xml_options={},databroker=False,  file_options= {'writers' : [{'keys' : ['sqx', 'sqxerr', 'sqy', 'sqyerr'], 'writer' : 'npy'},
+                                                                                   {'keys' : ['sqx', 'sqxerr', 'sqy', 'sqyerr'], 'writer' : 'dat'}]},
+        databroker_options={'name':'cms:analysis', 'writers'  : {'sqx':'npy', 'sqy' : 'npy', 'sqxerr' : 'npy', 'sqyerr' : 'npy'}})
+    def run(image=None, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
+        ''' computes the circular average.'''
         from skbeam.core.accumulators.binned_statistic import RadialBinnedStatistic
-        img_shape = tuple(calibration['shape']['value'])
-        #print(img_shape)
-        rbinstat = RadialBinnedStatistic(img_shape, bins=bins, origin=(y0,x0), mask=mask)
-        sq = rbinstat(image)
-        sqx = rbinstat.bin_centers
 
-        return dict(sqx=sqx, sqy=sq)
+        # figure out bins if necessary
+        if bins is None:
+            # guess q pixel bins from r_map
+            if r_map is not None:
+                # choose 1 pixel bins (roughly, not true at very high angles)
+                pxlst = np.where(mask == 1)
+                nobins = int(np.max(r_map[pxlst]) - np.min(r_map[pxlst]) + 1)
+            else:
+                # crude guess, I'll be off by a factor between 1-sqrt(2) or so
+                # (we'll have that factor less bins than we should)
+                nobins = np.maximum(*(mask.shape))
+
+            # here we assume the rbins uniform
+            bins = nobins
+            rbinstat = RadialBinnedStatistic(image.shape, bins=nobins,
+                    rpix=r_map, statistic='mean', mask=mask)
+            bin_centers = rbinstat(q_map)
+            bins = center2edge(bin_centers)
+
+
+        # now we use the real rbins, taking into account Ewald curvature
+        rbinstat = RadialBinnedStatistic(image.shape, bins=bins, rpix=q_map,
+                statistic='mean', mask=mask)
+        sqy = rbinstat(image)
+        sqx = rbinstat.bin_centers
+        # get the error from the shot noise only 
+        # NOTE : variance along ring could also be interesting but you 
+        # need to know the correlation length of the peaks in the rings... (if there are peaks)
+        rbinstat.statistic = "sum"
+        noperbin = rbinstat(mask)
+        sqyerr = np.sqrt(rbinstat(image))
+        sqyerr /= np.sqrt(noperbin)
+        # the error is just the bin widths/2 here
+        sqxerr = np.diff(rbinstat.bin_edges)/2.
+
+        return dict(sqx=sqx, sqy=sqy, sqyerr=sqyerr, sqxerr=sqxerr)
+
+def center2edge(centers, positive=True):
+    ''' Transform a set of bin centers to edges
+        This is useful for non-uniform bins.
+
+        Note : for the edges, an assumption is made. They are extended to half
+        the distance between the first two and last two points etc.
+
+        positive : make sure the edges are monotonically increasing
+    '''
+    midpoints = (centers[:-1] + centers[1:])*.5
+    dedge_left = centers[1]-centers[0]
+    dedge_right = centers[-1]-centers[-2]
+    left_edge = (centers[0] - dedge_left/2.).reshape(1)
+    right_edge = (centers[-1] + dedge_right/2.).reshape(1)
+    edges = np.concatenate((left_edge, midpoints, right_edge))
+    if positive:
+        diffedges = np.diff(edges)
+        w, = np.where(diffedges > 0)
+        edges = np.concatenate((edges[0].reshape(1), edges[w+1]))
+    # cleanup nans....
+    w = np.where(~np.isnan(edges))
+    edges = edges[w]
+    return edges
+
+class Thumbnail(Protocol):
+    ''' Compute a thumb
+    '''
+    @run_default("XS:Thumb", databroker=False, xml_options={}, file_options={'writers' : {'keys' : 'thumb', 'writer' : 'jpg'}},
+            databroker_options={'name':'cms:analysis', 'writers'  : {'thumb': 'jpg'}})
+    def run(image=None, mask=None, blur=None, crop=None, resize=None, type='linear', vmin=None, vmax=None):
+        '''
+            type :
+                linear : don't do anything to image
+                log : take log
+        '''
+        img = image
+        if mask is not None:
+            img = img*mask
+        # ensure it's delayed
+        #img = delayed(img, pure=True).get()
+        if blur is not None:
+            img = _blur(img, blur)
+        if crop is not None:
+            img = _crop(img, crop)
+        if resize is not None:
+            img = _resize(img, resize)
+        if type == 'log':
+            logimg = True
+        else:
+            logimg = False
+        if vmin is None or vmax is None:
+            # TODO :make sure hist not empty?
+            hist, bin_edges = np.histogram(image)
+            cts = np.cumsum(hist)/np.sum(hist)
+            if vmin is None:
+                wstart,  = np.where(cts > .01)
+                if len(wstart) > 0:
+                    vmin = bin_edges[wstart[0]]
+                else:
+                    vmin = np.min(img)
+            if vmax is None:
+                wend, = np.where(cts < .99)
+                if len(wend) > 0:
+                    wend = wend[len(wend)-1]
+                    vmax = bin_edges[wend]
+                else:
+                    vmax = np.max(img)
+                    
+        # bytescale the image
+        img = _normalize(img, vmin, vmax, logimg=logimg)
+        return dict(thumb=img)
+
+# now normalize each image
+def _normalize(img, mn, mx, logimg=True):
+    ''' normalize to a uint8 
+        This is also known as byte scaling.
+    '''
+    dynamic_range = 2**8-1
+    if logimg:
+        img = np.log10(img)
+        w = np.where(np.isinf(img))
+        img[w] = 0
+        mn = np.log10(mn)
+        mx = np.log10(mx)
+    img = img-mn
+    img /= (mx-mn)
+    img *= dynamic_range
+    img = _threshold_max(_threshold_min(img, 0), dynamic_range)#np.minimum(np.maximum(img, 0), dynamic_range)
+    img = img.astype(np.uint8)
+    return img
+
+def _threshold_min(a, val):
+    ''' threshold a with min val val.'''
+    #subtract, then make negative zero
+    a = a - val
+    # negative values should be zero
+    a = (a + np.abs(a))//2
+    a = a + val
+    return a
+
+def _threshold_max(a, val):
+    ''' threshold a with max val val.'''
+    #subtract, then make negative zero
+    a = val - a
+    # negative values should be zero
+    a = (a + np.abs(a))//2
+    a = val - a
+    return a
+
+
+from scipy.ndimage.filters import gaussian_filter
+def _blur(img, sigma):
+    img = gaussian_filter(img, sigma)
+    return img
+
+# TODO : fix
+def _crop(img, crop):
+    x0, x1, y0, y1 = crop
+    img = img[y0:y1, x0:x1]
+    return img
+
+# TODO :implement
+def _resize(img, resize):
+    return img
 
 # TODO : add pixel procesing/thresholding threshold_pixels((2**32-1)-1) # Eiger inter-module gaps
 # TODO : add thumb

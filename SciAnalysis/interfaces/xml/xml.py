@@ -1,5 +1,4 @@
 # doesn't need to be an object
-_ROOTDIR = "/home/lhermitte/sqlite/xml-tmp-data"
 import os.path
 
 
@@ -23,12 +22,17 @@ def get_filebase(name):
     return basename
 
 # store results decorator
-def store_results(f):
-    def f_new(*args, **kwargs):
-        res = f(*args, **kwargs)
-        store_results_xml(res)
-        return res
-    return f_new
+# first is a function that returns a decorator
+# the decorator is a function that takes a function and 
+# returns a new function
+def store_results(outputs=None):
+    def store_results_decorator(f):
+        def f_new(*args, **kwargs):
+            res = f(*args, **kwargs)
+            store_results_xml(res, outputs=outputs)
+            return res
+        return f_new
+    return store_results_decorator
 
 def parse_attrs_xml(attrs):
     ''' parse the attributes into a string for each element'''
@@ -41,7 +45,15 @@ def parse_attrs_xml(attrs):
             new_attrs[key] = str(val)
     return new_attrs
 
-def store_results_xml(results):
+def _cleanup_str(string):
+    string = string.replace(" ", "_")
+    string = string.replace("/", "_")
+    string = string.replace("(", "_")
+    string = string.replace(")", "_")
+    string = string.replace(":", "_")
+    return string
+
+def store_results_xml(results, outputs=None):
     '''
         Store the results from the corresponding protocol.
 
@@ -52,9 +64,10 @@ def store_results_xml(results):
 
         expects a experiment_cycle, experiment group and sample_savename
         path is ROOT/experiment_cycle/experiment_group/sample_savename.xml
-        # TODO : maybe add time too?
 
     '''
+    # TODO : maybe add date folder too?
+    # TODO : add detector as well?
     if 'attributes' not in results:
         raise ValueError("attributes not in the sciresults. (Is this a valid SciResult object?)")
 
@@ -65,12 +78,17 @@ def store_results_xml(results):
                 "Either results object is not a sciresult or it has not been formatted properly."
                 "Cannot save to XML")
 
+    from SciAnalysis.config import XMLDIR
     from lxml import etree
     experiment_cycle = attrs['experiment_cycle']
+    experiment_cycle = _cleanup_str(experiment_cycle)
     experiment_group = attrs['experiment_group']
+    experiment_group = _cleanup_str(experiment_group)
     sample_savename = attrs['sample_savename']
+    sample_savename = _cleanup_str(sample_savename)
     protocol_name = attrs['protocol_name']
-    outdir = _ROOTDIR + "/" + experiment_cycle + "/" + experiment_group +"/" + protocol_name
+    protocol_name = _cleanup_str(protocol_name)
+    outdir = XMLDIR + "/" + experiment_cycle + "/" + experiment_group +"/" + protocol_name
     make_dir(outdir)
     outfile = outdir + "/" + sample_savename + ".xml"
     # just add to the sciresults so user knows it's been saved to xml
@@ -91,29 +109,32 @@ def store_results_xml(results):
     prot = etree.SubElement(root, 'protocol', **attrs_parsed)
 
     # Saving to xml
-    for name, content in results['outputs'].items():
-        if name[0] == '_':
-            continue  # ignore hidden variables, like _start etc
-        import numpy as np
-
-        if isinstance(content, dict):
-            content = dict([k, str(v)] for k, v in content.items())
-            etree.SubElement(prot, 'result', name=name, **content)
-
-        elif isinstance(content, list) or isinstance(content, np.ndarray):
-
-            res = etree.SubElement(prot, 'result', name=name, type='list')
-            for i, element in enumerate(content):
-                etree.SubElement(res, 'element', index=str(i), value=str(element))
-
-        else:
-            etree.SubElement(prot, 'result', name=name, value=str(content))
+    if outputs is not None:
+        for output in outputs:
+            name = output
+            content = results['outputs'][name]
+            if name[0] == '_':
+                continue  # ignore hidden variables, like _start etc
+            import numpy as np
+    
+            if isinstance(content, dict):
+                content = dict([k, str(v)] for k, v in content.items())
+                etree.SubElement(prot, 'result', name=name, **content)
+    
+            elif isinstance(content, list) or isinstance(content, np.ndarray):
+    
+                res = etree.SubElement(prot, 'result', name=name, type='list')
+                for i, element in enumerate(content):
+                    etree.SubElement(res, 'element', index=str(i), value=str(element))
+    
+            else:
+                etree.SubElement(prot, 'result', name=name, value=str(content))
 
     tree = etree.ElementTree(root)
     tree.write(outfile, pretty_print=True)
 
 def get_result(infile, protocol):
-    '''Extracts a list of results for the given protocl, from the specified
+    '''Extracts a list of results for the given protocol, from the specified
     xml file. The most recent run of the protocol is used.'''
     # NOTE : Not tested yet
     import numpy as np
@@ -173,8 +194,3 @@ def get_result(infile, protocol):
 
 
     return results
-
-    # End def get_result()
-    ########################################
-
-

@@ -1,6 +1,10 @@
+# TODO : have config read a yaml file or local file
+# TODO : Also add a reload routine
 STORAGEDIR = "/home/lhermitte/SciAnalysis-data"
 MASKDIR = STORAGEDIR + "/masks"
-XMLDIR = STORAGEDIR + "/xml-files"
+
+RESULTSROOT = "/home/lhermitte/sqlite"
+XMLDIR = RESULTSROOT + "/xml-files"
 # TODO : allow True/False to be possible
 DELAYED = True
 

@@ -10,6 +10,8 @@ import json
 
 from SciAnalysis.interfaces.databroker.writers_custom import writers_dict as _writers_dict
 from SciAnalysis.interfaces.SciResult import SciResult
+from metadatastore.core import NoEventDescriptors
+
 
 _ANALYSIS_STORE_VERSION = 'beta-v1'
 # TODO : Ask Dan if databroker is smart enough to know if connection was already made?
@@ -77,6 +79,46 @@ def pullrecent(dbname, protocol_name=None, **kwargs):
 
     return scires
 
+def pullfromuid(dbname, uid=None):
+    ''' Pull from a databroker database from a uid
+
+        Parameters
+        ----------
+
+        dbname : str
+            Input name is of format "dbname:subdbname"
+            For example : "cms:data", or "cms:analysis"
+            if just database name supplied, then it's assumed
+            to be analysis.
+
+        uid : the uid of dataset
+
+        Returns
+        -------
+        SciResult of data
+
+    '''
+    # Returns a SciResult Basically the SciResult constructor for databroker
+    from SciAnalysis.interfaces.databroker.databases import initialize
+    # TODO : Remove the initialization when moving from sqlite to other
+    # (sqlite requires db to be initialized every time... but db it can
+    # be a running instance in the imported library for that process)
+    if ":" in dbname:
+        dbname = dbname.split(":")
+    else:
+        dbname = [dbname, 'analysis']
+    dbs = initialize()
+    db = dbs[dbname[0]][dbname[1]]
+    # search and get latest
+    if uid is None:
+        raise ValueError("Need to specify a uid")
+
+    header = db[uid]
+
+    scires = Header2SciResult(header, db=db)
+
+    return scires
+
 def pull(dbname, protocol_name=None, **kwargs):
     ''' Pull from a databroker database
         keeps yielding results until exhausted
@@ -89,6 +131,11 @@ def pull(dbname, protocol_name=None, **kwargs):
             For example : "cms:data", or "cms:analysis"
             if just database name supplied, then it's assumed
             to be analysis.
+
+        protocol_name : the protocol name used (if analysis database)
+
+        kwargs : entries in metadatabase to search for. searches for exact
+        matches. See search for searching for substrings
 
         Returns
         -------
@@ -104,7 +151,8 @@ def pull(dbname, protocol_name=None, **kwargs):
         dbname = [dbname, 'analysis']
     dbs = initialize()
     db = dbs[dbname[0]][dbname[1]]
-    kwargs['protocol_name'] = protocol_name
+    if protocol_name is not None:
+        kwargs['protocol_name'] = protocol_name
     # search and get latest
     headers = db(**kwargs)
 
@@ -113,8 +161,52 @@ def pull(dbname, protocol_name=None, **kwargs):
             scires = Header2SciResult(header, db=db)
         except FileNotFoundError:
             continue
+        except NoEventDescriptors:
+            continue
+        except IndexError:  # no events
+            continue
 
         yield scires
+
+def search(dbname, start_time=None, stop_time=None, **kwargs):
+    ''' search database for a substring in one of the fields.
+
+        TODO : allow start and stop times to be numbers (number of seconds
+before now)
+
+    '''
+    # Returns a SciResult Basically the SciResult constructor for databroker
+    from SciAnalysis.interfaces.databroker.databases import initialize
+    # TODO : Remove the initialization when moving from sqlite to other
+    if ":" in dbname:
+        dbname = dbname.split(":")
+    else:
+        dbname = [dbname, 'analysis']
+    dbs = initialize()
+    db = dbs[dbname[0]][dbname[1]]
+
+    if start_time is None or stop_time is None:
+        print("Warning, please select a start or stop time (or else this"
+                " would just take forever")
+
+    headers = db(start_time=start_time, stop_time=stop_time)
+    results = list()
+
+    for header in headers:
+        start_doc = header['start']
+        found = True
+        for  key, val in kwargs.items():
+            if key not in start_doc:
+                found = False
+            elif val not in start_doc[key]:
+                found = False
+        if found:
+            try:
+                scires = Header2SciResult(header, db)
+                yield scires
+            except FileNotFoundError:
+                continue
+
 
 def safe_parse_databroker(val, nested=False):
     ''' Parse an arg, make sure it's safe for databroker.'''
@@ -173,7 +265,6 @@ def store_results(dbname, external_writers={}):
             results = f(*args, **kwargs)
             # TODO : fill in (after working on xml storage)
             attributes = {}
-            print(dbname)
             source_databroker.store_results_databroker(results, dbname, external_writers=external_writers)
             return results
         return newf

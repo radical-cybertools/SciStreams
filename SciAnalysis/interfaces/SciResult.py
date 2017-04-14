@@ -3,7 +3,7 @@
     layer should reside. Conversions from other interfaces to SciResult are
     found in corresponding interface folders.
 '''
-from uuid import uuid4
+#from uuid import uuid4
 from collections import Counter
 from functools import wraps
 
@@ -83,7 +83,7 @@ class SciResult(dict):
         if len(args) == 1 and "_SciResult" in args[0]:
             self.update(dict(args[0]))
             # uid needs to be updated still
-            self['uid'] = str(uuid4())
+            #self['uid'] = str(uuid4())
         else:
             # the outputs and output names
             self['outputs'] = dict()  # outputs
@@ -103,7 +103,7 @@ class SciResult(dict):
 
             # run-specific stuff
             self['run_stats'] = dict()
-            self['uid'] = str(uuid4())
+            #self['uid'] = str(uuid4())
 
             # identifier
             self['_SciResult'] = 'SciResult-version1'
@@ -329,6 +329,7 @@ def parse_sciresults(protocol_name, attributes={}):
     # from input_map, make the decorator
     def decorator(f):
         # from function modify args, kwargs before computing
+        @wraps(f)
         def _f(*args, **kwargs):
             # Initialize new SciResult
             scires = SciResult()
@@ -337,14 +338,17 @@ def parse_sciresults(protocol_name, attributes={}):
             saved_globals = list()
             # grab attributes if entries were SciResults
             # if a global attribute, grab this
+            newargs = list()
             for i, entry in enumerate(args):
                 # checks if it's a SciResult
                 key = "_arg{}".format(i)
                 if isinstance(entry, dict) and '_SciResult' in entry:
-                    args[i] = entry.get()
+                    newargs.append(entry.get())
                     _add_attribute(key, entry, scires, saved_globals)
                 else:
                     scires['attributes'][key] = repr(entry)[:_MAX_STR_LEN]
+                    newargs.append(entry)
+            args = newargs
 
             for key, entry in kwargs.items():
                 # checks if it's a SciResult
@@ -386,7 +390,7 @@ def _add_attribute(key, scires_from, scires_to, saved_globals):
         Convenience function to add an attribute and keep track of globals.
         Mainly here because it's used twice in parse_sciresults
     '''
-    scires_to['attributes'][key] = scires_from['attributes']
+    #scires_to['attributes'][key] = scires_from['attributes']
     for glob_attr in scires_from['global_attributes']:
         if glob_attr not in saved_globals:
             saved_globals.append(glob_attr)

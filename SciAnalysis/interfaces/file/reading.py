@@ -1,4 +1,5 @@
 from .core import jpegloader, pngloader, hdf5loader, npyloader
+from .core import jpegwriter, pngwriter
 import numpy as np
 from SciAnalysis.interfaces.SciResult import SciResult
 
@@ -24,9 +25,12 @@ class FileDesc(dict):
     _KEYINFO = {
             'jpg': {'required': ['filename'],
                     'loader': jpegloader,
+                    'writer' : jpegwriter,
                     },
             'png': {'required': ['filename'],
-                    'loader': pngloader},
+                    'loader': pngloader,
+                    'writer' : pngwriter,
+                    },
             'hdf5': {'required': ['filename', 'hdf5key'],
                      'loader': hdf5loader},
             'npy': {'required': ['filename'],
@@ -50,6 +54,16 @@ class FileDesc(dict):
             kwargs[key] = self[key]
         res = loader(**kwargs)
         self['_data'] = res
+
+    def write(self, data):
+        format = self['format']
+        writer = self._KEYINFO[format]['writer']
+        kwargs = dict()
+        for key in self._KEYINFO[format]['required']:
+            kwargs[key] = self[key]
+        kwargs['data'] = data
+        writer(**kwargs)
+        self['_data'] = data
 
     def get(self):
         ''' Get returns a SciResult.
