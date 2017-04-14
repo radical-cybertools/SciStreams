@@ -111,6 +111,13 @@ while True:
     try:
         calibration = Calibration(attributes)
         beamx0, beamy0 = calibration.calibration.get()['beamx0']['value'], calibration.calibration.get()['beamy0']['value']
+        futures.append(client.persist(calibration.calibration, pure=True))
+        # save intermediate computations
+        futures.append(client.persist(calibration.q_map, pure=True))
+        futures.append(client.persist(calibration.qx_map, pure=True))
+        futures.append(client.persist(calibration.qy_map, pure=True))
+        futures.append(client.persist(calibration.qx_map, pure=True))
+        futures.append(client.persist(calibration.r_map, pure=True))
     except KeyError:
         continue
     origin = beamy0, beamx0
@@ -143,21 +150,3 @@ while True:
 
 
 
-
-''' testing'''
-from distributed import Client
-client = Client()
-from dask import delayed
-
-@delayed(pure=True)
-def myfunction(a):
-    print("recomputing")
-    return a + 3
-
-res = myfunction(1)
-res2 = res**2
-res3 = client.persist(res2)
-print(client.has_what())
-
-resagain = res**3
-resagain2 = client.persist(resagain)
