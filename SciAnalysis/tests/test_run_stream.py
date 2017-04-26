@@ -34,8 +34,8 @@ from SciAnalysis.analyses.XSAnalysis.Streams import CalibrationStream,\
     CircularAverageStream, ImageStitchingStream
 
 # Streams include stuff
-from streams.StreamDoc import StreamDoc, parse_streamdoc
-from streams.core import Stream
+from SciAnalysis.streams.StreamDoc import StreamDoc, parse_streamdoc
+from SciAnalysis.streams.core import Stream
 
 # Initialise Data objects
 ## Blemish file
