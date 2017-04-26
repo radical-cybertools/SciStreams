@@ -82,6 +82,8 @@ def store_results_xml(results, outputs=None):
     from lxml import etree
     experiment_cycle = attrs['experiment_cycle']
     experiment_cycle = _cleanup_str(experiment_cycle)
+    scan_id = str(attrs['scan_id'])
+    scan_id = _cleanup_str(scan_id)
     experiment_group = attrs['experiment_group']
     experiment_group = _cleanup_str(experiment_group)
     sample_savename = attrs['sample_savename']
@@ -90,7 +92,7 @@ def store_results_xml(results, outputs=None):
     protocol_name = _cleanup_str(protocol_name)
     outdir = XMLDIR + "/" + experiment_cycle + "/" + experiment_group +"/" + protocol_name
     make_dir(outdir)
-    outfile = outdir + "/" + sample_savename + ".xml"
+    outfile = outdir + "/" + sample_savename + "_" + scan_id + ".xml"
     # just add to the sciresults so user knows it's been saved to xml
     results['attributes']['xml-outfile'] = outfile
 

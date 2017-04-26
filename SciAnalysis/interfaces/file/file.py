@@ -56,9 +56,13 @@ def store_results_file(results, writers={}):
         raise ValueError("Error cannot find sample_savename in attributes")
     if 'protocol_name' not in attrs:
         raise ValueError("Error cannot find protocol_name in attributes")
+    if 'scan_id' not in attrs:
+        raise ValueError("Error cannot find scan_id in attributes")
 
     experiment_cycle = attrs['experiment_cycle']
     experiment_cycle = _cleanup_str(experiment_cycle)
+    scan_id = str(attrs['scan_id'])
+    scan_id = _cleanup_str(scan_id)
     experiment_group = attrs['experiment_group']
     experiment_group = _cleanup_str(experiment_group)
     sample_savename = attrs['sample_savename']
@@ -67,14 +71,12 @@ def store_results_file(results, writers={}):
     protocol_name = _cleanup_str(protocol_name)
     outdir = _ROOTDIR + "/" + experiment_cycle + "/" + experiment_group + "/" + protocol_name
     make_dir(outdir)
-    outfile = outdir + "/" + sample_savename
+    outfile = outdir + "/" + sample_savename + "_" + scan_id
     if not isinstance(writers, list):
         writers = [writers]
     for writer_entry in writers:
-        print("cycling through writer {}".format(writer_entry))
         # go through each writing instruction
         writer_key = writer_entry['writer']
-        print("making a {} writer".format(writer_key))
         writer = writers_dict[writer_key]
         keys = writer_entry['keys']
         # group the data together

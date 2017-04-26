@@ -172,7 +172,7 @@ def search(dbname, start_time=None, stop_time=None, **kwargs):
     ''' search database for a substring in one of the fields.
 
         TODO : allow start and stop times to be numbers (number of seconds
-before now)
+        before now)
 
     '''
     # Returns a SciResult Basically the SciResult constructor for databroker

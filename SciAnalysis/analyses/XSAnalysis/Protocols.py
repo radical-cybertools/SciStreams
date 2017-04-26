@@ -56,22 +56,46 @@ from SciAnalysis.interfaces.detectors import detectors2D
 # Just helpful, that's all
 # TODO : document that if kwargs are used, they need be explicitly written
 # or else handle this on your own : i.e. foo(1, b=1) versus foo(1,1)
+
+# Protocols here
 class CircularAverage(Protocol):
     ''' Circular average.
 
         Note : Assumes square pixels
             Also assumes variance comes from shot noise only (by taking average along ring/Npixels)
 
-        if bins is None, it does it's best to estimate pixel sizes and make the bins a pixel
-            in size. Note, for Ewald curvature this is not straightforward. You need both a 
-            r_map in pixels from the center and the q_map for the actual q values.
+        if bins is None, it does it's best to estimate pixel sizes and make the
+        bins a pixel in size. Note, for Ewald curvature this is not
+        straightforward. You need both a r_map in pixels from the center and
+        the q_map for the actual q values.
     '''
     #TODO : extend file to mltiple writers?
-    @run_default("XS:CircularAverage", xml_options={},databroker=False,  file_options= {'writers' : [{'keys' : ['sqx', 'sqxerr', 'sqy', 'sqyerr'], 'writer' : 'npy'},
-                                                                                   {'keys' : ['sqx', 'sqxerr', 'sqy', 'sqyerr'], 'writer' : 'dat'}]},
-        databroker_options={'name':'cms:analysis', 'writers'  : {'sqx':'npy', 'sqy' : 'npy', 'sqxerr' : 'npy', 'sqyerr' : 'npy'}})
+    @run_default("XS:CircularAverage", xml_options={}, databroker=False,
+                 file_options= {'writers' : [{'keys' : ['sqx', 'sqxerr', 'sqy', 'sqyerr'], 'writer' : 'npy'},
+                                 {'keys' : ['sqx', 'sqxerr', 'sqy', 'sqyerr'], 'writer' : 'dat'}]},
+                databroker_options={'name':'cms:analysis', 'writers'  : {'sqx':'npy', 'sqy' : 'npy', 'sqxerr' : 'npy', 'sqyerr' : 'npy'}})
     def run(image=None, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
         ''' computes the circular average.'''
+        return _circavg(image=image, q_map=q_map, r_map=r_map, bins=bins, mask=mask, **kwargs)
+
+class Thumbnail(Protocol):
+    ''' Compute a thumbnail.
+    '''
+    @run_default("XS:Thumb", databroker=False, xml_options={}, file_options={'writers' : {'keys' : 'thumb', 'writer' : 'jpg'}},
+            databroker_options={'name':'cms:analysis', 'writers'  : {'thumb': 'jpg'}})
+    def run(image=None, mask=None, blur=None, crop=None, resize=None, type='linear', vmin=None, vmax=None):
+        '''
+            The process that creates the thumbnail.
+            type :
+                linear : don't do anything to image
+                log : take log
+        '''
+        return _thumb(image=None, mask=None, blur=None, crop=None, resize=None, type='linear', vmin=None, vmax=None)
+
+
+# Main functions
+
+def _circavg(image=None, q_map=None, r_map=None, bins=None, mask=None, **kwargs):
         from skbeam.core.accumulators.binned_statistic import RadialBinnedStatistic
 
         # figure out bins if necessary
@@ -91,7 +115,7 @@ class CircularAverage(Protocol):
             rbinstat = RadialBinnedStatistic(image.shape, bins=nobins,
                     rpix=r_map, statistic='mean', mask=mask)
             bin_centers = rbinstat(q_map)
-            bins = center2edge(bin_centers)
+            bins = _center2edge(bin_centers)
 
 
         # now we use the real rbins, taking into account Ewald curvature
@@ -111,7 +135,7 @@ class CircularAverage(Protocol):
 
         return dict(sqx=sqx, sqy=sqy, sqyerr=sqyerr, sqxerr=sqxerr)
 
-def center2edge(centers, positive=True):
+def _center2edge(centers, positive=True):
     ''' Transform a set of bin centers to edges
         This is useful for non-uniform bins.
 
@@ -135,57 +159,48 @@ def center2edge(centers, positive=True):
     edges = edges[w]
     return edges
 
-class Thumbnail(Protocol):
-    ''' Compute a thumb
-    '''
-    @run_default("XS:Thumb", databroker=False, xml_options={}, file_options={'writers' : {'keys' : 'thumb', 'writer' : 'jpg'}},
-            databroker_options={'name':'cms:analysis', 'writers'  : {'thumb': 'jpg'}})
-    def run(image=None, mask=None, blur=None, crop=None, resize=None, type='linear', vmin=None, vmax=None):
-        '''
-            type :
-                linear : don't do anything to image
-                log : take log
-        '''
-        img = image
-        if mask is not None:
-            img = img*mask
-        # ensure it's delayed
-        #img = delayed(img, pure=True).get()
-        if blur is not None:
-            img = _blur(img, blur)
-        if crop is not None:
-            img = _crop(img, crop)
-        if resize is not None:
-            img = _resize(img, resize)
-        if type == 'log':
-            logimg = True
-        else:
-            logimg = False
-        if vmin is None or vmax is None:
-            # TODO :make sure hist not empty?
-            hist, bin_edges = np.histogram(image)
-            cts = np.cumsum(hist)/np.sum(hist)
-            if vmin is None:
-                wstart,  = np.where(cts > .01)
-                if len(wstart) > 0:
-                    vmin = bin_edges[wstart[0]]
-                else:
-                    vmin = np.min(img)
-            if vmax is None:
-                wend, = np.where(cts < .99)
-                if len(wend) > 0:
-                    wend = wend[len(wend)-1]
-                    vmax = bin_edges[wend]
-                else:
-                    vmax = np.max(img)
-                    
-        # bytescale the image
-        img = _normalize(img, vmin, vmax, logimg=logimg)
-        return dict(thumb=img)
+
+def _thumb(image=None, mask=None, blur=None, crop=None, resize=None, type='linear', vmin=None, vmax=None):
+    img = image
+    if mask is not None:
+        img = img*mask
+    # ensure it's delayed
+    #img = delayed(img, pure=True).get()
+    if blur is not None:
+        img = _blur(img, blur)
+    if crop is not None:
+        img = _crop(img, crop)
+    if resize is not None:
+        img = _resize(img, resize)
+    if type == 'log':
+        logimg = True
+    else:
+        logimg = False
+    if vmin is None or vmax is None:
+        # TODO :make sure hist not empty?
+        hist, bin_edges = np.histogram(image)
+        cts = np.cumsum(hist)/np.sum(hist)
+        if vmin is None:
+            wstart,  = np.where(cts > .01)
+            if len(wstart) > 0:
+                vmin = bin_edges[wstart[0]]
+            else:
+                vmin = np.min(img)
+        if vmax is None:
+            wend, = np.where(cts < .99)
+            if len(wend) > 0:
+                wend = wend[len(wend)-1]
+                vmax = bin_edges[wend]
+            else:
+                vmax = np.max(img)
+
+    # bytescale the image
+    img = _normalize(img, vmin, vmax, logimg=logimg)
+    return dict(thumb=img)
 
 # now normalize each image
 def _normalize(img, mn, mx, logimg=True):
-    ''' normalize to a uint8 
+    ''' normalize to a uint8
         This is also known as byte scaling.
     '''
     dynamic_range = 2**8-1

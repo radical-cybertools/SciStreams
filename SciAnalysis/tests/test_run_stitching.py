@@ -1,4 +1,10 @@
 # test a XS run
+'''
+Something to try: we measured samples called "PM-EG2876_recast" and
+"PM-EG2884_recast", and I moved around the SAXS detector a bit. This
+could be a test of merging the individual frames, based on the
+"motor_SAXSx" and "SAXSy" md.
+'''
 
 # dask imports
 # set up the distributed client
@@ -10,7 +16,6 @@ from distributed import Client
 client = Client("10.11.128.3:8786")
 
 from dask import set_options
-# assume all functions are pure globally
 set_options(delayed_pure=True)
 
 # misc imports
@@ -58,7 +63,7 @@ mmg = MaskGenerator(master_mask, blemish)
 dbname_data = "cms:data"
 search_kws = {
 'start_time' : "2017-01-01",
-'sample_savename' : 'YT',
+'sample_savename' : 'PM-EG2876_recast',
     }
 detector_key = 'pilatus300_image'
 noqbins = None # If none, circavg will find optimal number
@@ -68,7 +73,6 @@ global_attrs = [
         "sample_name",
         "sample_savename",
         "data_uid",
-        "scan_id",
         "experiment_alias_directory",
         "experiment_SAF_number",
         "experiment_group",
@@ -99,14 +103,20 @@ while True:
     print("Trying number {}".format(cnter))
     try:
         scires = next(scires_gen)
+    except StopIteration:
+        break
+    except NoEventDescriptors:
+        # TODO : put uid of file
+        badfiles.append("unknown")
 
-        # prepare the sciresult
-        img = scires(detector_key)
-        # add the global attributes
-        img.addglobals(global_attrs)
+    # prepare the sciresult
+    img = scires(detector_key)
+    # add the global attributes
+    img.addglobals(global_attrs)
 
-        # do not add attributes to calibration object, we want it reused by other data sets
-        attributes = scires['attributes']
+    # do not add attributes to calibration object, we want it reused by other data sets
+    attributes = scires['attributes']
+    try:
         calibration = Calibration(attributes)
         beamx0, beamy0 = calibration.calibration.get()['beamx0']['value'], calibration.calibration.get()['beamy0']['value']
         futures.append(client.persist(calibration.calibration, pure=True))
@@ -116,19 +126,17 @@ while True:
         futures.append(client.persist(calibration.qy_map, pure=True))
         futures.append(client.persist(calibration.qx_map, pure=True))
         futures.append(client.persist(calibration.r_map, pure=True))
+    except KeyError:
+        continue
+    origin = beamy0, beamx0
 
-        origin = beamy0, beamx0
+    mask = mmg.generate(origin)
 
-        mask = mmg.generate(origin)
-
+    try:
         scires_sq = circavg(image=img, q_map=calibration.q_map, r_map=calibration.r_map,  bins=None, mask=mask)
         scires_thumb = thumb(image=img, blur=.1, crop=None, resize=None, vmin=None, type='log', vmax=None, mask=mask)
         futures.append(client.persist(scires_sq, pure=True))
-
-        #res = scires_sq.persist()
-        print(res)
         futures.append(client.persist(scires_thumb, pure=True))
-        #scires_thumb.persist()
         print("Read data set {}, with uid : {}".format(cnter, scires['attributes']['data_uid']))
         print("Group : {}".format(scires['attributes']['experiment_group']))
         print("Save name: {}".format(scires['attributes']['sample_savename']))
@@ -147,13 +155,6 @@ while True:
         badfiles.append(dict(uid=scires['attributes']['uid'], exception=sys.exc_info()[0], exception_details=sys.exc_info()[1]))
         print("Failed with exception: {}".format(sys.exc_info()[0]))
         continue
-    except KeyError:
-        continue
-    except StopIteration:
-        break
-    except NoEventDescriptors:
-        # TODO : put uid of file
-        badfiles.append("unknown")
 
 def cleanup(client):
     for key in list(client.futures.keys()):
