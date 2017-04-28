@@ -66,24 +66,6 @@ search_kws = {
 detector_key = 'pilatus300_image'
 noqbins = None # If none, circavg will find optimal number
 
-# some global attributes to inherit
-global_attrs = [
-        "sample_name",
-        "sample_savename",
-        "data_uid",
-        "scan_id",
-        "experiment_alias_directory",
-        "experiment_SAF_number",
-        "experiment_group",
-        "experiment_cycle",
-        "experiment_project",
-        "experiment_proposal_number",
-        "experiment_type",
-        "experiment_user",
-        "filename",
-        "measure_type",
-        ]
-
 ###### Done data loading ########
 
 sdoc = StreamDoc()
@@ -119,9 +101,8 @@ def delayed_wrapper(name):
 def inspect_stream(stream):
     stream.apply(compute).apply(lambda x : print(x[0]))
 
+# Stream setup
 source_calib, sinks_calib = CalibrationStream(wrapper=delayed_wrapper)
-# TEST
-#new_sinks_calib = sinks_calib['q_map'].apply(select, (0, 'q_map')).apply(compute).apply(print)
 calib_qmap = sinks_calib['q_maps']
 calibration = sinks_calib['calibration']
 origin = sinks_calib['origin']
@@ -148,9 +129,14 @@ source_image_qmap.apply(source_circavg.emit)
 
 #inspect_stream(source_image)
 
+def multiply(img, mask):
+    return img*mask
+
 imgstitch_source, imgstitch_sink = ImageStitchingStream(wrapper=delayed_wrapper)
-img_mask_origin = source_image.select((0,'image')).merge(mask_stream.select(('mask','mask')), origin.select((0, 'origin')))
+img_masked = source_image.merge(mask_stream.select(('mask',None))).map(multiply)
+img_mask_origin = img_masked.select((0,'image')).merge(mask_stream.select(('mask','mask')), origin.select((0, 'origin')))
 img_mask_origin.apply(imgstitch_source.emit)
+
 
 
 import matplotlib.pyplot as plt
@@ -187,12 +173,16 @@ def get_mask(imgtmp):
 
 inspect_stream(imgstitch_sink)
 
-#imgstitch_sink.select(('image',None)).map(plot_image).apply(compute)
-#imgstitch_sink.select(('image',None)).map(get_image).apply(compute)
-#imgstitch_sink.select(('mask',None)).map(get_mask).apply(compute)
-imgstitch_sink.select(0).map(plot_image).apply(compute)
-imgstitch_sink.select(0).map(get_image).apply(compute)
-imgstitch_sink.select(1).map(get_mask).apply(compute)
+imgstitch_sink.select(('image',None)).map(plot_image).apply(compute)
+imgstitch_sink.select(('image',None)).map(get_image).apply(compute)
+imgstitch_sink.select(('mask',None)).map(get_mask).apply(compute)
+#imgstitch_sink.select(0).map(plot_image).apply(compute)
+#imgstitch_sink.select(0).map(get_image).apply(compute)
+#imgstitch_sink.select(1).map(get_mask).apply(compute)
+
+#mask_stream.select(0).map(plot_image).apply(compute)
+#mask_stream.select(0).map(get_image).apply(compute)
+#mask_stream.select(('mask', None)).map(get_mask).apply(compute)
 
 # emitting of data
 sdoc = delayed(StreamDoc(args=attributes))
@@ -217,7 +207,7 @@ source_image.emit(sdoc)
 
 
 attributes = attributes.copy()
-attributes['detector_SAXS_y0_pix']=500
+attributes['detector_SAXS_y0_pix']=110
 sdoc = delayed(StreamDoc(args=attributes))
 source_calib.emit(sdoc)
 # input needs to be same as what wrapper works on

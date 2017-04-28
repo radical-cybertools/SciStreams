@@ -9,7 +9,8 @@ from databroker.broker import Header
 import json
 
 from SciAnalysis.interfaces.databroker.writers_custom import writers_dict as _writers_dict
-from SciAnalysis.interfaces.SciResult import SciResult
+#from SciAnalysis.interfaces.SciResult import SciResult
+from SciAnalysis.streams.StreamDoc import StreamDoc
 from metadatastore.core import NoEventDescriptors
 
 
@@ -20,22 +21,28 @@ _ANALYSIS_STORE_VERSION = 'beta-v1'
 # some of them may have already started a db conection, others not
 
 
-def Header2SciResult(header, db=None):
+def Header2StreamDoc(header, dbname="cms:data"):
     ''' Convert a header to a SciResult. '''
     # TODO : write
-    scires =  SciResult()
-    scires['attributes'] = dict(**header['start'])
-    scires['attributes']['data_uid'] = scires['attributes']['uid']
-    scires['output_names'] = list(header['descriptors'][0]['data_keys'].keys())
-    # TODO : pass conf information for database instead and reconstruct here
-    if db is None:
-        raise ValueError("Error, need to specify db")
+    sdoc =  StreamDoc()
+    attributes = header['start'].copy()
+    attributes['data_uid'] = attributes['uid']
+    sdoc.add(attributes=attributes)
+
+    from interfaces.databroker.databases import databases
+    if ":" in dbname:
+        dbname = dbname.split(":")
+    else:
+        dbname = [dbname, 'analysis']
+
+    db = databases[dbname[0]][dbname[1]]
+
+    # Assume first event
     event = list(db.get_events(header, fill=True))[0]
-    output_names = scires['output_names']
-    for output_name in output_names:
-        scires['outputs'][output_name] = event['data'][output_name]
-    scires['run_stats'] = dict() # no run stats for a conversion
-    return scires
+
+    sdoc.add(kwargs=event['data'])
+
+    return sdoc
 
 '''
     This routine looks up the last entry of a certain type
@@ -54,11 +61,11 @@ def pullrecent(dbname, protocol_name=None, **kwargs):
 
         Returns
         -------
-        SciResult of data
+        StreamDoc of data
 
     '''
     # Returns a SciResult Basically the SciResult constructor for databroker
-    from SciAnalysis.interfaces.databroker.databases import initialize
+    from SciAnalysis.interfaces.databroker.databases import databases
     # TODO : Remove the initialization when moving from sqlite to other
     # (sqlite requires db to be initialized every time... but db it can
     # be a running instance in the imported library for that process)
@@ -66,8 +73,8 @@ def pullrecent(dbname, protocol_name=None, **kwargs):
         dbname = dbname.split(":")
     else:
         dbname = [dbname, 'analysis']
-    dbs = initialize()
-    db = dbs[dbname[0]][dbname[1]]
+
+    db = databases[dbname[0]][dbname[1]]
     kwargs['protocol_name'] = protocol_name
     # search and get latest
     headers = db(**kwargs)
@@ -75,9 +82,10 @@ def pullrecent(dbname, protocol_name=None, **kwargs):
         header = headers[0]
     else:
         raise IndexError("Error, no headers found for database lookup")
-    scires = Header2SciResult(header, db=db)
+    dbname = dbname[0] + ":" + dbname[1]
+    sdoc = Header2StreamDoc(header, dbname=dbname)
 
-    return scires
+    return sdoc
 
 def pullfromuid(dbname, uid=None):
     ''' Pull from a databroker database from a uid

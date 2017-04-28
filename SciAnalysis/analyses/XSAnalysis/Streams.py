@@ -81,6 +81,7 @@ def CalibrationStream(wrapper=None, keymap_name=None, detector=None):
                     qz_map : a qz_map
                     qr_map : a qr_map
                     q_map  : the magnitude sqrt(qx**2 + qy**2 + qz**2)
+                origin : the origin
     '''
     if keymap_name is None:
         keymap_name = "cms"
@@ -93,8 +94,8 @@ def CalibrationStream(wrapper=None, keymap_name=None, detector=None):
     from dask import compute
 
     # the pipeline flow defined here
-    source = Stream(wrapper=wrapper)
-    calib = source.map(load_calib_dict, keymap=keymap, defaults=defaults)
+    sin = Stream(wrapper=wrapper)
+    calib = sin.map(load_calib_dict, keymap=keymap, defaults=defaults)
     calib = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
 
     q_maps = calib.map(_generate_qxyz_maps)
@@ -115,9 +116,9 @@ def CalibrationStream(wrapper=None, keymap_name=None, detector=None):
     calib = calib.select( (0, 'calibration'))
 
     # they're relative sinks
-    sinks = dict(calibration=calib, q_maps=q_maps, origin=origin)
-    # return sources and the endpoints
-    return source, sinks
+    sout = dict(calibration=calib, q_maps=q_maps, origin=origin)
+    # return sin and the endpoints
+    return sin, sout
 
 def get_beam_center(obj):
     ''' Get beam center in row, col (y,x) format.'''
@@ -337,13 +338,6 @@ def _generate_angle_map(calibration):
     return M
 
 
-# interface side stuff
-# This is the databroker version
-
-# TODO : Add in documentation that kwargs helps document the arguments when saved
-# Just helpful, that's all
-# TODO : document that if kwargs are used, they need be explicitly written
-# or else handle this on your own : i.e. foo(1, b=1) versus foo(1,1)
 def CircularAverageStream(wrapper=None):
     ''' Circular average stream.
 
@@ -361,8 +355,8 @@ def CircularAverageStream(wrapper=None):
                 the mask
 
         Outputs :
-            source : the source stream
-            sink : the output returns a dictionary of four elements:
+            source : Stream, the source stream
+            sink : dict, the output returns a dictionary of four elements:
                 sqx : the q values
                 sqxerr : the error in q values
                 sqy : the intensities
@@ -380,9 +374,9 @@ def CircularAverageStream(wrapper=None):
 
     '''
     #TODO : extend file to mltiple writers?
-    source = Stream(wrapper=wrapper)
-    sink = source.map(circavg)
-    return source, sink
+    sin  = Stream(wrapper=wrapper)
+    sout = source.map(circavg)
+    return sin, sout
 
 
 def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
@@ -478,7 +472,7 @@ def ImageStitchingStream(wrapper=None):
     # make the image, mask origin as the first three args
     s2 = sin.select([('image', None), ('mask', None), ('origin', None)])
     sout = s2.map(pack).accumulate(xystitch_accumulate)
-    #sout = sout.map(xystitch_result)
+    sout = sout.map(xystitch_result)
     return sin, sout
 
 def xystitch_result(img_acc, mask_acc, origin_acc):
@@ -503,24 +497,23 @@ def xystitch_accumulate(prevstate, newstate):
             (this requires interpolating pixels, maybe not
                 good for shot noise limited regime)
     '''
-    # unraveling arguments
-    img_acc, mask_acc, origin_acc = prevstate
-    if img_acc is not None:
-        shape_acc = img_acc.shape
 
     img_next, mask_next, origin_next = newstate
     # just in case
-    img_next = img_next*mask_next
+    img_next = img_next*(mask_next>0)
     shape_next = img_next.shape
 
     # logic for making new state
     # initialization:
-    if img_acc is None:
+    if prevstate is None:
         img_acc = img_next.copy()
         shape_acc = img_acc.shape
         mask_acc = mask_next.copy()
         origin_acc = origin_next
         return img_acc, mask_acc, origin_acc
+    else:
+        img_acc, mask_acc, origin_acc = prevstate
+        shape_acc = img_acc.shape
 
     # logic for main iteration component
     # NOTE : In matplotlib, bottom and top are flipped (until plotting in

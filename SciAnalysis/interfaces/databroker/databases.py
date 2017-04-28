@@ -6,7 +6,8 @@
 from SciAnalysis.interfaces.databroker.database_initializers import init_cmsdb, init_chxdb
 
 
-def initialize():
+def initialize(dbname=None):
+    # TODO : allow a string to be specified
     # when these flags set true, enables these databases
     database_enable = {
         'chx' : False,
@@ -48,4 +49,5 @@ def initialize():
             databases[key] = None
     return databases
 
+# TODO : move initialization elsewhere
 databases = initialize()
