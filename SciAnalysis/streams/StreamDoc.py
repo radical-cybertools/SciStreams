@@ -4,6 +4,8 @@
     found in corresponding interface folders.
 '''
 from functools import wraps
+import time
+import sys
 
 class StreamDoc(dict):
     def __init__(self, streamdoc=None, args=(), kwargs={}, attributes={}):
@@ -102,6 +104,9 @@ class StreamDoc(dict):
                 res = self
 
         return res
+
+    def get_attributes(self):
+        return StreamDoc(args=self['attributes'])
 
     def merge(self, newstreamdoc):
         ''' Merge another streamdoc into this one.
@@ -233,8 +238,22 @@ def parse_streamdoc(name):
 
             kwargs.update(kwargs_additional)
 
-            # now run the function
-            result = f(*args, **kwargs)
+            statistics = dict()
+            t1 = time.time()
+            try:
+                # now run the function
+                result = f(*args, **kwargs)
+                statistics['status'] = "Success"
+            except Exception:
+                result = {}
+                statistics['status'] = "Failure"
+                type, value, traceback = sys.exc_info()
+                statistics['error_message'] = value
+
+
+            statistics['runtime'] = t1-t2
+            statistics['runstart'] = t1
+            t2 = time.time()
 
             attributes['function_name'] = f.__name__
             attributes['stream_name'] = name

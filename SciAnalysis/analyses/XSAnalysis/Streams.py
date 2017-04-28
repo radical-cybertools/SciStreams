@@ -51,6 +51,8 @@ from SciAnalysis.interfaces.detectors import detectors2D
 '''
 
 from streams.core import Stream
+
+
 # Calibration for SAXS data
 # NOTE : Makes the assumption that the wrapper provides 'select' functionality
 def CalibrationStream(wrapper=None, keymap_name=None, detector=None):
@@ -375,7 +377,7 @@ def CircularAverageStream(wrapper=None):
     '''
     #TODO : extend file to mltiple writers?
     sin  = Stream(wrapper=wrapper)
-    sout = source.map(circavg)
+    sout = sin.map(circavg)
     return sin, sout
 
 

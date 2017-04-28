@@ -68,17 +68,6 @@ noqbins = None # If none, circavg will find optimal number
 
 ###### Done data loading ########
 
-sdoc = StreamDoc()
-sdoc['attributes'] = scires = SciResult()
-sdoc['attributes'] = dict(
-        calibration_wavelength_A=1.,
-        detector_SAXS_x0_pix=400,
-        detector_SAXS_y0_pix=300,
-        detector_SAXS_distance_m=5.,
-)
-# add a random image
-sdoc.add(np.random.uniform((500,500)))
-attributes = sdoc['attributes']
 
 def print_cal(clb):
     print(clb)
@@ -101,61 +90,23 @@ def delayed_wrapper(name):
 def inspect_stream(stream):
     stream.apply(compute).apply(lambda x : print(x[0]))
 
-# Stream setup
-source_calib, sinks_calib = CalibrationStream(wrapper=delayed_wrapper)
-calib_qmap = sinks_calib['q_maps']
-calibration = sinks_calib['calibration']
-origin = sinks_calib['origin']
-
-# generate a mask
-mskstr = origin.map(mmg.generate)
-mask_stream = mskstr.select((0, 'mask'))
-# compute it to test later
-mask = mask_stream.apply(compute)
-#sinks['origin'].apply(compute).apply(print)
-
-# image goes here, one argument
-source_image = Stream(wrapper=delayed_wrapper)
-# first merge qmap with image, then erge mask_stream, but select component of
-# mask_stream first
-source_image_qmap = source_image.merge(calib_qmap, mask_stream)
-#source_image_qmap.apply(compute).apply(print)
-
-source_circavg, sink_circavg = CircularAverageStream(wrapper=delayed_wrapper)
-#s_circavgcalib = sinks_calib['calibration'].merge(sink_circavg)
-#s_circavgcalib.apply(compute).apply(print)
-source_image_qmap.apply(source_circavg.emit)
-#sink_circavg.apply(compute).apply(print)
-
-#inspect_stream(source_image)
-
-def multiply(img, mask):
-    return img*mask
-
-imgstitch_source, imgstitch_sink = ImageStitchingStream(wrapper=delayed_wrapper)
-img_masked = source_image.merge(mask_stream.select(('mask',None))).map(multiply)
-img_mask_origin = img_masked.select((0,'image')).merge(mask_stream.select(('mask','mask')), origin.select((0, 'origin')))
-img_mask_origin.apply(imgstitch_source.emit)
-
-
+def get_attributes(sdoc):
+    return sdoc.get_attributes()
 
 import matplotlib.pyplot as plt
 plt.ion()
 plt.clf()
 
-
-def plot(*args, **kwargs):#mask=None):
-    print(kwargs)
-    #print(mask.shape)
-    #plt.clf();plt.imshow(mask)
+def plot_line(*args, **kwargs):
+    plt.figure(2);plt.clf();
+    plt.plot(*args)
+    plt.pause(.1)
 
 # TODO : make sure saving is not pure=True!
 def plot_image(img):
-    #img = args[0]
-    print(img.shape)
     plt.figure(1)
     plt.clf();plt.imshow(img)
-    plt.draw();plt.pause(.1)
+    plt.draw();plt.pause(.5);
 
 def get_image(imgtmp):
     global img
@@ -165,17 +116,78 @@ def get_mask(imgtmp):
     global mask
     mask = imgtmp
 
+# This should be an interface
+def save_image_recent(sdoc, name=None):
+    # make sure it's not delayed
+    sdoc = compute(sdoc)[0]
+    if name is None:
+        name = 'recent.jpg'
+    img = sdoc['args'][0]
+    from PIL import Image
+    im = Image.fromarray(img)
+    im.save(name)
+
+
+# Stream setup, datbroker data comes here (a header for now)
+sin = Stream(wrapper=delayed_wrapper)
+# separate data from attributes
+attributes = sin.apply(get_attributes)
+
+
+image = sin.select((detector_key,None))
+
+# calibration
+sin_calib, sout_calib = CalibrationStream(wrapper=delayed_wrapper)
+calib_qmap = sout_calib['q_maps']
+calibration = sout_calib['calibration']
+origin = sout_calib['origin']
+
+# connect attributes to sin_calib
+attributes.apply(sin_calib.emit)
+
+# generate a mask
+mskstr = origin.map(mmg.generate)
+mask_stream = mskstr.select((0, 'mask'))
+# compute it to test later
+mask = mask_stream.apply(compute)
+
+# image goes here, one argument
+#sin_image = Stream(wrapper=delayed_wrapper)
+# first merge qmap with image, then erge mask_stream, but select component of
+# mask_stream first
+sin_image_qmap = image.merge(calib_qmap, mask_stream)
+
+sin_circavg, sout_circavg = CircularAverageStream(wrapper=delayed_wrapper)
+#s_circavgcalib.apply(compute).apply(print)
+sin_image_qmap.apply(sin_circavg.emit)
+
+#inspect_stream(sout_circavg)
+sout_circavg.select([('sqx', None), ('sqy', None)]).map(plot_line).apply(compute)
+image.map(plot_image).apply(compute)
+image.apply(save_image_recent, name="image.png")
+
+
+
+def multiply(img, mask):
+    return img*mask
+
+sin_imgstitch, sout_imgstitch = ImageStitchingStream(wrapper=delayed_wrapper)
+img_masked = image.merge(mask_stream.select(('mask',None))).map(multiply)
+img_mask_origin = img_masked.select((0,'image')).merge(mask_stream.select(('mask','mask')), origin.select((0, 'origin')))
+img_mask_origin.apply(sin_imgstitch.emit)
+
+
+
 #mask.map(plot).apply(compute)
 
 
-#res = sinks['qx_map'].apply(compute)
-#res.sink(print)
 
-inspect_stream(imgstitch_sink)
+# Add some inspection routines in the stream
 
-imgstitch_sink.select(('image',None)).map(plot_image).apply(compute)
-imgstitch_sink.select(('image',None)).map(get_image).apply(compute)
-imgstitch_sink.select(('mask',None)).map(get_mask).apply(compute)
+sout_imgstitch.select(('image',None)).map(plot_image).apply(compute)
+sout_imgstitch.select(('image',None)).map(get_image).apply(compute)
+sout_imgstitch.select(('mask',None)).map(get_mask).apply(compute)
+#sout_imgstitch.select(('image', None)).apply(save_image_recent, name="stitched.png")
 #imgstitch_sink.select(0).map(plot_image).apply(compute)
 #imgstitch_sink.select(0).map(get_image).apply(compute)
 #imgstitch_sink.select(1).map(get_mask).apply(compute)
@@ -185,36 +197,69 @@ imgstitch_sink.select(('mask',None)).map(get_mask).apply(compute)
 #mask_stream.select(('mask', None)).map(get_mask).apply(compute)
 
 # emitting of data
-sdoc = delayed(StreamDoc(args=attributes))
-source_calib.emit(sdoc)
-# input needs to be same as what wrapper works on
-# TODO : emit should maybe transform according to wrapper?
-
-arr=np.random.uniform(size=(619, 487))
-sdoc = delayed(StreamDoc(args=arr))
-source_image.emit(sdoc)
-
-attributes = attributes.copy()
-attributes['detector_SAXS_x0_pix']=300
-sdoc = delayed(StreamDoc(args=attributes))
-source_calib.emit(sdoc)
-# input needs to be same as what wrapper works on
-# TODO : emit should maybe transform according to wrapper?
-
-arr=np.random.uniform(size=(619, 487))
-sdoc = delayed(StreamDoc(args=arr))
-source_image.emit(sdoc)
+sdoc = StreamDoc()
+sdoc['attributes'] = scires = SciResult()
+sdoc['attributes'] = dict(
+        calibration_wavelength_A=1.,
+        detector_SAXS_x0_pix=400,
+        detector_SAXS_y0_pix=300,
+        detector_SAXS_distance_m=5.,
+)
+# add a random image
+sdoc.add(np.random.uniform((500,500)))
+attributes = sdoc['attributes']
 
 
-attributes = attributes.copy()
-attributes['detector_SAXS_y0_pix']=110
-sdoc = delayed(StreamDoc(args=attributes))
-source_calib.emit(sdoc)
-# input needs to be same as what wrapper works on
-# TODO : emit should maybe transform according to wrapper?
 
-arr=np.random.uniform(size=(619, 487))
-sdoc = delayed(StreamDoc(args=arr))
-source_image.emit(sdoc)
+#sdoc = source_databroker.pullrecent("cms:data", start_time="2017-04-01", stop_time="2017-04-03")
+#sdoc = delayed(sdoc)
+sdoc_gen = source_databroker.search("cms:data", start_time="2017-01-01", stop_time="2017-04-01", sample_savename="YT")
 
 
+for sdoc in sdoc_gen:
+    sin.emit(delayed(sdoc))
+## input needs to be same as what wrapper works on
+## TODO : emit should maybe transform according to wrapper?
+#
+#arr=np.random.uniform(size=(619, 487))
+#sdoc = delayed(StreamDoc(args=arr))
+#sin_image.emit(sdoc)
+#
+#attributes = attributes.copy()
+#attributes['detector_SAXS_x0_pix']=300
+#sdoc = delayed(StreamDoc(args=attributes))
+#sin_calib.emit(sdoc)
+## input needs to be same as what wrapper works on
+## TODO : emit should maybe transform according to wrapper?
+#
+#arr=np.random.uniform(size=(619, 487))
+#sdoc = delayed(StreamDoc(args=arr))
+#sin_image.emit(sdoc)
+#
+#
+#attributes = attributes.copy()
+#attributes['detector_SAXS_y0_pix']=110
+#sdoc = delayed(StreamDoc(args=attributes))
+#sin_calib.emit(sdoc)
+## input needs to be same as what wrapper works on
+## TODO : emit should maybe transform according to wrapper?
+#
+#arr=np.random.uniform(size=(619, 487))
+#sdoc = delayed(StreamDoc(args=arr))
+#sin_image.emit(sdoc)
+#
+#
+
+
+''' FAQ :
+    Setting an array element with a sequence
+
+    list index out of range : check that you have correct args for function (using select) routine
+        inspect_stream at that point
+
+    circavg() missing 1 required positional argument: 'image'
+        you need to make sure the input arguments match output. use select routine to help
+        use inspect_stream to inspect stream at that point
+
+
+    '''

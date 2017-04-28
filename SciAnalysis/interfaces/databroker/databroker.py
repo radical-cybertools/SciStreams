@@ -183,15 +183,15 @@ def search(dbname, start_time=None, stop_time=None, **kwargs):
         before now)
 
     '''
-    # Returns a SciResult Basically the SciResult constructor for databroker
-    from SciAnalysis.interfaces.databroker.databases import initialize
+    # Returns a StreamDoc Basically the StreamDoc constructor for databroker
+    from SciAnalysis.interfaces.databroker.databases import databases
     # TODO : Remove the initialization when moving from sqlite to other
     if ":" in dbname:
         dbname = dbname.split(":")
     else:
         dbname = [dbname, 'analysis']
-    dbs = initialize()
-    db = dbs[dbname[0]][dbname[1]]
+
+    db = databases[dbname[0]][dbname[1]]
 
     if start_time is None or stop_time is None:
         print("Warning, please select a start or stop time (or else this"
@@ -199,6 +199,8 @@ def search(dbname, start_time=None, stop_time=None, **kwargs):
 
     headers = db(start_time=start_time, stop_time=stop_time)
     results = list()
+
+    dbname = dbname[0] + ":" + dbname[1]
 
     for header in headers:
         start_doc = header['start']
@@ -210,8 +212,8 @@ def search(dbname, start_time=None, stop_time=None, **kwargs):
                 found = False
         if found:
             try:
-                scires = Header2SciResult(header, db)
-                yield scires
+                sdoc= Header2StreamDoc(header, dbname)
+                yield sdoc
             except FileNotFoundError:
                 continue
 
