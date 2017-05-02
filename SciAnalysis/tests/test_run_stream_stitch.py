@@ -61,9 +61,19 @@ mmg = MaskGenerator(master_mask, blemish)
 ## searching through databroker
 dbname_data = "cms:data"
 search_kws = {
-'start_time' : "2017-01-01",
-'sample_savename' : 'YT',
+'start_time' : "2017-04-01",
+#'sample_savename' : 'PM-EG2876_recast',
+'sample_savename' : 'PM-EG2884_recast',
     }
+
+data_uids = ['cdc07e39-c810-4fe7-b129-e769712d96f6',
+        'f448325a-271e-418f-b99e-44d0b2dbb212',
+        '25eeaf1c-c0e6-4feb-9d83-891e8ec385c3',
+        '63c0e3e5-33a5-4559-96d5-7906a90677c6',
+        'e6459f4f-eeaf-4c73-8ebf-2c50c30df01a',
+        'a58f5674-a518-453b-bc80-d8b37afcdddd',
+        '06d4a249-832f-4fb2-b5ef-6e76383551f1']
+
 detector_key = 'pilatus300_image'
 noqbins = None # If none, circavg will find optimal number
 
@@ -118,24 +128,48 @@ def get_mask(imgtmp):
     mask = imgtmp
 
 def get_stitch(attr, *args, **kwargs):
-    print(attr['stitch'])
-    print("kwargs : {}".format(kwargs))
-    print("args : {}".format(args))
+    #print(attr['stitch'])
+    #print("kwargs : {}".format(kwargs))
+    #print("args : {}".format(args))
     return attr['stitch'],
 
+def get_exposure_time(attr, *args, **kwargs):
+    return attr['sample_exposure_time']
+
+def print_exposure(attr, **kwargs):
+    try:
+        print("exposure time from attr: {}".format(attr['sample_exposure_time']))
+    except Exception:
+        print("Cout not get exposure time")
+
+def norm_exposure(image=None, exposure_time=None, **kwargs):
+    return image/exposure_time
+
+def multiply(A, B):
+    return A*B
+
+def divide(A, B):
+    return A/B
+
+globaldict = dict()
 # This should be an interface
-def save_image_recent(sdoc, name=None):
+def save_image_recent(sdoc, fignum=None, name=None):
+    global globaldict
     # make sure it's not delayed
+    if fignum is None:
+        fignum = 20
     sdoc = compute(sdoc)[0]
     if name is None:
         name = 'recent.jpg'
     img = sdoc['args'][0]
-    plt.figure(20);
+    plt.figure(fignum);
     #plt.title("log10img")
     #plt.imshow(np.log10(img))
     plt.title("img")
     plt.imshow((img))
     plt.savefig(name)
+
+    globaldict[name] = img
     #from PIL import Image
     #im = Image.fromarray(img)
     #im.save(name)
@@ -143,15 +177,14 @@ def save_image_recent(sdoc, name=None):
 
 # Stream setup, datbroker data comes here (a header for now)
 sin = Stream(wrapper=delayed_wrapper)
-#inspect_stream(sin)
-# separate data from attributes
+
+#  separate data from attributes
 attributes = sin.apply(get_attributes)
-#inspect_stream(attributes)
 
-
+# get image from the input stream
 image = sin.select((detector_key,None))
 
-# calibration
+# calibration setup
 sin_calib, sout_calib = CalibrationStream(wrapper=delayed_wrapper)
 calib_qmap = sout_calib['q_maps']
 calibration = sout_calib['calibration']
@@ -159,62 +192,39 @@ origin = sout_calib['origin']
 
 # connect attributes to sin_calib
 attributes.apply(sin_calib.emit)
-#inspect_stream(attributes)
-stitch = attributes.map(get_stitch).select((0, 'stitch'))
-inspect_stream(stitch)
+attributes.map(print_exposure).apply(compute)
+
 
 # generate a mask
 mskstr = origin.map(mmg.generate)
 mask_stream = mskstr.select((0, 'mask'))
 # compute it to test later
 mask = mask_stream.apply(compute)
-mask_stream.select(('mask', None)).apply(save_image_recent, name="mask.png").apply(compute)
 
-# image goes here, one argument
-#sin_image = Stream(wrapper=delayed_wrapper)
-# first merge qmap with image, then erge mask_stream, but select component of
-# mask_stream first
+# circular average
 sin_image_qmap = image.merge(calib_qmap, mask_stream)
-
 sin_circavg, sout_circavg = CircularAverageStream(wrapper=delayed_wrapper)
-#s_circavgcalib.apply(compute).apply(print)
 sin_image_qmap.apply(sin_circavg.emit)
 
-#inspect_stream(sout_circavg)
-#sout_circavg.select([('sqx', None), ('sqy', None)]).map(plot_line).apply(compute)
-#image.map(plot_image).apply(compute)
-image.apply(save_image_recent, name="image.png")
-
-
-
-def multiply(img, mask):
-    return img*mask
+# image stitching
+stitch = attributes.map(get_stitch).select((0, 'stitch'))
+exposure_time = attributes.map(get_exposure_time).select((0, 'exposure_time'))
+exposure_mask = mask_stream.select(('mask', None)).merge(exposure_time.select(('exposure_time', None))).map(multiply)
+exposure_mask = exposure_mask.select((0, 'mask'))
 
 sin_imgstitch, sout_imgstitch = ImageStitchingStream(wrapper=delayed_wrapper)
 img_masked = image.merge(mask_stream.select(('mask',None))).map(multiply)
-img_mask_origin = img_masked.select((0,'image')).merge(mask_stream.select(('mask','mask')), origin.select((0, 'origin')), stitch)
+img_mask_origin = img_masked.select((0,'image')).merge(exposure_mask.select(('mask','mask')), origin.select((0, 'origin')), stitch)
 img_mask_origin.apply(sin_imgstitch.emit)
 
 
+# some plotting/sinks
+mask_stream.select(('mask', None)).apply(save_image_recent,fignum=21, name="mask.png").apply(compute)
+image.apply(save_image_recent, fignum=22, name="image.png").apply(compute)
+sout_imgstitch.select(('image', None)).apply(save_image_recent,fignum=23, name="stitched.png").apply(compute)
+image.apply(save_image_recent, fignum=24, name="img_time.png").apply(compute)
+sout_imgstitch.select(('mask', None)).apply(save_image_recent,fignum=25, name="stitch-mask.png").apply(compute)
 
-#mask.map(plot).apply(compute)
-
-
-
-# Add some inspection routines in the stream
-
-#inspect_stream(sout_imgstitch)
-#sout_imgstitch.select(('image',None)).map(plot_image).apply(compute)
-#sout_imgstitch.select(('image',None)).map(get_image).apply(compute)
-#sout_imgstitch.select(('mask',None)).map(get_mask).apply(compute)
-sout_imgstitch.select(('image', None)).apply(save_image_recent, name="stitched.png").apply(compute)
-#imgstitch_sink.select(0).map(plot_image).apply(compute)
-#imgstitch_sink.select(0).map(get_image).apply(compute)
-#imgstitch_sink.select(1).map(get_mask).apply(compute)
-
-#mask_stream.select(0).map(plot_image).apply(compute)
-#mask_stream.select(0).map(get_image).apply(compute)
-#mask_stream.select(('mask', None)).map(get_mask).apply(compute)
 
 
 
@@ -223,14 +233,18 @@ sout_imgstitch.select(('image', None)).apply(save_image_recent, name="stitched.p
 #sdoc_gen = source_databroker.search("cms:data", start_time="2017-01-01", stop_time="2017-04-01", sample_savename="YT")
 
 # read uids directly rather than search (search is slow, bypass for now)
-filename = os.path.expanduser("~/SciAnalysis-data/storage/YT_uids.txt")
-uids = list()
-with open(filename,"r") as f:
-    for ln in f:
-        ln = ln.strip("\n")
-        uids.append(ln)
+#filename = os.path.expanduser("~/SciAnalysis-data/storage/YT_uids.txt")
+#uids = list()
+#with open(filename,"r") as f:
+    #for ln in f:
+        #ln = ln.strip("\n")
+        #uids.append(ln)
 
-sdoc_gen = source_databroker.pullfromuids("cms:data", uids)
+
+# Emitting data
+
+#sdoc_gen = source_databroker.search(dbname_data, **search_kws)
+sdoc_gen = source_databroker.pullfromuids(dbname_data, data_uids)
 
 cnt = 0
 for sdoc in sdoc_gen:
@@ -241,54 +255,16 @@ for sdoc in sdoc_gen:
 
     cnt +=1
 
+    ## TODO : emit should maybe transform according to wrapper?
     sin.emit(delayed(sdoc))
 
 
-
-## emitting of data
-#sdoc = StreamDoc()
-#sdoc['attributes'] = scires = SciResult()
-#sdoc['attributes'] = dict(
-#        calibration_wavelength_A=1.,
-#        detector_SAXS_x0_pix=400,
-#        detector_SAXS_y0_pix=300,
-#        detector_SAXS_distance_m=5.,
-#)
-## add a random image
-#sdoc.add(np.random.uniform((500,500)))
-#attributes = sdoc['attributes']
-
-## input needs to be same as what wrapper works on
-## TODO : emit should maybe transform according to wrapper?
-#
-#arr=np.random.uniform(size=(619, 487))
-#sdoc = delayed(StreamDoc(args=arr))
-#sin_image.emit(sdoc)
-#
-#attributes = attributes.copy()
-#attributes['detector_SAXS_x0_pix']=300
-#sdoc = delayed(StreamDoc(args=attributes))
-#sin_calib.emit(sdoc)
-## input needs to be same as what wrapper works on
-## TODO : emit should maybe transform according to wrapper?
-#
-#arr=np.random.uniform(size=(619, 487))
-#sdoc = delayed(StreamDoc(args=arr))
-#sin_image.emit(sdoc)
-#
-#
-#attributes = attributes.copy()
-#attributes['detector_SAXS_y0_pix']=110
-#sdoc = delayed(StreamDoc(args=attributes))
-#sin_calib.emit(sdoc)
-## input needs to be same as what wrapper works on
-## TODO : emit should maybe transform according to wrapper?
-#
-#arr=np.random.uniform(size=(619, 487))
-#sdoc = delayed(StreamDoc(args=arr))
-#sin_image.emit(sdoc)
-#
-#
+# plot results
+img = globaldict['stitched.png']
+mask = globaldict['stitch-mask.png']
+plt.figure(25);
+plt.clf();
+plt.imshow(img/mask)
 
 
 ''' FAQ :
@@ -301,5 +277,8 @@ for sdoc in sdoc_gen:
         you need to make sure the input arguments match output. use select routine to help
         use inspect_stream to inspect stream at that point
 
+
+    some errors like "KeyError" may follow an initial error. make sure to
+        backtrace your errors all the way
 
     '''

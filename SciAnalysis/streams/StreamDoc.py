@@ -105,12 +105,20 @@ class StreamDoc(dict):
 
         return res
 
+    def repr(self):
+        mystr = "args : {}\n\n".format(self['args'])
+        mystr += "kwargs : {}\n\n".format(self['kwargs'])
+        mystr += "attributes : {}\n\n".format(self['attributes'])
+        mystr += "statistics : {}\n\n".format(self['statistics'])
+        return mystr
+
     def get_attributes(self):
         return StreamDoc(args=self['attributes'])
 
     def merge(self, newstreamdoc):
         ''' Merge another streamdoc into this one.
-            The new streamdoc's attributes/args/kwargs will override this one.
+            The new streamdoc's attributes/kwargs will override this one upon
+            collison.
         '''
         streamdoc = StreamDoc(self)
         streamdoc.add(args=newstreamdoc['args'], kwargs=newstreamdoc['kwargs'],
@@ -249,11 +257,12 @@ def parse_streamdoc(name):
                 statistics['status'] = "Failure"
                 type, value, traceback = sys.exc_info()
                 statistics['error_message'] = value
+                print("caught exception {}".format(value))
 
 
+            t2 = time.time()
             statistics['runtime'] = t1-t2
             statistics['runstart'] = t1
-            t2 = time.time()
 
             attributes['function_name'] = f.__name__
             attributes['stream_name'] = name
@@ -264,6 +273,7 @@ def parse_streamdoc(name):
             if isinstance(result, dict):
                 # NOTE : Order is not well defined here
                 # TODO : mark in documentation that order is not well defined
+                #print("result is dict: {}".format(result))
                 streamdoc.add(kwargs=result)
             else:
                 streamdoc.add(args=result)

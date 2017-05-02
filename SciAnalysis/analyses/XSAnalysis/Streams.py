@@ -115,7 +115,7 @@ def CalibrationStream(wrapper=None, keymap_name=None, detector=None):
     q_maps = q_maps.merge(angle_map.select( (0, 'angle_map')))
 
     # rename to kwargs (easier to inspect)
-    calib = calib.select( (0, 'calibration'))
+    calib = calib.select((0, 'calibration'))
 
     # they're relative sinks
     sout = dict(calibration=calib, q_maps=q_maps, origin=origin)
@@ -469,27 +469,46 @@ def ImageStitchingStream(wrapper=None):
             sin : source of stream
             sout
 
+        NOTE : you should normalize images by exposure time before giving to
+        this stream
+
     '''
     sin = Stream(wrapper=wrapper)
     # make the image, mask origin as the first three args
-    s2 = sin.select([('image', None), ('mask', None), ('origin', None)])
+    s2 = sin.select([('image', None), ('mask', None), ('origin', None), ('stitch', None)])
+    sout = sin
     sout = s2.map(pack).accumulate(xystitch_accumulate)
+
+    # debugging
+    #sout = sout.select([(0, 'image'), (1, 'mask'), (2, 'origin'), (3, 'stitch')])
+
     sout = sout.map(xystitch_result)
     return sin, sout
 
-def xystitch_result(img_acc, mask_acc, origin_acc):
+def xystitch_result(img_acc, mask_acc, origin_acc, stitch_acc):
+    ''' Stitch_acc may not be necessary, it should just be a binary flag.  But
+            could be generalized to a sequence number so I leave it.
+    '''
     img_acc = img_acc/mask_acc
-    mask_acc = mask_acc > 0
-    return dict(image=img_acc, mask=mask_acc, origin=origin_acc)
+    w = np.where(mask_acc==0)
+    img_acc[w] = 0
+    mask_acc = (mask_acc > 0).astype(int)
+    return dict(image=img_acc, mask=mask_acc, origin=origin_acc, stitch=stitch_acc)
 
 def xystitch_accumulate(prevstate, newstate):
     '''
 
         (assumes IMG and mask np arrays)
-        prevstate : IMG, mask, (x0, y0) triplet
-        nextstate : incoming IMG, mask, (x0, y0) triplet
+        prevstate : IMG, mask, (x0, y0), stitch
+        nextstate : incoming IMG, mask, (x0, y0), stitch
+
+        rules for stitch:
+            if next state 0, re-initialize
+            else : stitch from previous image
 
         returns accumulated state
+
+        Assumes calibration object has sample exposure time
 
         NOTE : x is cols, y is rows
             where img[rows][cols]
@@ -500,22 +519,25 @@ def xystitch_accumulate(prevstate, newstate):
                 good for shot noise limited regime)
     '''
 
-    img_next, mask_next, origin_next = newstate
+    img_next, mask_next, origin_next, stitch_next = newstate
     # just in case
-    img_next = img_next*(mask_next>0)
+    img_next = img_next*(mask_next > 0)
     shape_next = img_next.shape
 
     # logic for making new state
     # initialization:
-    if prevstate is None:
-        img_acc = img_next.copy()
+    if stitch_next == 0:
+        # re-initialize
+        img_acc = img_next*(mask_next > 0)
         shape_acc = img_acc.shape
         mask_acc = mask_next.copy()
         origin_acc = origin_next
-        return img_acc, mask_acc, origin_acc
-    else:
-        img_acc, mask_acc, origin_acc = prevstate
-        shape_acc = img_acc.shape
+        stitch_acc = 0
+        return img_acc, mask_acc, origin_acc, stitch_acc
+
+    # else, stitch
+    img_acc, mask_acc, origin_acc, stitch_acc = prevstate
+    shape_acc = img_acc.shape
 
     # logic for main iteration component
     # NOTE : In matplotlib, bottom and top are flipped (until plotting in
@@ -524,17 +546,21 @@ def xystitch_accumulate(prevstate, newstate):
     bounds_next = _getbounds2D(origin_next, shape_next)
     # check if image will fit in stitched image
     expandby = _getexpansion2D(bounds_acc, bounds_next)
-    print("need to expand by {}".format(expandby))
+    #print("need to expand by {}".format(expandby))
 
     img_acc = _expand2D(img_acc, expandby)
     mask_acc = _expand2D(mask_acc, expandby)
-    print("New shape : {}".format(img_acc.shape))
+    #print("New shape : {}".format(img_acc.shape))
 
     origin_acc = origin_acc[0] + expandby[2], origin_acc[1] + expandby[0]
     _placeimg2D(img_next, origin_next, img_acc, origin_acc)
     _placeimg2D(mask_next, origin_next, mask_acc, origin_acc)
 
-    return img_acc, mask_acc, origin_acc
+    stitch_acc = stitch_next
+    img_acc = img_acc*(mask_acc > 0)
+    mask_acc = mask_acc*(mask_acc > 0)
+
+    return img_acc, mask_acc, origin_acc, stitch_acc
 
 def _placeimg2D(img_source, origin_source, img_dest, origin_dest):
     ''' place source image into dest image. use the origins for

@@ -176,7 +176,7 @@ def make_submask(master_mask, master_cen, shape=None, origin=None,
     if blemish is not None:
         submask = submask*blemish
 
-    return submask
+    return submask*(submask > 0.5)
 
 
 
