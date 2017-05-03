@@ -334,7 +334,7 @@ def store_results_databroker(sdoc, dbname, external_writers={}):
     event_doc['seq_num'] = 1
 
     # then parse remaining data
-    for key, val in sdoc['outputs'].items():
+    for key, val in sdoc['kwargs'].items():
         if key[0] == '_':
             continue # ignore hidden keys
         # guess descriptor from data

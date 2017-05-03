@@ -258,14 +258,17 @@ def parse_streamdoc(name):
                 type, value, traceback = sys.exc_info()
                 statistics['error_message'] = value
                 print("caught exception {}".format(value))
+                #print("traceback:  {}".format(traceback.__dir__()))
 
 
             t2 = time.time()
             statistics['runtime'] = t1-t2
             statistics['runstart'] = t1
 
-            attributes['function_name'] = f.__name__
-            attributes['stream_name'] = name
+            if 'function_list' not in attributes:
+                attributes['function_list'] = list()
+            attributes['function_list'].append(f.__name__)
+            #print("Running function {}".format(f.__name__))
             # instantiate new stream doc
             streamdoc = StreamDoc(attributes=attributes)
             # load in attributes

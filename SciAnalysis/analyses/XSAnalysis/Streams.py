@@ -50,8 +50,8 @@ from SciAnalysis.interfaces.detectors import detectors2D
     Notes : load should be a separate function
 '''
 
-from streams.core import Stream
 
+from SciAnalysis.streams.core import Stream
 
 # Calibration for SAXS data
 # NOTE : Makes the assumption that the wrapper provides 'select' functionality
@@ -374,6 +374,8 @@ def CircularAverageStream(wrapper=None):
             straightforward. You need both a r_map in pixels from the center
             and the q_map for the actual q values.
 
+    TODO : Add options
+
     '''
     #TODO : extend file to mltiple writers?
     sin  = Stream(wrapper=wrapper)
@@ -483,13 +485,38 @@ def ImageStitchingStream(wrapper=None):
     #sout = sout.select([(0, 'image'), (1, 'mask'), (2, 'origin'), (3, 'stitch')])
 
     sout = sout.map(xystitch_result)
+
+    ''' Testing a way to control flow based on stitch param, still working on
+            it...
+    # NOTE : stitch also expected in attribute
+    def predicate(sdocs):
+        # make sure it's already filled
+        if len(sdocs) != 2:
+            return False
+        # look at latest doc
+        if sdocs[1]['attributes']['stitch'] == 0:
+            return True
+        else:
+            return False
+
+    def get_first(sdocs):
+        print("Great! got a stitch!")
+        # get earlier doc
+        return sdocs[0]
+
+    # only output when stitch complete, something like:
+    sout = sout.sliding_window(2)
+    sout = sout.filter(predicate).apply(get_first)
+    '''
+
     return sin, sout
 
 def xystitch_result(img_acc, mask_acc, origin_acc, stitch_acc):
     ''' Stitch_acc may not be necessary, it should just be a binary flag.  But
             could be generalized to a sequence number so I leave it.
     '''
-    img_acc = img_acc/mask_acc
+    w = np.where(mask_acc != 0)
+    img_acc[w] = img_acc[w]/mask_acc[w]
     w = np.where(mask_acc==0)
     img_acc[w] = 0
     mask_acc = (mask_acc > 0).astype(int)
@@ -568,6 +595,8 @@ def _placeimg2D(img_source, origin_source, img_dest, origin_dest):
     bounds_image = _getbounds2D(origin_source, img_source.shape)
     left_bound = origin_dest[1] + bounds_image[0]
     low_bound = origin_dest[0] + bounds_image[2]
+    low_bound = int(low_bound)
+    left_bound = int(left_bound)
     img_dest[low_bound:low_bound+img_source.shape[0],
              left_bound:left_bound+img_source.shape[1]] += img_source
 
@@ -613,107 +642,57 @@ def _expand2D(img, expandby):
     return img_tmp
 
 
+def ThumbStream(wrapper=None, blur=None, crop=None, resize=None):
+    ''' Thumbnail stream
 
-#### Still need to be streams
+        inputs :
+            image (argument)
 
-class Thumbnail(Protocol):
-    ''' Compute a thumb
+        output :
+            reduced image
+
     '''
-    def run(image=None, mask=None, blur=None, crop=None, resize=None, type='linear', vmin=None, vmax=None):
-        '''
-            type :
-                linear : don't do anything to image
-                log : take log
-        '''
-        img = image
-        if mask is not None:
-            img = img*mask
-        # ensure it's delayed
-        #img = delayed(img, pure=True).get()
-        if blur is not None:
-            img = _blur(img, blur)
-        if crop is not None:
-            img = _crop(img, crop)
-        if resize is not None:
-            img = _resize(img, resize)
-        if type == 'log':
-            logimg = True
-        else:
-            logimg = False
-        if vmin is None or vmax is None:
-            # TODO :make sure hist not empty?
-            hist, bin_edges = np.histogram(image)
-            cts = np.cumsum(hist)/np.sum(hist)
-            if vmin is None:
-                wstart,  = np.where(cts > .01)
-                if len(wstart) > 0:
-                    vmin = bin_edges[wstart[0]]
-                else:
-                    vmin = np.min(img)
-            if vmax is None:
-                wend, = np.where(cts < .99)
-                if len(wend) > 0:
-                    wend = wend[len(wend)-1]
-                    vmax = bin_edges[wend]
-                else:
-                    vmax = np.max(img)
-                    
-        # bytescale the image
-        img = _normalize(img, vmin, vmax, logimg=logimg)
-        return dict(thumb=img)
+    sin = Stream(wrapper=wrapper)
+    s1 = sin.add_attributes(stream_name="ThumbStream")
+    s1 = s1.map(_blur)
+    s1 = s1.map(_crop)
+    sout = s1.map(_resize).select((0, 'thumb'))
 
-# now normalize each image
-def _normalize(img, mn, mx, logimg=True):
-    ''' normalize to a uint8 
-        This is also known as byte scaling.
-    '''
-    dynamic_range = 2**8-1
-    if logimg:
-        img = np.log10(img)
-        w = np.where(np.isinf(img))
-        img[w] = 0
-        mn = np.log10(mn)
-        mx = np.log10(mx)
-    img = img-mn
-    img /= (mx-mn)
-    img *= dynamic_range
-    img = _threshold_max(_threshold_min(img, 0), dynamic_range)#np.minimum(np.maximum(img, 0), dynamic_range)
-    img = img.astype(np.uint8)
-    return img
+    return sin, sout
 
-def _threshold_min(a, val):
-    ''' threshold a with min val val.'''
-    #subtract, then make negative zero
-    a = a - val
-    # negative values should be zero
-    a = (a + np.abs(a))//2
-    a = a + val
-    return a
-
-def _threshold_max(a, val):
-    ''' threshold a with max val val.'''
-    #subtract, then make negative zero
-    a = val - a
-    # negative values should be zero
-    a = (a + np.abs(a))//2
-    a = val - a
-    return a
-
-
-from scipy.ndimage.filters import gaussian_filter
-def _blur(img, sigma):
-    img = gaussian_filter(img, sigma)
-    return img
+def _blur(img, sigma=None, **kwargs):
+    if sigma is not None:
+        from scipy.ndimage.filters import gaussian_filter
+        img = gaussian_filter(img, sigma)
+    return img,
 
 # TODO : fix
-def _crop(img, crop):
-    x0, x1, y0, y1 = crop
-    img = img[y0:y1, x0:x1]
-    return img
+def _crop(img, crop=None, **kwargs):
+    if crop is not None:
+        x0, x1, y0, y1 = crop
+        img = img[y0:y1, x0:x1]
+    return img,
 
-# TODO :implement
-def _resize(img, resize):
-    return img
+def _resize(img, resize=None, **kwargs):
+    ''' Performs simple pixel binning
+
+        resize bins by that number
+            resize=2 bins 2x2 pixels
+        resize must be an integer > 1 and also smaller than the image shape
+    '''
+    newimg = img
+    if resize is not None:
+        resize = int(resize)
+        if resize > 1:
+            # cut off edges
+            newimg = np.zeros_like(img[resize-1::resize, resize-1::resize])
+            newdims = np.array(newimg.shape)*resize
+            img = img[:newdims[0], :newdims[1]]
+            for i in range(resize):
+                for j in range(resize):
+                    newimg += img[i::resize, j::resize]
+            newimg = newimg/resize**2
+    return newimg,
 
 # TODO : add pixel procesing/thresholding threshold_pixels((2**32-1)-1) # Eiger inter-module gaps
 # TODO : add thumb

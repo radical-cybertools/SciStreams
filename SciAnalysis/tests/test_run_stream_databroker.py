@@ -32,7 +32,7 @@ from SciAnalysis.interfaces.SciResult import SciResult
 # the stream version
 from SciAnalysis.analyses.XSAnalysis.Data import MasterMask, MaskGenerator
 from SciAnalysis.analyses.XSAnalysis.Streams import CalibrationStream,\
-    CircularAverageStream, ImageStitchingStream
+    CircularAverageStream, ImageStitchingStream, ThumbStream
 
 # Streams include stuff
 from SciAnalysis.streams.StreamDoc import StreamDoc, parse_streamdoc
@@ -220,6 +220,10 @@ img_masked = image.merge(mask_stream.select(('mask',None))).map(multiply)
 img_mask_origin = img_masked.select((0,'image')).merge(exposure_mask.select(('mask','mask')), origin.select((0, 'origin')), stitch)
 img_mask_origin.apply(sin_imgstitch.emit)
 
+#thumbstream
+sin_thumb, sout_thumb = ThumbStream(wrapper=delayed_wrapper, blur=1, resize=2)
+image.apply(sin_thumb.emit)
+
 
 # some plotting/sinks
 mask_stream.select(('mask', None)).apply(save_image_recent,fignum=21, name="mask.png").apply(compute)
@@ -227,7 +231,24 @@ image.apply(save_image_recent, fignum=22, name="image.png").apply(compute)
 sout_imgstitch.select(('image', None)).apply(save_image_recent,fignum=23, name="stitched.png").apply(compute)
 image.apply(save_image_recent, fignum=24, name="img_time.png").apply(compute)
 sout_imgstitch.select(('mask', None)).apply(save_image_recent,fignum=25, name="stitch-mask.png").apply(compute)
+sout_thumb.select(('thumb', None)).apply(save_image_recent,fignum=26, name="thumb.png").apply(compute)
 
+
+from SciAnalysis.interfaces.databroker.databroker import store_results_databroker
+def sink_databroker(sdoc, dbname, external_writers={}):
+    store_results_databroker(compute(sdoc)[0], dbname, external_writers=external_writers)
+
+
+# Sinking to databroker certain parts of stream
+# TODO : mention in documentation that results must be in kwargs to be saved!
+
+# TODO : compute should be in the sink somehow
+# this contains the compute
+sout_thumb.apply(sink_databroker, "cms:analysis", {'thumb' : 'npy'})
+image.select((0, "image")).apply(sink_databroker, "cms:analysis", {'image' : 'npy'})
+
+from SciAnalysis.interfaces.databroker.databases import databases
+cadb = databases['cms']['analysis']
 
 
 
@@ -265,9 +286,6 @@ for sdoc in sdoc_gen:
 # plot results
 img = globaldict['stitched.png']
 mask = globaldict['stitch-mask.png']
-plt.figure(25);
-plt.clf();
-plt.imshow(img/mask)
 
 
 ''' FAQ :

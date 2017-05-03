@@ -113,6 +113,21 @@ class Stream(object):
             return obj.select(elems, **kwargs)
         return apply(select, self, elems, **kwargs)
 
+    # TODO : Make Stream inherit all this
+    def get_attributes(self):
+        """ Access the select attribute of the stream."""
+        def get_attributes(obj):
+            return obj.get_attributes()
+
+        return apply(get_attributes, self)
+
+    def add_attributes(self, **attrs):
+        ''' Set the attributes in stream.'''
+        def add_attributes(obj):
+            obj.add(attributes=attrs)
+            return obj
+        return apply(add_attributes, self)
+
     def apply(self, func, *args, **kwargs):
         """ Apply a function to every element in the stream on the header level.
             Note : The header/data separation is define by the function wrapper.
