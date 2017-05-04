@@ -20,6 +20,9 @@
 #  Search for "TODO" below.
 ################################################################################
 
+from SciAnalysis.globals import cache, client
+cache.register()
+
 
 # import the analysis databroker
 from uuid import uuid4
@@ -93,7 +96,6 @@ def CalibrationStream(wrapper=None, keymap_name=None, detector=None):
 
     # getting some hard-coded defaults
     keymap, defaults = _get_keymap_defaults(keymap_name)
-    from dask import compute
 
     # the pipeline flow defined here
     sin = Stream(wrapper=wrapper)
@@ -101,6 +103,10 @@ def CalibrationStream(wrapper=None, keymap_name=None, detector=None):
     calib = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
 
     q_maps = calib.map(_generate_qxyz_maps)
+    # compute it so that it's cached on cluster
+    # TODO : figure out best way to make this dask and non dask compatible
+    #q_maps.apply(print)
+    #q_maps.apply(compute, pure=True)
     #qx_map, qy_map, qz_map, qr_map = q_maps.multiplex(4)
     # just select first 3 args
     # TODO : add to  FAQ "Integer tuple pairs not accepted" when giving (0,1,2)
@@ -478,36 +484,37 @@ def ImageStitchingStream(wrapper=None):
     sin = Stream(wrapper=wrapper)
     # make the image, mask origin as the first three args
     s2 = sin.select([('image', None), ('mask', None), ('origin', None), ('stitch', None)])
-    sout = sin
     sout = s2.map(pack).accumulate(xystitch_accumulate)
 
     # debugging
     #sout = sout.select([(0, 'image'), (1, 'mask'), (2, 'origin'), (3, 'stitch')])
 
+    from dask.delayed import compute
+    sout.apply(compute).apply(print)
     sout = sout.map(xystitch_result)
 
-    ''' Testing a way to control flow based on stitch param, still working on
-            it...
-    # NOTE : stitch also expected in attribute
-    def predicate(sdocs):
-        # make sure it's already filled
-        if len(sdocs) != 2:
-            return False
-        # look at latest doc
-        if sdocs[1]['attributes']['stitch'] == 0:
-            return True
-        else:
-            return False
-
-    def get_first(sdocs):
-        print("Great! got a stitch!")
-        # get earlier doc
-        return sdocs[0]
-
-    # only output when stitch complete, something like:
-    sout = sout.sliding_window(2)
-    sout = sout.filter(predicate).apply(get_first)
-    '''
+    #    Testing a way to control flow based on stitch param, still working on
+    #            it...
+    #    NOTE : stitch also expected in attribute
+    #    def predicate(sdocs):
+    #        # make sure it's already filled
+    #        if len(sdocs) != 2:
+    #            return False
+    #        # look at latest doc
+    #        if sdocs[1]['attributes']['stitch'] == 0:
+    #            return True
+    #        else:
+    #            return False
+    #
+    #    def get_first(sdocs):
+    #        print("Great! got a stitch!")
+    #        # get earlier doc
+    #        return sdocs[0]
+    #
+    #    # only output when stitch complete, something like:
+    #    sout = sout.sliding_window(2)
+    #    sout = sout.filter(predicate).apply(get_first)
+    #    
 
     return sin, sout
 
@@ -515,11 +522,17 @@ def xystitch_result(img_acc, mask_acc, origin_acc, stitch_acc):
     ''' Stitch_acc may not be necessary, it should just be a binary flag.  But
             could be generalized to a sequence number so I leave it.
     '''
+    from SciAnalysis.globals import tmp_cache
+    tmp_cache.put('mask_acc', mask_acc, 10)
+    tmp_cache.put('img_acc', img_acc, 10)
+
+    mask_acc = mask_acc.astype(int)
     w = np.where(mask_acc != 0)
     img_acc[w] = img_acc[w]/mask_acc[w]
     w = np.where(mask_acc==0)
     img_acc[w] = 0
     mask_acc = (mask_acc > 0).astype(int)
+
     return dict(image=img_acc, mask=mask_acc, origin=origin_acc, stitch=stitch_acc)
 
 def xystitch_accumulate(prevstate, newstate):

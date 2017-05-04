@@ -6,6 +6,10 @@
 from functools import wraps
 import time
 import sys
+from uuid import uuid4
+
+# convenience routine to return a hash of the streamdoc
+from dask.delayed import tokenize
 
 class StreamDoc(dict):
     def __init__(self, streamdoc=None, args=(), kwargs={}, attributes={}):
@@ -19,21 +23,18 @@ class StreamDoc(dict):
                 statistics : some statistics of the stream that generated this
                     It can be anything, like run_start, run_stop etc
         '''
+        # initialize the dictionary class
         super(StreamDoc, self).__init__(self)
-        # TODO : make attributes a separate class with its own get/set and
-        # parsing
-        # TODO : make option whether not attributes should be inherited?
-        # (global attributes). Such an implementation requires a
-        # 'global_attributes' name list
-        # TODO : functions to select, remove replace etc
-        # TODO : join method? join(override=True) for ex where override says
-        # what to do with conflicting attributes
 
-        # initialize
+        # initialize the metadata and kwargs
         self['attributes'] = dict()
         self['kwargs'] = dict()
         self['args'] = list()
+
+        # these two pieces are specific to the run
         self['statistics'] = dict()
+        self['uid'] = str(uuid4())
+
         # needed to distinguish that it is a StreamDoc by stream methods
         self['_StreamDoc'] = 'StreamDoc v1.0'
 
@@ -105,6 +106,25 @@ class StreamDoc(dict):
 
         return res
 
+    def tokenize(self):
+        ''' Get the properties specific to data. So args and kwargs.
+            Don't return the attributes, stats or uid which are specific to a
+        StreamDoc instance.
+
+            This is a convenience routine meant for routines that cache results.
+            Some identifier is necessary to cache the results.
+        '''
+        args = self['args']
+        kwargs = self['kwargs']
+        hsh = tokenize(*args, **kwargs)
+        # If stream name is given, make hash easier to read by giving the stream name
+        if 'function_list' in self['attributes']:
+            funlist = self['attributes']['function_list']
+            last_func_name = funlist[len(funlist)-1]
+            hsh = last_func_name + "-" + hsh
+        print("tokenized {}".format(hsh))
+        return hsh
+
     def repr(self):
         mystr = "args : {}\n\n".format(self['args'])
         mystr += "kwargs : {}\n\n".format(self['kwargs'])
@@ -125,7 +145,6 @@ class StreamDoc(dict):
                       attributes=newstreamdoc['attributes'])
         return streamdoc
 
-    # TODO : allow partial remapping both for args and kwargs
     def select(self, mapping):
         ''' remap args and kwargs
             combinations can be any one of the following:
@@ -267,6 +286,8 @@ def parse_streamdoc(name):
 
             if 'function_list' not in attributes:
                 attributes['function_list'] = list()
+            else:
+                attributes['function_list'] = attributes['function_list'].copy()
             attributes['function_list'].append(f.__name__)
             #print("Running function {}".format(f.__name__))
             # instantiate new stream doc
@@ -274,9 +295,6 @@ def parse_streamdoc(name):
             # load in attributes
             # Save outputs to StreamDoc
             if isinstance(result, dict):
-                # NOTE : Order is not well defined here
-                # TODO : mark in documentation that order is not well defined
-                #print("result is dict: {}".format(result))
                 streamdoc.add(kwargs=result)
             else:
                 streamdoc.add(args=result)

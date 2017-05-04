@@ -562,6 +562,22 @@ class merge(Stream):
         elif len(L) > self.maxsize:
             return self.condition.wait()
 
+class split(Stream):
+    def __init__(self, child, splitfunc, n=100, loop=None):
+        self.queue = Queue(maxsize=n)
+        Stream.__init__(self, child, loop=loop)
+
+        self.loop.add_callback(self.cb)
+
+    def update(self, x, who=None):
+        return self.queue.put(x)
+
+    @gen.coroutine
+    def cb(self):
+        while True:
+            x = yield self.queue.get()
+            yield self.emit(x)
+
 
 class zip(Stream):
     def __init__(self, *children, **kwargs):
