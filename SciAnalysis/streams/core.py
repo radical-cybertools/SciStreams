@@ -107,11 +107,11 @@ class Stream(object):
         return map(func, self, **kwargs)
 
     # TODO : Make Stream inherit all this
-    def select(self, elems, **kwargs):
+    def select(self, *elems, **kwargs):
         """ Access the select attribute of the stream."""
-        def select(obj, elems):
-            return obj.select(elems, **kwargs)
-        return apply(select, self, elems, **kwargs)
+        def select(obj, *elems):
+            return obj.select(*elems, **kwargs)
+        return apply(select, self, *elems, **kwargs)
 
     # TODO : Make Stream inherit all this
     def get_attributes(self):
@@ -333,6 +333,22 @@ class Stream(object):
         [0, 10, 20, 30, 40]
         """
         L = []
+        Sink(L.append, self)
+        return L
+
+    def sink_to_deque(self, maxlen=None):
+        """ Append all elements of a stream to a deque as they come in
+
+        Examples
+        --------
+        >>> source = Stream()
+        >>> L = source.map(lambda x: 10 * x).sink_to_list()
+        >>> for i in range(5):
+        ...     source.emit(i)
+        >>> L
+        [0, 10, 20, 30, 40]
+        """
+        L = deque(maxlen=maxlen)
         Sink(L.append, self)
         return L
 

@@ -103,6 +103,8 @@ def CalibrationStream(wrapper=None, keymap_name=None, detector=None):
     calib = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
 
     q_maps = calib.map(_generate_qxyz_maps)
+    # for distributed regime, store intermediate values
+    q_maps.apply(client.compute).sink_to_deque(maxlen=1000)
     # compute it so that it's cached on cluster
     # TODO : figure out best way to make this dask and non dask compatible
     #q_maps.apply(print)
@@ -111,12 +113,12 @@ def CalibrationStream(wrapper=None, keymap_name=None, detector=None):
     # just select first 3 args
     # TODO : add to  FAQ "Integer tuple pairs not accepted" when giving (0,1,2)
     # for ex instaead of [0,1,2]
-    q_map = q_maps.select([0,1,2]).map(_generate_q_map)
+    q_map = q_maps.select(0,1,2).map(_generate_q_map)
     angle_map = calib.map(_generate_angle_map)
     origin = calib.map(get_beam_center)
 
     # make final qmap stream
-    q_maps = q_maps.select([(0, 'qx_map'), (1, 'qy_map'), (2, 'qz_map'), (3, 'qr_map')])
+    q_maps = q_maps.select((0, 'qx_map'), (1, 'qy_map'), (2, 'qz_map'), (3, 'qr_map'))
     q_maps = q_maps.merge(q_map.select( (0, 'q_map')))
     q_maps = q_maps.merge(angle_map.select( (0, 'angle_map')))
 
@@ -483,14 +485,13 @@ def ImageStitchingStream(wrapper=None):
     '''
     sin = Stream(wrapper=wrapper)
     # make the image, mask origin as the first three args
-    s2 = sin.select([('image', None), ('mask', None), ('origin', None), ('stitch', None)])
+    s2 = sin.select(('image', None), ('mask', None), ('origin', None), ('stitch', None))
     sout = s2.map(pack).accumulate(xystitch_accumulate)
 
     # debugging
     #sout = sout.select([(0, 'image'), (1, 'mask'), (2, 'origin'), (3, 'stitch')])
 
     from dask.delayed import compute
-    sout.apply(compute).apply(print)
     sout = sout.map(xystitch_result)
 
     #    Testing a way to control flow based on stitch param, still working on
@@ -527,10 +528,11 @@ def xystitch_result(img_acc, mask_acc, origin_acc, stitch_acc):
     tmp_cache.put('img_acc', img_acc, 10)
 
     mask_acc = mask_acc.astype(int)
+    # need to make a copy
+    img_acc_old = img_acc
+    img_acc = np.zeros_like(img_acc_old)
     w = np.where(mask_acc != 0)
-    img_acc[w] = img_acc[w]/mask_acc[w]
-    w = np.where(mask_acc==0)
-    img_acc[w] = 0
+    img_acc[w] = img_acc_old[w]/mask_acc[w]
     mask_acc = (mask_acc > 0).astype(int)
 
     return dict(image=img_acc, mask=mask_acc, origin=origin_acc, stitch=stitch_acc)

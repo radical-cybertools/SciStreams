@@ -145,7 +145,7 @@ class StreamDoc(dict):
                       attributes=newstreamdoc['attributes'])
         return streamdoc
 
-    def select(self, mapping):
+    def select(self, *mapping):
         ''' remap args and kwargs
             combinations can be any one of the following:
 
@@ -169,8 +169,9 @@ class StreamDoc(dict):
                 strs and arg elems must be ints to accomplish this instead
         '''
         #print("IN STREAMDOC -> SELECT")
-        if not isinstance(mapping, list):
-            mapping = [mapping]
+        # TODO : take args instead
+        #if not isinstance(mapping, list):
+            #mapping = [mapping]
         streamdoc = StreamDoc(self)
         newargs = list()
         newkwargs = dict()
