@@ -7,9 +7,20 @@ from functools import wraps
 import time
 import sys
 from uuid import uuid4
+from streams.core import Stream as Stream_orig, map
+
+class Stream(Stream_orig):
+    # blindlgy pass kwargs
+    def select(self, *selection, **kwargs):
+        return map(self.select, self, selection=selection, raw=True)
 
 # convenience routine to return a hash of the streamdoc
 from dask.delayed import tokenize
+
+def select(s1, *args):
+    def select(sdoc, selection=args):
+        return sdoc.select(*args)
+    return s1.map(select, selection=args, raw=True)
 
 class StreamDoc(dict):
     def __init__(self, streamdoc=None, args=(), kwargs={}, attributes={}):
@@ -60,6 +71,15 @@ class StreamDoc(dict):
         self['kwargs'].update(kwargs)
         self['attributes'].update(attributes)
         self['statistics'].update(statistics)
+
+    def __stream_map__(self, func, **kwargs):
+            return parse_streamdoc("map")(func)(self, **kwargs)
+
+    def __stream_reduce__(self, func, accumulator):
+            return parse_streamdoc("reduce")(func)(accumulator, self)
+
+    def __stream_merge__(self, *others):
+        return self.merge(*others)
 
     @property
     def args(self):
@@ -135,17 +155,18 @@ class StreamDoc(dict):
     def get_attributes(self):
         return StreamDoc(args=self['attributes'])
 
-    def merge(self, newstreamdoc):
+    def merge(self, *newstreamdocs):
         ''' Merge another streamdoc into this one.
             The new streamdoc's attributes/kwargs will override this one upon
             collison.
         '''
         streamdoc = StreamDoc(self)
-        streamdoc.add(args=newstreamdoc['args'], kwargs=newstreamdoc['kwargs'],
-                      attributes=newstreamdoc['attributes'])
+        for newstreamdoc in newstreamdocs:
+            streamdoc.add(args=newstreamdoc['args'], kwargs=newstreamdoc['kwargs'],
+                        attributes=newstreamdoc['attributes'])
         return streamdoc
 
-    def select(self, *mapping):
+    def select(self, selection=[]):
         ''' remap args and kwargs
             combinations can be any one of the following:
 
@@ -172,6 +193,7 @@ class StreamDoc(dict):
         # TODO : take args instead
         #if not isinstance(mapping, list):
             #mapping = [mapping]
+        mapping = selection
         streamdoc = StreamDoc(self)
         newargs = list()
         newkwargs = dict()

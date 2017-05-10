@@ -1,8 +1,8 @@
 from .core import jpegloader, pngloader, hdf5loader, npyloader
 from .core import jpegwriter, pngwriter
 import numpy as np
-from SciAnalysis.interfaces.SciResult import SciResult
 
+from SciAnalysis.interfaces.StreamDoc import StreamDoc
 
 # Simple cloass to normalize way files are read
 # Add to _FORMATSPECS and _REQUIREDKEYS to handle more files
@@ -69,7 +69,8 @@ class FileDesc(dict):
         ''' Get returns a SciResult.
 
         '''
-        scires = SciResult()
+        # TODO : fix
+        scires = StreamDoc()
         if '_data' not in self:
             self.load()
         scires['output_names'] = ['data']

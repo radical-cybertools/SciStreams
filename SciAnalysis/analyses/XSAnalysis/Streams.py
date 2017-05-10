@@ -38,10 +38,6 @@ from scipy import ndimage
 from collections import ChainMap
 from SciAnalysis.data.Singlet import Singlet
 
-# internals
-from SciAnalysis.analyses.Protocol import Protocol
-from SciAnalysis.interfaces.SciResult import parse_sciresults
-
 # Sources
 from SciAnalysis.interfaces.databroker import databroker as source_databroker
 from SciAnalysis.interfaces.file import file as source_file
@@ -54,11 +50,12 @@ from SciAnalysis.interfaces.detectors import detectors2D
 '''
 
 
-from SciAnalysis.streams.core import Stream
+from streams.core import Stream
+from SciAnalysis.interfaces.StreamDoc import select
 
 # Calibration for SAXS data
 # NOTE : Makes the assumption that the wrapper provides 'select' functionality
-def CalibrationStream(wrapper=None, keymap_name=None, detector=None):
+def CalibrationStream(keymap_name=None, detector=None):
     '''
         This returns a stream of calibration methods.
 
@@ -98,13 +95,14 @@ def CalibrationStream(wrapper=None, keymap_name=None, detector=None):
     keymap, defaults = _get_keymap_defaults(keymap_name)
 
     # the pipeline flow defined here
-    sin = Stream(wrapper=wrapper)
+    sin = Stream()
     calib = sin.map(load_calib_dict, keymap=keymap, defaults=defaults)
     calib = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
 
     q_maps = calib.map(_generate_qxyz_maps)
     # for distributed regime, store intermediate values
-    q_maps.apply(client.compute).sink_to_deque(maxlen=1000)
+    # TODO ; re-implement sink-to-deque
+    q_maps.map(client.compute, raw=True)#.sink_to_deque(maxlen=1000)
     # compute it so that it's cached on cluster
     # TODO : figure out best way to make this dask and non dask compatible
     #q_maps.apply(print)
@@ -113,17 +111,17 @@ def CalibrationStream(wrapper=None, keymap_name=None, detector=None):
     # just select first 3 args
     # TODO : add to  FAQ "Integer tuple pairs not accepted" when giving (0,1,2)
     # for ex instaead of [0,1,2]
-    q_map = q_maps.select(0,1,2).map(_generate_q_map)
+    q_map = select(q_maps,0,1,2).map(_generate_q_map)
     angle_map = calib.map(_generate_angle_map)
     origin = calib.map(get_beam_center)
 
     # make final qmap stream
-    q_maps = q_maps.select((0, 'qx_map'), (1, 'qy_map'), (2, 'qz_map'), (3, 'qr_map'))
-    q_maps = q_maps.merge(q_map.select( (0, 'q_map')))
-    q_maps = q_maps.merge(angle_map.select( (0, 'angle_map')))
+    q_maps = select(q_maps, (0, 'qx_map'), (1, 'qy_map'), (2, 'qz_map'), (3, 'qr_map'))
+    q_maps = q_maps.zip(select(q_map, (0, 'q_map')))
+    q_maps = q_maps.zip(select(angle_map, (0, 'angle_map')))
 
     # rename to kwargs (easier to inspect)
-    calib = calib.select((0, 'calibration'))
+    calib = select(calib, (0, 'calibration'))
 
     # they're relative sinks
     sout = dict(calibration=calib, q_maps=q_maps, origin=origin)
@@ -348,7 +346,7 @@ def _generate_angle_map(calibration):
     return M
 
 
-def CircularAverageStream(wrapper=None):
+def CircularAverageStream():
     ''' Circular average stream.
 
         Inputs :
@@ -386,7 +384,7 @@ def CircularAverageStream(wrapper=None):
 
     '''
     #TODO : extend file to mltiple writers?
-    sin  = Stream(wrapper=wrapper)
+    sin  = Stream()
     sout = sin.map(circavg)
     return sin, sout
 
@@ -467,7 +465,7 @@ def pack(*args, **kwargs):
     return args
 
 ### Image stitching Stream
-def ImageStitchingStream(wrapper=None):
+def ImageStitchingStream():
     '''
         Image stitching
         Inputs:
@@ -483,9 +481,9 @@ def ImageStitchingStream(wrapper=None):
         this stream
 
     '''
-    sin = Stream(wrapper=wrapper)
+    sin = Stream()
     # make the image, mask origin as the first three args
-    s2 = sin.select(('image', None), ('mask', None), ('origin', None), ('stitch', None))
+    s2 = select(sin, ('image', None), ('mask', None), ('origin', None), ('stitch', None))
     sout = s2.map(pack).accumulate(xystitch_accumulate)
 
     # debugging
@@ -671,7 +669,7 @@ def ThumbStream(wrapper=None, blur=None, crop=None, resize=None):
     s1 = sin.add_attributes(stream_name="ThumbStream")
     s1 = s1.map(_blur)
     s1 = s1.map(_crop)
-    sout = s1.map(_resize).select((0, 'thumb'))
+    sout = select(s1.map(_resize), (0, 'thumb'))
 
     return sin, sout
 

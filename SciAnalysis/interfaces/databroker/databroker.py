@@ -9,7 +9,7 @@ from databroker.broker import Header
 import json
 
 from SciAnalysis.interfaces.databroker.writers_custom import writers_dict as _writers_dict
-from SciAnalysis.streams.StreamDoc import StreamDoc
+from SciAnalysis.interfaces.StreamDoc import StreamDoc
 from metadatastore.core import NoEventDescriptors
 
 

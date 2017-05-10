@@ -28,7 +28,6 @@ from collections import ChainMap
 
 import numpy as np
 
-from SciAnalysis.interfaces.SciResult import parse_sciresults
 from SciAnalysis.interfaces.detectors import detectors2D
 
 from scipy.interpolate import RegularGridInterpolator
