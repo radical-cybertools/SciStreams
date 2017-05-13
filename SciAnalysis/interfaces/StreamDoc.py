@@ -7,23 +7,13 @@ from functools import wraps
 import time
 import sys
 from uuid import uuid4
-from streams.core import Stream as Stream_orig, map
-
-class Stream(Stream_orig):
-    # blindlgy pass kwargs
-    def select(self, *selection, **kwargs):
-        return map(self.select, self, selection=selection, raw=True)
+from SciAnalysis.interfaces.streams import Stream
 
 # convenience routine to return a hash of the streamdoc
 from dask.delayed import tokenize
 
-def select(s1, *args):
-    def select(sdoc, selection=args):
-        return sdoc.select(*args)
-    return s1.map(select, selection=args, raw=True)
-
 class StreamDoc(dict):
-    def __init__(self, streamdoc=None, args=(), kwargs={}, attributes={}):
+    def __init__(self, streamdoc=None, args=(), kwargs={}, attributes={}, wrapper=None):
         ''' A generalized document meant to be parsed by Streams.
 
             Components:
@@ -34,6 +24,7 @@ class StreamDoc(dict):
                 statistics : some statistics of the stream that generated this
                     It can be anything, like run_start, run_stop etc
         '''
+        self._wrapper = wrapper
         # initialize the dictionary class
         super(StreamDoc, self).__init__(self)
 
@@ -57,9 +48,11 @@ class StreamDoc(dict):
         self.add(args=args, kwargs=kwargs, attributes=attributes)
 
     def updatedoc(self, streamdoc):
+        #print("in StreamDoc : {}".format(streamdoc))
         self.add(args=streamdoc['args'], kwargs=streamdoc['kwargs'],
                  attributes=streamdoc['attributes'],
                  statistics=streamdoc['statistics'])
+        self._wrapper = streamdoc._wrapper
 
     def add(self, args=[], kwargs={}, attributes={}, statistics={}):
         ''' add args and kwargs'''
@@ -72,14 +65,14 @@ class StreamDoc(dict):
         self['attributes'].update(attributes)
         self['statistics'].update(statistics)
 
-    def __stream_map__(self, func, **kwargs):
-            return parse_streamdoc("map")(func)(self, **kwargs)
+    #def __stream_map__(self, func, **kwargs):
+        #return parse_streamdoc("map")(func)(self, **kwargs)
 
-    def __stream_reduce__(self, func, accumulator):
-            return parse_streamdoc("reduce")(func)(accumulator, self)
+    #def __stream_reduce__(self, func, accumulator):
+        #return parse_streamdoc("reduce")(func)(accumulator, self)
 
-    def __stream_merge__(self, *others):
-        return self.merge(*others)
+    #def __stream_merge__(self, *others):
+        #return self.merge(*others)
 
     @property
     def args(self):
@@ -142,7 +135,7 @@ class StreamDoc(dict):
             funlist = self['attributes']['function_list']
             last_func_name = funlist[len(funlist)-1]
             hsh = last_func_name + "-" + hsh
-        print("tokenized {}".format(hsh))
+        #print("tokenized {}".format(hsh))
         return hsh
 
     def repr(self):
@@ -152,6 +145,11 @@ class StreamDoc(dict):
         mystr += "statistics : {}\n\n".format(self['statistics'])
         return mystr
 
+    def add_attributes(self, **attrs):
+        #print("adding attributes : {}".format(attrs))
+        self.add(attributes=attrs)
+        return self
+
     def get_attributes(self):
         return StreamDoc(args=self['attributes'])
 
@@ -160,13 +158,13 @@ class StreamDoc(dict):
             The new streamdoc's attributes/kwargs will override this one upon
             collison.
         '''
+        #print("in merge : {}".format(newstreamdocs[0]))
         streamdoc = StreamDoc(self)
         for newstreamdoc in newstreamdocs:
-            streamdoc.add(args=newstreamdoc['args'], kwargs=newstreamdoc['kwargs'],
-                        attributes=newstreamdoc['attributes'])
+            streamdoc.updatedoc(newstreamdoc)
         return streamdoc
 
-    def select(self, selection=[]):
+    def select(self, *mapping):
         ''' remap args and kwargs
             combinations can be any one of the following:
 
@@ -193,8 +191,8 @@ class StreamDoc(dict):
         # TODO : take args instead
         #if not isinstance(mapping, list):
             #mapping = [mapping]
-        mapping = selection
         streamdoc = StreamDoc(self)
+        streamdoc._wrapper = self._wrapper
         newargs = list()
         newkwargs = dict()
         totargs = dict(args=newargs, kwargs=newkwargs)
@@ -299,6 +297,7 @@ def parse_streamdoc(name):
                 statistics['status'] = "Failure"
                 type, value, traceback = sys.exc_info()
                 statistics['error_message'] = value
+                print("time : {}".format(time.ctime(time.time())))
                 print("caught exception {}".format(value))
                 #print("traceback:  {}".format(traceback.__dir__()))
 
@@ -327,3 +326,46 @@ def parse_streamdoc(name):
         return f_new
 
     return streamdoc_dec
+
+# This decorator is necessary to provide a way to find out what stream doc is
+# unique. We need to tokenize only the args, kwargs and attributes of
+# StreamDoc, nothing else
+def make_delayed_stream_dec(pure=True):
+    def delayed_stream_dec(f):
+        @wraps(f)
+        def f_new(*args, **kwargs):
+            hshlist_args = list()
+            hshlist_kwargs = dict()
+            # if it's a streamdoc, call tokenize
+            # which will hash only args, kwargs and attributes
+            # (not uid or stats)
+            for arg in args:
+                print(arg)
+                if _is_streamdoc(arg):
+                    #print("is streamdoc")
+                    hshlist_args.append(arg.tokenize())
+                else:
+                    #print("not streamdoc")
+                    hshlist_args.append(arg)
+            for k, v in kwargs.items():
+                if _is_streamdoc(v):
+                    hshlist_kwargs[k] = v.tokenize()
+                else:
+                    hshlist_kwargs[k] = v
+
+            hsh = tokenize(*hshlist_args, **hshlist_kwargs)
+            hsh = f.__name__ + "-" + hsh
+            #print("function hash: {}".format(hsh))
+            return delayed(f, pure=pure, name=hsh)(*args, **kwargs)
+        return f_new
+    return delayed_stream_dec
+
+def delayed_wrapper(name):
+    def decorator(f):
+        @make_delayed_stream_dec(pure=True)
+        @parse_streamdoc(name)
+        @wraps(f)
+        def f_new(*args, **kwargs):
+            return f(*args, **kwargs)
+        return f_new
+    return decorator

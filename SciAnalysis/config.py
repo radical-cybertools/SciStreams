@@ -1,14 +1,33 @@
-# TODO : have config read a yaml file or local file
-# TODO : Also add a reload routine
-STORAGEDIR = "/home/lhermitte/SciAnalysis-data"
-MASKDIR = STORAGEDIR + "/masks"
+import yaml
+import os.path
+# reads yaml file from user directory
+filename = os.path.expanduser("~/.config/scianalysis/scianalysis.yml")
+f = open(filename)
+config = yaml.load(f)
 
-RESULTSROOT = "/home/lhermitte/sqlite"
-XMLDIR = RESULTSROOT + "/xml-files"
-# TODO : allow True/False to be possible
-DELAYED = True
+_DEFAULTS = {
+    'delayed' : True,
+    'storagedir' : "../storage",
+    'maskdir' : "masks",
+    'resultsroot' : os.path.expanduser("~/sqlite"),
+    'xmldir' : "xml-files",
+    'delayed' : True,
+    'client' : None
+}
 
-if DELAYED:
+
+delayed = config.get('delayed', _DEFAULTS['delayed'])
+storagedir = config.get('storagedir', _DEFAULTS['storagedir'])
+maskdir = config.get('maskdir', _DEFAULTS['maskdir'])
+maskdir = storagedir + "/" + maskdir
+resultsroot = config.get('resultsroot', _DEFAULTS['resultsroot'])
+xmldir = config.get('xmldir', _DEFAULTS['xmldir'])
+xmldir = storagedir + "/" + xmldir
+
+client = config.get('client', _DEFAULTS['client'])
+
+
+if delayed:
     from dask import delayed
 else:
     def delayed(pure=None, pure_default=None):

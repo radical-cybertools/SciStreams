@@ -31,6 +31,7 @@ import numpy as np
 from SciAnalysis.interfaces.detectors import detectors2D
 
 from scipy.interpolate import RegularGridInterpolator
+from scipy.ndimage.interpolation import rotate as scipy_rotate
 '''
     def run_default(protocol_name, xml=True, file=True, databroker=True, delay=
     True, xml_options=None, file_options=None, databroker_options=None):
@@ -88,7 +89,7 @@ class MasterMask:
 # @run_default("XSAnalysis_MaskGenerator", False, False, False, True)
 class MaskGenerator:
     ''' A  master mask.'''
-    def __init__(self, master, blemish, usermask=None, **kwargs):
+    def __init__(self, obstruction, blemish, usermask=None, **kwargs):
         ''' Generate mask from known master mask.
 
             Take in a Master Mask object with the detector blemish and optional
@@ -121,13 +122,20 @@ class MaskGenerator:
             # y0 is rows, x0 is columns
             mask = mm.generate((y0,x0))
         '''
-        self.load_master(master)
+        self.mastermask = obstruction.mask
+        self.masterorigin = obstruction.origin
         self.load_blemish(blemish)
         self.load_usermask(usermask)
 
-    def load_master(self, master):
-        self.mastermask = master.mask
-        self.masterorigin = master.origin
+    def rotate_obstruction(self, phi):
+        ''' Rotate obstruction in degrees.'''
+        # TODO : Add rotate about origin
+        pass
+
+
+    def load_obstruction(self, obstruction):
+        self.mastermask = obstruction.mask
+        self.masterorigin = obstruction.origin
 
     def load_blemish(self, blemish):
         try:
@@ -177,6 +185,101 @@ def make_submask(master_mask, master_cen, shape=None, origin=None,
 
     return submask*(submask > 0.5)
 
+from SciAnalysis.analyses.XSAnalysis.tools import xystitch_accumulate
+
+class Obstruction:
+    ''' General obstruction on a detector. This is used to generate a mask.
+    Origin is the origin of the absolute coordinate system that all
+    obstructions should align to.
+
+    NOTE : An obstruction is defined 1 where it obstructs and 0 otherwise. This
+    is opposite of mask.
+    NOTE #2 : adding and subtracting these can results in larger arrays holding
+    the obstruction
+    NOTE #3 : this assumes binary images (and uses _thresh for threshold)
+
+    NOTE #4 : the mask property of this object cannot be edited
+
+    image : image of the obstruction : 1 is present, 0 absent
+    origin : the origin of the obstruction
+
+
+    '''
+    _thresh = .5
+    def __init__(self, mask, origin):
+        # invert image
+        self.image = (mask < 1).astype(int)
+        self.origin = origin
+
+    @property
+    def mask(self):
+        return (self.image < 1).astype(int)
+
+    def __add__(self, newob):
+        ''' Stitch the two together. Create a new obstruction object from
+        this.
+
+            Patched a bit so I can reuse stitching method.
+        '''
+        prevstate = self.image.copy(), np.ones_like(self.image), self.origin, 1
+        nextstate = newob.image, np.ones_like(newob.image), newob.origin, 1
+        newstate = xystitch_accumulate(prevstate, nextstate)
+
+        image, mask, origin, stitch = newstate
+
+        # less than because obstruction expects a mask, not image (image has 1
+        # where obsstruction present)
+        retobj = Obstruction((image < self._thresh).astype(int), origin)
+
+        return retobj
+
+    def __sub__(self, newob):
+        ''' Stitch the two together. Create a new obstruction object from
+        this'''
+        prevstate = self.image.copy(), np.ones_like(self.image), self.origin, 1
+        nextstate = -1*newob.image, np.ones_like(newob.image), newob.origin, 1
+        newstate = xystitch_accumulate(prevstate, nextstate)
+        img, mask, origin, stitch = newstate
+
+        # less than because obstruction expects a mask, not image (image has 1
+        # where obsstruction present)
+        retobj = Obstruction((img < self._thresh).astype(int), origin)
+
+        return retobj
+
+    def rotate(self, phi, origin=None):
+        ''' rotate the obstruction in phi, in degrees.'''
+        # re-center image (for scipy rotate)
+        image = self.image
+        old_origin = self.origin
+        if origin is None:
+            origin = old_origin
+            dorigin = (0,0)
+        else:
+            dorigin = old_origin[0] - origin[0], old_origin[1] - origin[1]
+        # re-center
+        image, origin = self._center(image, origin)
+        rotimg = scipy_rotate(self.image, phi, reshape=True)
+
+        # get back to original origin
+        origin = origin[0] + dorigin[0], origin[1] + dorigin[1]
+
+        return Obstruction((rotimg > self._thresh).astype(int), origin)
+
+    def _center(self, img, origin):
+        ''' center an image to array center.'''
+        # center an image to origin
+        # find largest dimension first
+        dimx = 2*np.max([origin[1], img.shape[1]-origin[1]-1])+1
+        dimy = 2*np.max([origin[0], img.shape[0]-origin[0]-1])+1
+        # make new array with these dimensions
+        newimg = np.zeros((dimy, dimx))
+
+        cen = newimg.shape[0]//2, newimg.shape[1]//2
+        y0 = cen[0]-origin[0]
+        x0 = cen[1]-origin[1]
+        newimg[y0:y0+img.shape[0], x0:x0+img.shape[1]] = img
+        return newimg, cen
 
 
 

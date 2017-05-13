@@ -4,8 +4,10 @@ from distributed import Client
 import cachey
 
 # client information
-if True:
-    client = Client("10.11.128.3:8786")
+# TODO : remove this client information
+import SciAnalysis.config as config
+if config.client is not None:
+    client = Client(config.client)
 #no client, compute should compute and return nothing
 else:
     import dask

@@ -50,12 +50,15 @@ from SciAnalysis.interfaces.detectors import detectors2D
 '''
 
 
-from streams.core import Stream
-from SciAnalysis.interfaces.StreamDoc import select
+from SciAnalysis.interfaces.StreamDoc import Stream
+
+from collections import deque
+# cache for qmaps
+QMAP_CACHE = deque(maxlen=1000)
 
 # Calibration for SAXS data
 # NOTE : Makes the assumption that the wrapper provides 'select' functionality
-def CalibrationStream(keymap_name=None, detector=None):
+def CalibrationStream(keymap_name=None, detector=None, wrapper=None):
     '''
         This returns a stream of calibration methods.
 
@@ -95,14 +98,15 @@ def CalibrationStream(keymap_name=None, detector=None):
     keymap, defaults = _get_keymap_defaults(keymap_name)
 
     # the pipeline flow defined here
-    sin = Stream()
-    calib = sin.map(load_calib_dict, keymap=keymap, defaults=defaults)
+    sin = Stream(wrapper=wrapper)
+    s2 = sin.apply(lambda x : x.add_attributes(stream_name="Calibration"))
+    calib = s2.map(load_calib_dict, keymap=keymap, defaults=defaults)
     calib = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
 
     q_maps = calib.map(_generate_qxyz_maps)
     # for distributed regime, store intermediate values
-    # TODO ; re-implement sink-to-deque
-    q_maps.map(client.compute, raw=True)#.sink_to_deque(maxlen=1000)
+    # sink the cache for the qmaps
+    q_maps.map(client.compute, raw=True).sink(QMAP_CACHE.append)
     # compute it so that it's cached on cluster
     # TODO : figure out best way to make this dask and non dask compatible
     #q_maps.apply(print)
@@ -111,17 +115,18 @@ def CalibrationStream(keymap_name=None, detector=None):
     # just select first 3 args
     # TODO : add to  FAQ "Integer tuple pairs not accepted" when giving (0,1,2)
     # for ex instaead of [0,1,2]
-    q_map = select(q_maps,0,1,2).map(_generate_q_map)
+    q_map = q_maps.select(0,1,2).map(_generate_q_map)
     angle_map = calib.map(_generate_angle_map)
+    r_map = calib.map(_generate_r_map).select((0, 'r_map'))
     origin = calib.map(get_beam_center)
 
     # make final qmap stream
-    q_maps = select(q_maps, (0, 'qx_map'), (1, 'qy_map'), (2, 'qz_map'), (3, 'qr_map'))
-    q_maps = q_maps.zip(select(q_map, (0, 'q_map')))
-    q_maps = q_maps.zip(select(angle_map, (0, 'angle_map')))
+    q_maps = q_maps.select((0, 'qx_map'), (1, 'qy_map'), (2, 'qz_map'), (3, 'qr_map'))
+    q_maps = q_maps.merge(q_map.select((0, 'q_map')), r_map)
+    q_maps = q_maps.merge(angle_map.select((0, 'angle_map')))
 
     # rename to kwargs (easier to inspect)
-    calib = select(calib, (0, 'calibration'))
+    calib = calib.select((0, 'calibration'))
 
     # they're relative sinks
     sout = dict(calibration=calib, q_maps=q_maps, origin=origin)
@@ -271,7 +276,7 @@ def _generate_qxyz_maps(calibration):
     # TODO : add units
     # Conversion factor for pixel coordinates
     # (where sample-detector distance is set to d = 1)
-    print("Generating qmaps")
+    #print("Generating qmaps")
     pixel_size = calibration['pixel_size_x']['value']
     distance = calibration['sample_det_distance']['value']
     c = (pixel_size/1e6)/distance
@@ -346,7 +351,7 @@ def _generate_angle_map(calibration):
     return M
 
 
-def CircularAverageStream():
+def CircularAverageStream(wrapper=None):
     ''' Circular average stream.
 
         Inputs :
@@ -384,8 +389,9 @@ def CircularAverageStream():
 
     '''
     #TODO : extend file to mltiple writers?
-    sin  = Stream()
-    sout = sin.map(circavg)
+    sin  = Stream(wrapper=wrapper)
+    s2 = sin.apply(lambda x : x.add_attributes(stream_name="CircularAverage"))
+    sout = s2.map(circavg)
     return sin, sout
 
 
@@ -400,10 +406,12 @@ def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
             # choose 1 pixel bins (roughly, not true at very high angles)
             pxlst = np.where(mask == 1)
             nobins = int(np.max(r_map[pxlst]) - np.min(r_map[pxlst]) + 1)
+            print("rmap is not none, decided on {} bins".format(nobins))
         else:
             # crude guess, I'll be off by a factor between 1-sqrt(2) or so
             # (we'll have that factor less bins than we should)
-            nobins = np.maximum(*(image.shape))
+            # arbitrary number
+            nobins = np.maximum(*(image.shape))//4
 
         # here we assume the rbins uniform
         bins = nobins
@@ -459,13 +467,48 @@ def center2edge(centers, positive=True):
     return edges
 
 
+def QPHIMapStream(wrapper=None):
+    '''
+        Input :
+                image
+                mask
+
+        Output :
+            qphimap
+    '''
+    sin = Stream(wrapper=wrapper)
+    sout = sin.select(0, 'mask', 'origin')\
+            .apply(lambda x : x.add_attributes(stream_name="QPHIMapStream"))
+    sout = sin.map(qphiavg)
+    from dask import compute
+    sout.apply(compute).apply(print)
+    return sin, sout
+
+def qphiavg(img, mask=None, bins=None, origin=None):
+    ''' quick qphi average calculator.
+        ignores bins for now
+    '''
+    # TODO : replace with method that takes qphi maps
+    # TODO : also return q and phi of this...
+    from skbeam.core.accumulators.binned_statistic import RPhiBinnedStatistic
+    print("rphibinstat init")
+    rphibinstat = RPhiBinnedStatistic(img.shape, mask=mask, origin=origin)
+    print("rphibinstat compute")
+    sqphi = rphibinstat(img)
+    print("rphibinstat done")
+    return dict(sqphi=sqphi)
+
+
+
+
 
 def pack(*args, **kwargs):
     ''' pack arguments into one set of arguments.'''
     return args
 
+from SciAnalysis.analyses.XSAnalysis.tools import xystitch_accumulate, xystitch_result
 ### Image stitching Stream
-def ImageStitchingStream():
+def ImageStitchingStream(wrapper=None):
     '''
         Image stitching
         Inputs:
@@ -481,10 +524,11 @@ def ImageStitchingStream():
         this stream
 
     '''
-    sin = Stream()
+    sin = Stream(wrapper=wrapper)
+    s2 = sin.apply(lambda x : x.add_attributes(stream_name="ImageStitch"))
     # make the image, mask origin as the first three args
-    s2 = select(sin, ('image', None), ('mask', None), ('origin', None), ('stitch', None))
-    sout = s2.map(pack).accumulate(xystitch_accumulate)
+    s3 = s2.select(('image', None), ('mask', None), ('origin', None), ('stitch', None))
+    sout = s3.map(pack).accumulate(xystitch_accumulate)
 
     # debugging
     #sout = sout.select([(0, 'image'), (1, 'mask'), (2, 'origin'), (3, 'stitch')])
@@ -517,142 +561,6 @@ def ImageStitchingStream():
 
     return sin, sout
 
-def xystitch_result(img_acc, mask_acc, origin_acc, stitch_acc):
-    ''' Stitch_acc may not be necessary, it should just be a binary flag.  But
-            could be generalized to a sequence number so I leave it.
-    '''
-    from SciAnalysis.globals import tmp_cache
-    tmp_cache.put('mask_acc', mask_acc, 10)
-    tmp_cache.put('img_acc', img_acc, 10)
-
-    mask_acc = mask_acc.astype(int)
-    # need to make a copy
-    img_acc_old = img_acc
-    img_acc = np.zeros_like(img_acc_old)
-    w = np.where(mask_acc != 0)
-    img_acc[w] = img_acc_old[w]/mask_acc[w]
-    mask_acc = (mask_acc > 0).astype(int)
-
-    return dict(image=img_acc, mask=mask_acc, origin=origin_acc, stitch=stitch_acc)
-
-def xystitch_accumulate(prevstate, newstate):
-    '''
-
-        (assumes IMG and mask np arrays)
-        prevstate : IMG, mask, (x0, y0), stitch
-        nextstate : incoming IMG, mask, (x0, y0), stitch
-
-        rules for stitch:
-            if next state 0, re-initialize
-            else : stitch from previous image
-
-        returns accumulated state
-
-        Assumes calibration object has sample exposure time
-
-        NOTE : x is cols, y is rows
-            where img[rows][cols]
-            so shapey, shapex = img.shape
-
-        TODO : Do we want subpixel accuracy stitches?
-            (this requires interpolating pixels, maybe not
-                good for shot noise limited regime)
-    '''
-
-    img_next, mask_next, origin_next, stitch_next = newstate
-    # just in case
-    img_next = img_next*(mask_next > 0)
-    shape_next = img_next.shape
-
-    # logic for making new state
-    # initialization:
-    if stitch_next == 0:
-        # re-initialize
-        img_acc = img_next*(mask_next > 0)
-        shape_acc = img_acc.shape
-        mask_acc = mask_next.copy()
-        origin_acc = origin_next
-        stitch_acc = 0
-        return img_acc, mask_acc, origin_acc, stitch_acc
-
-    # else, stitch
-    img_acc, mask_acc, origin_acc, stitch_acc = prevstate
-    shape_acc = img_acc.shape
-
-    # logic for main iteration component
-    # NOTE : In matplotlib, bottom and top are flipped (until plotting in
-    # matrix convention), this is logically consistent here but not global
-    bounds_acc = _getbounds2D(origin_acc, shape_acc)
-    bounds_next = _getbounds2D(origin_next, shape_next)
-    # check if image will fit in stitched image
-    expandby = _getexpansion2D(bounds_acc, bounds_next)
-    #print("need to expand by {}".format(expandby))
-
-    img_acc = _expand2D(img_acc, expandby)
-    mask_acc = _expand2D(mask_acc, expandby)
-    #print("New shape : {}".format(img_acc.shape))
-
-    origin_acc = origin_acc[0] + expandby[2], origin_acc[1] + expandby[0]
-    _placeimg2D(img_next, origin_next, img_acc, origin_acc)
-    _placeimg2D(mask_next, origin_next, mask_acc, origin_acc)
-
-    stitch_acc = stitch_next
-    img_acc = img_acc*(mask_acc > 0)
-    mask_acc = mask_acc*(mask_acc > 0)
-
-    return img_acc, mask_acc, origin_acc, stitch_acc
-
-def _placeimg2D(img_source, origin_source, img_dest, origin_dest):
-    ''' place source image into dest image. use the origins for
-    registration.'''
-    bounds_image = _getbounds2D(origin_source, img_source.shape)
-    left_bound = origin_dest[1] + bounds_image[0]
-    low_bound = origin_dest[0] + bounds_image[2]
-    low_bound = int(low_bound)
-    left_bound = int(left_bound)
-    img_dest[low_bound:low_bound+img_source.shape[0],
-             left_bound:left_bound+img_source.shape[1]] += img_source
-
-def _getbounds(center, width):
-    return -center, width-1-center
-
-def _getbounds2D(origin, shape):
-    # NOTE : arrays index img[y][x] but I choose this way
-    # because convention is in plotting, cols (x) is x axis
-    yleft, yright = _getbounds(origin[0], shape[0])
-    xleft, xright = _getbounds(origin[1], shape[1])
-    return [xleft, xright, yleft, yright]
-
-def _getexpansion(bounds_acc, bounds_next):
-    expandby = [0, 0]
-    # image accumulator does not extend far enough left
-    if bounds_acc[0] > bounds_next[0]:
-        expandby[0] = bounds_acc[0] - bounds_next[0]
-
-    # image accumulator does not extend far enough right
-    if bounds_acc[1] < bounds_next[1]:
-        expandby[1] = bounds_next[1] - bounds_acc[1]
-
-    return expandby
-
-def _getexpansion2D(bounds_acc, bounds_next):
-    expandby = list()
-    expandby.extend(_getexpansion(bounds_acc[0:2], bounds_next[0:2]))
-    expandby.extend(_getexpansion(bounds_acc[2:4], bounds_next[2:4]))
-    return expandby
-
-def _expand2D(img, expandby):
-    ''' expand image by the expansion requirements. '''
-    if not any(expandby):
-        return img
-
-    dcols = expandby[0] + expandby[1]
-    drows = expandby[2] + expandby[3]
-
-    img_tmp = np.zeros((img.shape[0] + drows, img.shape[1] + dcols))
-    img_tmp[expandby[2]:expandby[2]+img.shape[0], expandby[0]:expandby[0]+img.shape[1]] = img
-
-    return img_tmp
 
 
 def ThumbStream(wrapper=None, blur=None, crop=None, resize=None):
@@ -666,10 +574,11 @@ def ThumbStream(wrapper=None, blur=None, crop=None, resize=None):
 
     '''
     sin = Stream(wrapper=wrapper)
-    s1 = sin.add_attributes(stream_name="ThumbStream")
-    s1 = s1.map(_blur)
+    s0 = sin.apply(lambda x : x.add_attributes(stream_name="Thumb"))
+    #s1 = sin.add_attributes(stream_name="ThumbStream")
+    s1 = s0.map(_blur)
     s1 = s1.map(_crop)
-    sout = select(s1.map(_resize), (0, 'thumb'))
+    sout = s1.map(_resize).select((0, 'thumb'))
 
     return sin, sout
 

@@ -13,14 +13,14 @@ def initialize(dbname=None):
         'chx' : False,
         'cms' : True,
     }
-    
+
     database_setups = {
         'cms' : {'initializer' : init_cmsdb,
                  'kwargs' : dict(HOST_DATA='xf11bm-ca1',
                                  PORT_DATA=27017,
                                  ROOTMAP_DATA= {},#{"/GPFS/xf11bm/Pilatus300": "/media/cmslive"},
                                  HOST_ANALYSIS="localhost",
-                                 PORT_ANALYSIS=27021,
+                                 PORT_ANALYSIS=27025,
                                  ROOTMAP_ANALYSIS={}),
                  },
         'chx' : {'initializer' : init_chxdb, 'kwargs' : dict(HOST_DATA='xf11id-srv1',
@@ -29,14 +29,15 @@ def initialize(dbname=None):
                                                              HOST_ANALYSIS="localhost",
                                                              PORT_ANALYSIS=27021,
                                                              ROOTMAP_ANALYSIS={}
-            
+
                                                              )
                  }
     }
-    
+
     databases = dict()
-    
+
     # enable databases one by one
+    # only initialize if not done yet (remove if using sqlite)
     for key in database_enable:
         if database_enable[key]:
             initializer = database_setups[key]['initializer']
@@ -44,7 +45,9 @@ def initialize(dbname=None):
             dbs = initializer(**kwargs)
             databases[key] = dict()
             databases[key]['data'] = dbs[0]
+            databases[key + ":" + "data"] = dbs[0]
             databases[key]['analysis'] = dbs[1]
+            databases[key + ":" + "analysis"] = dbs[1]
         else:
             databases[key] = None
     return databases
