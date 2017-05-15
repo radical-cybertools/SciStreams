@@ -103,8 +103,13 @@ def store_results(results, **plot_opts):
     for key in images:
         # find some reasonable color scale
         image = data[key]
-        low, high = findLowHigh(image)
-        plt.imshow(image,vmin=low, vmax=high)
+        vmin, vmax = findLowHigh(image)
+        if 'vmin' in plot_opts:
+            vmin = plot_opts['vmin']
+        if 'vmax' in plot_opts:
+            vmax = plot_opts['vmax']
+        plt.imshow(image,vmin=vmin, vmax=vmax)
+        plt.colorbar()
     for line in lines:
         if isinstance(line, tuple) and len(line) == 2:
             x = data[line[0]]

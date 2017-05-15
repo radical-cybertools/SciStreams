@@ -467,7 +467,7 @@ def center2edge(centers, positive=True):
     return edges
 
 
-def QPHIMapStream(wrapper=None):
+def QPHIMapStream(wrapper=None, bins=(400,400)):
     '''
         Input :
                 image
@@ -479,9 +479,9 @@ def QPHIMapStream(wrapper=None):
     sin = Stream(wrapper=wrapper)
     sout = sin.select(0, 'mask', 'origin')\
             .apply(lambda x : x.add_attributes(stream_name="QPHIMapStream"))
-    sout = sin.map(qphiavg)
-    from dask import compute
-    sout.apply(compute).apply(print)
+    sout = sout.map(qphiavg, bins=bins)
+    #from dask import compute
+    #sout.apply(compute).apply(print)
     return sin, sout
 
 def qphiavg(img, mask=None, bins=None, origin=None):
@@ -491,12 +491,11 @@ def qphiavg(img, mask=None, bins=None, origin=None):
     # TODO : replace with method that takes qphi maps
     # TODO : also return q and phi of this...
     from skbeam.core.accumulators.binned_statistic import RPhiBinnedStatistic
-    print("rphibinstat init")
-    rphibinstat = RPhiBinnedStatistic(img.shape, mask=mask, origin=origin)
-    print("rphibinstat compute")
+    rphibinstat = RPhiBinnedStatistic(img.shape, mask=mask, origin=origin, bins=bins)
     sqphi = rphibinstat(img)
-    print("rphibinstat done")
-    return dict(sqphi=sqphi)
+    qs = rphibinstat.bin_centers[0]
+    phis = rphibinstat.bin_centers[1]
+    return dict(sqphi=sqphi, qs=qs, phis=phis)
 
 
 

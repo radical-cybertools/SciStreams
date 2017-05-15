@@ -10,6 +10,8 @@ _cache.register()
 #from distributed import Client
 #client = Client("10.11.128.3:8786")
 
+from collections import deque
+
 from dask import set_options, delayed, compute
 # assume all functions are pure globally
 set_options(delayed_pure=False)
@@ -312,9 +314,11 @@ sqfit_in, sqfit_out = SqFitStream(wrapper=delayed_wrapper)
 sout_circavg.apply(sqfit_in.emit)
 
 
-# qphi map NOT WOKRING
-#sqphi_in, sqphi_out = QPHIMapStream(wrapper=delayed_wrapper)
-#image.merge(mask_stream, origin.select(0, 'origin')).apply(sqphi_in.emit)
+#
+sqphis = deque(maxlen=10)
+sqphi_in, sqphi_out = QPHIMapStream(wrapper=delayed_wrapper)
+image.merge(mask_stream, origin.select((0, 'origin'))).apply(sqphi_in.emit)
+sqphi_out.apply(compute).apply(sqphis.append)
 
 #sout_thumb.apply(client.compute).sink_to_deque()
 
@@ -328,9 +332,9 @@ sout_circavg.apply(sqfit_in.emit)
 #sout_imgstitch.select(('origin', None)).apply(save_data, name="origin")#.apply(compute)
 
 # save to file system
-sout_circavg.apply(compute).apply(lambda x : x[0]).apply(source_plotting.store_results, lines=[('sqx', 'sqy')],\
-                                                        scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$",
-                                                        ylabel="I(q)")
+sout_circavg.apply(compute)#.apply(lambda x : x[0]).apply(source_plotting.store_results, lines=[('sqx', 'sqy')],\
+                                                        #scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$",
+                                                        #ylabel="I(q)")
 sout_imgstitch.apply(compute).apply(lambda x : x[0]).apply(source_plotting.store_results, images=['image'], hideaxes=True)
 sout_imgstitch_log.apply(compute).apply(lambda x : x[0]).apply(source_plotting.store_results, images=['image'], hideaxes=True)
 sout_thumb.apply(compute).apply(lambda x : x[0]).apply(source_plotting.store_results, images=['thumb'], hideaxes=True)
@@ -339,17 +343,18 @@ sout_thumb.select(('thumb', None)).map(np.log10).select((0,'thumb'))\
         .apply(lambda x : x[0])\
         .apply(source_plotting.store_results, images=['thumb'], hideaxes=True)
 
-sqfit_out.apply(compute).apply(lambda x :
-                               x[0]).apply(source_plotting.store_results,
-                                           lines=[('sqx', 'sqy'), ('sqx', 'sqfit')],
-                                           scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$", ylabel="I(q)")
-# TODO : fix
-#sqphi_out.select(('sqphi', None)).map(np.log10).select((0, 'sqphi'))\
-        #.apply(compute).apply(lambda x :
+#sqfit_out.apply(compute)#.apply(lambda x :
                                #x[0]).apply(source_plotting.store_results,
-                                           #images=['sqphi'], xlabel="$\phi$", ylabel="$q$")
+                                           #lines=[('sqx', 'sqy'), ('sqx', 'sqfit')],
+                                           #scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$", ylabel="I(q)")
+# TODO : fix
+sqphi_out.apply(compute).apply(lambda x :
+                               x[0]).apply(source_plotting.store_results,
+                                           images=['sqphi'], xlabel="$\phi$", ylabel="$q$", vmin=0, vmax=100)
 #
 
+
+#origin.apply(compute).apply(lambda x : print("origin : {}".format(x)))
 
 #sdoc = source_databroker.pullrecent("cms:data", start_time="2017-04-01", stop_time="2017-04-03")
 #sdoc = delayed(sdoc)
