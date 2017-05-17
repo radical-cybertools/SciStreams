@@ -13,8 +13,7 @@ else:
     import dask
     class client:
         def compute(self, *args, **kwargs):
-            dask.compute(*args, **kwargs)
-            return None
+            return dask.compute(*args, **kwargs)[0]
 
 
 # assume all functions are pure globally

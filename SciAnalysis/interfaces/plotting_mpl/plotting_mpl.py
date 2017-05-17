@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-import config
+from SciAnalysis import config
 _ROOTDIR = config.resultsroot + "/plotting_mpl"
 import os.path
 
@@ -108,8 +108,18 @@ def store_results(results, **plot_opts):
             vmin = plot_opts['vmin']
         if 'vmax' in plot_opts:
             vmax = plot_opts['vmax']
-        plt.imshow(image,vmin=vmin, vmax=vmax)
-        plt.colorbar()
+        if image.ndim == 2:
+            if isinstance(image, np.ndarray):
+                plt.imshow(image,vmin=vmin, vmax=vmax)
+                plt.colorbar()
+        elif image.ndim == 3:
+            nimgs = image.shape[0]
+            dim = int(np.ceil(np.sqrt(nimgs)))
+            fig, axes = plt.subplots(dim,dim)
+            axes = np.array(axes).ravel()
+            for j in range(len(image)):
+                if isinstance(image, np.ndarray):
+                    axes[j].imshow(image[j])
     for line in lines:
         if isinstance(line, tuple) and len(line) == 2:
             x = data[line[0]]
@@ -177,6 +187,7 @@ def store_results(results, **plot_opts):
     fig.savefig(outfile)
     # make sure no mem leaks, just close
     plt.close(fig)
+    print("stored results")
 
     # now do the plotting
 

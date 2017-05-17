@@ -31,18 +31,24 @@ def Header2StreamDoc(header, dbname="cms:data"):
     attributes['data_uid'] = attributes['uid']
     sdoc.add(attributes=attributes)
 
-    from interfaces.databroker.databases import databases
-    if ":" in dbname:
-        dbname = dbname.split(":")
-    else:
-        dbname = [dbname, 'analysis']
+    from SciAnalysis.interfaces.databroker.databases import databases
 
-    db = databases[dbname[0]][dbname[1]]
+    db = databases[dbname]
 
     # Assume first event
-    event = list(db.get_events(header, fill=True))[0]
+    try:
+        print("getting events")
+        event = list(db.get_events(header, fill=True))[0]
+        print("got event {}".format(event))
+        print("done")
+        eventdata = event['data']
+    except IndexError:
+        # there are no events
+        eventdata = []
+    except KeyError:
+        eventdata = []
 
-    sdoc.add(kwargs=event['data'])
+    sdoc.add(kwargs=eventdata)
 
     return sdoc
 
@@ -73,12 +79,7 @@ def pullrecent(dbname, protocol_name=None, **kwargs):
     # TODO : Remove the initialization when moving from sqlite to other
     # (sqlite requires db to be initialized every time... but db it can
     # be a running instance in the imported library for that process)
-    if ":" in dbname:
-        dbname = dbname.split(":")
-    else:
-        dbname = [dbname, 'analysis']
-
-    db = databases[dbname[0]][dbname[1]]
+    db = databases[dbname]
     kwargs['protocol_name'] = protocol_name
     # search and get latest
     headers = db(**kwargs)
@@ -86,12 +87,11 @@ def pullrecent(dbname, protocol_name=None, **kwargs):
         header = headers[0]
     else:
         raise IndexError("Error, no headers found for database lookup")
-    dbname = dbname[0] + ":" + dbname[1]
     sdoc = Header2StreamDoc(header, dbname=dbname)
 
     return sdoc
 
-def pullfromuid(dbname, uid=None):
+def pullfromuid(uid, dbname=None):
     ''' Pull from a databroker database from a uid
 
         Parameters
@@ -110,23 +110,19 @@ def pullfromuid(dbname, uid=None):
         StreamDoc of data
 
     '''
-    from SciAnalysis.interfaces.databroker.databases import initialize
-    databases = initialize()
+    if dbname is None:
+        raise ValueError("Error must supply a dbname")
+    from SciAnalysis.interfaces.databroker.databases import databases
     # TODO : Remove the initialization when moving from sqlite to other
     # (sqlite requires db to be initialized every time... but db it can
     # be a running instance in the imported library for that process)
-    if ":" in dbname:
-        dbname = dbname.split(":")
-    else:
-        dbname = [dbname, 'analysis']
-    db = databases[dbname[0]][dbname[1]]
+    db = databases[dbname]
     # search and get latest
     if uid is None:
         raise ValueError("Need to specify a uid")
 
-    header = db[uid]
+    header = dict(db[uid])
 
-    dbname = dbname[0] + ":" + dbname[1]
     scires = Header2StreamDoc(header, dbname)
 
     return scires
@@ -159,14 +155,10 @@ def pull(dbname, protocol_name=None, **kwargs):
 
     '''
     # Returns a StreamDoc Basically the StreamDoc constructor for databroker
-    from SciAnalysis.interfaces.databroker.databases import initialize
+    from SciAnalysis.interfaces.databroker.databases import databases
     # TODO : Remove the initialization when moving from sqlite to other
-    if ":" in dbname:
-        dbname = dbname.split(":")
-    else:
-        dbname = [dbname, 'analysis']
-    dbs = initialize()
-    db = dbs[dbname[0]][dbname[1]]
+    dbs = databases
+    db = dbs[dbname]
     if protocol_name is not None:
         kwargs['protocol_name'] = protocol_name
     # search and get latest
@@ -194,12 +186,8 @@ def search(dbname, start_time=None, stop_time=None, **kwargs):
     # Returns a StreamDoc Basically the StreamDoc constructor for databroker
     from SciAnalysis.interfaces.databroker.databases import databases
     # TODO : Remove the initialization when moving from sqlite to other
-    if ":" in dbname:
-        dbname = dbname.split(":")
-    else:
-        dbname = [dbname, 'analysis']
 
-    db = databases[dbname[0]][dbname[1]]
+    db = databases[dbname]
 
     if start_time is None or stop_time is None:
         print("Warning, please select a start or stop time (or else this"
@@ -208,7 +196,6 @@ def search(dbname, start_time=None, stop_time=None, **kwargs):
     headers = db(start_time=start_time, stop_time=stop_time)
     results = list()
 
-    dbname = dbname[0] + ":" + dbname[1]
 
     for header in headers:
         start_doc = header['start']
@@ -224,6 +211,8 @@ def search(dbname, start_time=None, stop_time=None, **kwargs):
                 yield sdoc
             except FileNotFoundError:
                 continue
+            except StopIteration:
+                yield StopIteration
 
 
 def safe_parse_databroker(val, nested=False):
@@ -288,18 +277,16 @@ def store_results(dbname, external_writers={}):
         return newf
     return decorator
 
-def store_results_databroker(sdoc, dbname, external_writers={}):
+def store_results_databroker(sdoc, dbname=None, external_writers={}):
     ''' Save results to a databroker instance.
         Takes a streamdoc instance.
     '''
+    if dbname is None:
+        raise ValueError("No database selected. Cancelling.")
     # TODO : change this when in mongodb
     from SciAnalysis.interfaces.databroker.databases import databases
     # TODO : check for time out on database access, return an erorr that makes sense
-    if ":" in dbname:
-        dbname, dbsubname = dbname.split(":")
-    else:
-        dbsubname = 'analysis'
-    db = databases[dbname][dbsubname]
+    db = databases[dbname]
 
     # saving to databroker
     mds = db.mds # metadatastore

@@ -106,7 +106,7 @@ def CalibrationStream(keymap_name=None, detector=None, wrapper=None):
     q_maps = calib.map(_generate_qxyz_maps)
     # for distributed regime, store intermediate values
     # sink the cache for the qmaps
-    q_maps.map(client.compute, raw=True).sink(QMAP_CACHE.append)
+    q_maps.apply(client.compute).sink(QMAP_CACHE.append)
     # compute it so that it's cached on cluster
     # TODO : figure out best way to make this dask and non dask compatible
     #q_maps.apply(print)

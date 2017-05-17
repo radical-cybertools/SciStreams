@@ -131,6 +131,7 @@ def _expand2D(img, expandby):
     if not any(expandby):
         return img
 
+    expandby = np.array(expandby).astype(int)
     dcols = expandby[0] + expandby[1]
     drows = expandby[2] + expandby[3]
 

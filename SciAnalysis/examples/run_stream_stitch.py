@@ -12,6 +12,8 @@ _cache.register()
 
 from collections import deque
 
+from globals import client
+
 from dask import set_options, delayed, compute
 # assume all functions are pure globally
 set_options(delayed_pure=False)
@@ -155,15 +157,13 @@ def delayed_wrapper(name):
         return f_new
     return decorator
 
-def inspect_stream(stream):
-    stream.apply(compute).apply(lambda x : print(x[0]))
+#def inspect_stream(stream):
+    #stream.apply(compute).apply(lambda x : print(x[0]))
 
 def get_attributes(sdoc):
     # reasoning behind this: need to compute the attributes before they're
     # evaluated in function, else it gets passed as delayed reference
-    def makesdoc(attr):
-        return StreamDoc(args=[compute(attr)[0]])
-    return makesdoc(sdoc['attributes'])
+    return StreamDoc(args=sdoc['attributes'])
 
 def add_attributes(sdoc, **attr):
     sdoc.add(attributes=attr)
@@ -217,6 +217,11 @@ def divide(A, B):
     return A/B
 
 
+def set_detector_name(sdoc, detector_name='pilatus300'):
+    sdoc['attributes']['detector_name'] = detector_name
+    return sdoc
+
+
 
 globaldict = dict()
 # This should be an interface
@@ -225,7 +230,6 @@ def save_image_recent(sdoc, fignum=None, name=None):
     # make sure it's not delayed
     if fignum is None:
         fignum = 20
-    sdoc = compute(sdoc)[0]
     if name is None:
         name = 'recent.jpg'
     img = sdoc['args'][0]
@@ -243,23 +247,36 @@ def save_image_recent(sdoc, fignum=None, name=None):
 
 def save_data(sdoc, name='default'):
     global globaldict
-    sdoc = compute(sdoc)[0]
+    sdoc = sdoc
     a = sdoc['args'][0]
     globaldict[name] = a
 
+def check_stitch(sdoc):
+    if 'stitch' not in sdoc['attributes']:
+        sdoc['attributes']['stitch'] = 0
+    return sdoc
 
+
+from functools import partial
 # Stream setup, datbroker data comes here (a header for now)
 sin = Stream(wrapper=delayed_wrapper)
-s2 = sin.apply(lambda x : x.add_attributes(stream_name="InputStream"))#.apply(compute)
+# first expects a string, just apply (ignore wrappers)
+s_event = sin.apply(delayed(source_databroker.pullfromuid), dbname='cms:data').apply(delayed(check_stitch))
+#s2.apply(compute).apply(print)
+# next start working on result
+s_event = s_event.apply(lambda x : delayed(partial(x.add_attributes)(stream_name="InputStream")))#.apply(compute)
+s_event = s_event.apply(delayed(set_detector_name), detector_name='pilatus300')
 #sin.map(print, raw=True)
 #s2.apply(compute).apply(lambda x : print(x[0]['attributes']['stream_name']))
 
 #  separate data from attributes
-attributes = s2.apply(get_attributes)
+attributes = s_event.apply(delayed(get_attributes))
 #attributes.apply(compute).apply(print)
 
 # get image from the input stream
-image = s2.select((detector_key,None))
+#image = s2.select((detector_key,None))
+#s_event.apply(compute).apply(print)
+image = s_event.apply(lambda x : x.select((detector_key,None)))
 
 # calibration setup
 sin_calib, sout_calib = CalibrationStream(wrapper=delayed_wrapper)
@@ -308,6 +325,74 @@ img_mask_origin.apply(sin_imgstitch.emit)
 sin_thumb, sout_thumb = ThumbStream(wrapper=delayed_wrapper, blur=1, resize=2)
 image.apply(sin_thumb.emit)
 
+# TODO :  need to fix this
+@delayed
+def squash(sdocs):
+    newsdoc = StreamDoc()
+    for sdoc in sdocs:
+        newsdoc.add(attributes = sdoc['attributes'])
+    N = len(sdocs)
+    cnt = 0
+    newargs = []
+    newkwargs = dict()
+    for sdoc in sdocs:
+        args, kwargs = sdoc['args'], sdoc['kwargs']
+        for i, arg in enumerate(args):
+            if cnt == 0:
+                if isinstance(arg, np.ndarray):
+                    newshape = []
+                    newshape.append(N)
+                    newshape.extend(arg.shape)
+                    newargs.append(np.zeros(newshape))
+                else:
+                    newargs.append([])
+            if isinstance(arg, np.ndarray):
+                newargs[i][cnt] = arg
+            else:
+                newargs[i].append[arg]
+
+        for key, val in kwargs.items():
+            if cnt == 0:
+                if isinstance(val, np.ndarray):
+                    newshape = []
+                    newshape.append(N)
+                    newshape.extend(val.shape)
+                    newkwargs[key] = np.zeros(newshape)
+                else:
+                    newkwargs[key] = []
+            if isinstance(val, np.ndarray):
+                newkwargs[key][cnt] = val
+            else:
+                newkwargs[key].append[val]
+
+        cnt = cnt + 1
+
+    newsdoc.add(args=newargs, kwargs=newkwargs)
+
+    return newsdoc
+
+def PCA_fit(data, n_components=10):
+    ''' Run principle component analysis on data.
+        n_components : num components (default 10)
+    '''
+    # first reshape data if needed
+    if data.ndim > 2:
+        datashape = data.shape[1:]
+        data = data.reshape((data.shape[0], -1))
+
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=n_components)
+    pca.fit(data)
+    components = pca.components_.copy()
+    components = components.reshape((n_components, *datashape))
+    return dict(components=components)
+
+
+sout_img_partitioned = sout_thumb.select(('thumb', None)).partition(100).apply(squash)
+#sout_img_partitioned.apply(compute).apply(print)
+# saves dict with components key
+sout_img_pca = sout_img_partitioned.map(PCA_fit, n_components = 10).apply(lambda x : x.add_attributes(stream_name="PCA"))
+
 
 # fitting
 sqfit_in, sqfit_out = SqFitStream(wrapper=delayed_wrapper)
@@ -318,7 +403,7 @@ sout_circavg.apply(sqfit_in.emit)
 sqphis = deque(maxlen=10)
 sqphi_in, sqphi_out = QPHIMapStream(wrapper=delayed_wrapper)
 image.merge(mask_stream, origin.select((0, 'origin'))).apply(sqphi_in.emit)
-sqphi_out.apply(compute).apply(sqphis.append)
+sqphi_out.apply(client.compute).apply(sqphis.append)
 
 #sout_thumb.apply(client.compute).sink_to_deque()
 
@@ -331,27 +416,47 @@ sqphi_out.apply(compute).apply(sqphis.append)
 #sout_imgstitch.select(('mask', None)).apply(save_image_recent,fignum=25, name="stitch-mask.png")#.apply(compute)
 #sout_imgstitch.select(('origin', None)).apply(save_data, name="origin")#.apply(compute)
 
-# save to file system
-sout_circavg.apply(compute)#.apply(lambda x : x[0]).apply(source_plotting.store_results, lines=[('sqx', 'sqy')],\
-                                                        #scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$",
-                                                        #ylabel="I(q)")
-sout_imgstitch.apply(compute).apply(lambda x : x[0]).apply(source_plotting.store_results, images=['image'], hideaxes=True)
-sout_imgstitch_log.apply(compute).apply(lambda x : x[0]).apply(source_plotting.store_results, images=['image'], hideaxes=True)
-sout_thumb.apply(compute).apply(lambda x : x[0]).apply(source_plotting.store_results, images=['thumb'], hideaxes=True)
+# save to plots 
+resultsqueue = deque(maxlen=1000)
+sout_circavg.apply(delayed(source_plotting.store_results), lines=[('sqx', 'sqy')],\
+                   scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$",
+                   ylabel="I(q)").apply(client.compute).apply(resultsqueue.append)
+'''
+sout_imgstitch.apply(delayed(source_plotting.store_results), images=['image'], hideaxes=True).apply(client.compute).apply(resultsqueue.append)
+sout_imgstitch_log.apply(delayed(source_plotting.store_results), images=['image'], hideaxes=True).apply(client.compute).apply(resultsqueue.append)
+sout_thumb.apply(delayed(source_plotting.store_results), images=['thumb'], hideaxes=True).apply(client.compute).apply(resultsqueue.append)
 sout_thumb.select(('thumb', None)).map(np.log10).select((0,'thumb'))\
-        .apply(lambda x : x.add_attributes(stream_name="ThumbLog")).apply(compute)\
-        .apply(lambda x : x[0])\
-        .apply(source_plotting.store_results, images=['thumb'], hideaxes=True)
+        .apply(lambda x : x.add_attributes(stream_name="ThumbLog"))\
+        .apply(delayed(source_plotting.store_results), images=['thumb'], hideaxes=True)\
+        .apply(client.compute).apply(resultsqueue.append)
 
-#sqfit_out.apply(compute)#.apply(lambda x :
-                               #x[0]).apply(source_plotting.store_results,
-                                           #lines=[('sqx', 'sqy'), ('sqx', 'sqfit')],
-                                           #scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$", ylabel="I(q)")
-# TODO : fix
-sqphi_out.apply(compute).apply(lambda x :
-                               x[0]).apply(source_plotting.store_results,
-                                           images=['sqphi'], xlabel="$\phi$", ylabel="$q$", vmin=0, vmax=100)
-#
+sqfit_out.apply(delayed(source_plotting.store_results),
+                                           lines=[('sqx', 'sqy'), ('sqx', 'sqfit')],
+                                           scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$", ylabel="I(q)")\
+        .apply(client.compute)
+sqphi_out.apply(delayed(source_plotting.store_results),
+                                           images=['sqphi'], xlabel="$\phi$", ylabel="$q$", vmin=0, vmax=100)\
+        .apply(client.compute).apply(resultsqueue.append)
+sout_img_pca.apply(delayed(source_plotting.store_results),
+                   images=['components']).apply(client.compute)\
+                    .apply(resultsqueue.append)
+
+'''
+
+# save to file system
+'''
+sout_thumb.apply(delayed(source_file.store_results_file), {'writer' : 'npy', 'keys' : ['thumb']})\
+        .apply(client.compute).apply(resultsqueue.append)
+'''
+
+
+# TODO : make databroker not save numpy arrays by default i flonger than a certain size 
+# (since it's likely an error and leads to garbage strings saved in mongodb)
+# save to databroker
+'''
+sout_thumb.apply(delayed(source_databroker.store_results_databroker), dbname="cms:analysis", external_writers={'thumb' : 'npy'})\
+        .apply(client.compute).apply(resultsqueue.append)
+'''
 
 
 #origin.apply(compute).apply(lambda x : print("origin : {}".format(x)))
@@ -362,7 +467,9 @@ sqphi_out.apply(compute).apply(lambda x :
 
 # read uids directly rather than search (search is slow, bypass for now)
 import os
-filename = os.path.expanduser("~/SciAnalysis-data/storage/YT_uids.txt")
+#filename = os.path.expanduser("~/SciAnalysis-data/storage/YT_uids.txt")
+# TODO : remove relative path from here
+filename = os.path.expanduser("../storage/alldata-jan-april.txt")
 data_uids = list()
 with open(filename,"r") as f:
     for ln in f:
@@ -376,19 +483,20 @@ with open(filename,"r") as f:
 
 sdoc_gen = source_databroker.pullfromuids(dbname_data, data_uids)
 
+from time import sleep
 cnt = 0
-for sdoc in sdoc_gen:
-    if cnt == 0:
-        sdoc['attributes']['stitch'] = 0
-    else:
-        sdoc['attributes']['stitch'] = 1
-
-    cnt +=1
+#for sdoc in sdoc_gen:
+for uid in data_uids:
+    print("loading task for uid : {}".format(uid))
 
     ## TODO : emit should maybe transform according to wrapper?
     # add delayed wrapper
     #sdoc._wrapper = delayed
-    sin.emit(delayed(sdoc))
+    #sin.emit(delayed(sdoc))
+    sin.emit(uid)
+    # probably good idea not to bombard dask with computations
+    # add a small interval between requests
+    sleep(.1)
 
 
 

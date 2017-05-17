@@ -224,6 +224,13 @@ class StreamDoc(dict):
             elif isinstance(newkey, int):
                 raise ValueError("Integer tuple pairs not accepted")
 
+            if oldparentkey == 'kwargs' and oldkey not in streamdoc[oldparentkey] \
+               or oldparentkey == 'args' and len(streamdoc[oldparentkey]) < oldkey:
+                errorstr = "streamdoc.select() : Error {} not in the {} of the current streamdoc.\n".format(oldkey, oldparentkey)
+                errorstr = errorstr + "Details : Tried to map key {} from {} to {}\n.".format(oldkey, oldparentkey, newparentkey)
+                errorstr = errorstr + "This usually occurs from selecting a streamdoc with missing information\n"
+                raise KeyError(errorstr)
+
             if newparentkey == 'args':
                 totargs[newparentkey].append(streamdoc[oldparentkey][oldkey])
             else:

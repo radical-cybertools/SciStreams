@@ -3,53 +3,55 @@
     Eventually this should be in some connection file.
 
 '''
-from SciAnalysis.interfaces.databroker.database_initializers import init_cmsdb, init_chxdb
+from SciAnalysis.interfaces.databroker.database_initializers import init_db
+
+# this contains dbinfo, which may be read from a scianalysis.yml file
+import SciAnalysis.config as config
+
+#some handlers
+from filestore.handlers import DATHandler, NpyHandler
+from .handlers_custom import PNGHandler
+
+'''
+    # register some handlers
+    # TODO : allow externally adding handlers
+    fs_analysis.register_handler('PNG', PNGHandler, overwrite=True)
+    fs_analysis.register_handler('JPG', PNGHandler, overwrite=True)
+    fs_analysis.register_handler('DAT', DATHandler, overwrite=True)
+    fs_analysis.register_handler('npy', NpyHandler, overwrite=True)
+'''
+
+# special handlers for analysis to be setup
+# this is hard coded to but should eventually be moved somewhere else
+analysis_handlers = {
+    'PNG' : PNGHandler,
+    'JPG' : PNGHandler,
+    'DAT' : DATHandler,
+    'npy' : NpyHandler,
+}
 
 
+# specify as a function to allow re-initialization if needed
+# (for sqlite, this can help)
+# databases are something like:
+# 'chx' : {'data' : {'host' : ..., 'port' : ..., 'fsname' : ..., 
+#       'mdsname' : ..., ...}, 'analysis' : {...}}
+# 'cms' : ...
 def initialize(dbname=None):
-    # TODO : allow a string to be specified
-    # when these flags set true, enables these databases
-    database_enable = {
-        'chx' : False,
-        'cms' : True,
-    }
-
-    database_setups = {
-        'cms' : {'initializer' : init_cmsdb,
-                 'kwargs' : dict(HOST_DATA='xf11bm-ca1',
-                                 PORT_DATA=27017,
-                                 ROOTMAP_DATA= {},#{"/GPFS/xf11bm/Pilatus300": "/media/cmslive"},
-                                 HOST_ANALYSIS="localhost",
-                                 PORT_ANALYSIS=27025,
-                                 ROOTMAP_ANALYSIS={}),
-                 },
-        'chx' : {'initializer' : init_chxdb, 'kwargs' : dict(HOST_DATA='xf11id-srv1',
-                                                             PORT_DATA=27017,
-                                                             ROOTMAP_DATA= {},
-                                                             HOST_ANALYSIS="localhost",
-                                                             PORT_ANALYSIS=27021,
-                                                             ROOTMAP_ANALYSIS={}
-
-                                                             )
-                 }
-    }
-
     databases = dict()
-
-    # enable databases one by one
-    # only initialize if not done yet (remove if using sqlite)
-    for key in database_enable:
-        if database_enable[key]:
-            initializer = database_setups[key]['initializer']
-            kwargs = database_setups[key]['kwargs']
-            dbs = initializer(**kwargs)
-            databases[key] = dict()
-            databases[key]['data'] = dbs[0]
-            databases[key + ":" + "data"] = dbs[0]
-            databases[key]['analysis'] = dbs[1]
-            databases[key + ":" + "analysis"] = dbs[1]
-        else:
-            databases[key] = None
+    databases_info = config.databases
+    for dbname, subdbs in databases_info.items():
+        for subdbname, dbinfo in subdbs.items():
+            print("dbname : {}; subdb : {}".format(dbname, subdbname))
+            if subdbname == "analysis":
+                handlers = analysis_handlers
+            else:
+                handlers = None
+            databases[dbname + ":" + subdbname] = init_db(dbinfo['host'],
+                                                          dbinfo['port'],
+                                                          dbinfo['mdsname'],
+                                                          dbinfo['fsname'],
+                                                          handlers=handlers)
     return databases
 
 # TODO : move initialization elsewhere

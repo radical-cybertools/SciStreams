@@ -5,6 +5,27 @@ filename = os.path.expanduser("~/.config/scianalysis/scianalysis.yml")
 f = open(filename)
 config = yaml.load(f)
 
+#for data
+cmsdb_data=dict(
+host = "localhost",
+port=27017,
+mdsname='metadatastore-production-v1',
+fsname = "filestore-production-v1",
+)
+
+# for analysis
+cmsdb_analysis = dict(
+host = "localhost",
+port=27025,
+mdsname = "analysis-metadatastore-v1",
+fsname = "analysis-filestore-v1",
+)
+
+default_databases = dict(cms=dict(analysis=cmsdb_analysis, data=cmsdb_data))
+
+
+
+
 _DEFAULTS = {
     'delayed' : True,
     'storagedir' : "../storage",
@@ -12,7 +33,8 @@ _DEFAULTS = {
     'resultsroot' : os.path.expanduser("~/sqlite"),
     'xmldir' : "xml-files",
     'delayed' : True,
-    'client' : None
+    'client' : None,
+    'databases' : default_databases
 }
 
 
@@ -25,6 +47,7 @@ xmldir = config.get('xmldir', _DEFAULTS['xmldir'])
 xmldir = storagedir + "/" + xmldir
 
 client = config.get('client', _DEFAULTS['client'])
+databases = config.get('databases', _DEFAULTS['databases'])
 
 
 if delayed:
