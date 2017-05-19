@@ -24,14 +24,12 @@ fsname = "analysis-filestore-v1",
 default_databases = dict(cms=dict(analysis=cmsdb_analysis, data=cmsdb_data))
 
 
-
-
 _DEFAULTS = {
     'delayed' : True,
     'storagedir' : "../storage",
     'maskdir' : "masks",
-    'resultsroot' : os.path.expanduser("~/sqlite"),
-    'xmldir' : "xml-files",
+    'resultsroot' : os.path.expanduser("~/sqlite/results"),
+    'filestoreroot' : os.path.expanduser("~/sqlite/filestore"),
     'delayed' : True,
     'client' : None,
     'databases' : default_databases
@@ -43,8 +41,12 @@ storagedir = config.get('storagedir', _DEFAULTS['storagedir'])
 maskdir = config.get('maskdir', _DEFAULTS['maskdir'])
 maskdir = storagedir + "/" + maskdir
 resultsroot = config.get('resultsroot', _DEFAULTS['resultsroot'])
-xmldir = config.get('xmldir', _DEFAULTS['xmldir'])
-xmldir = storagedir + "/" + xmldir
+if isinstance(resultsroot, list):
+    resultsrootmap = resultsroot
+    resultsroot = None
+else:
+    resultsrootmap = None
+
 
 client = config.get('client', _DEFAULTS['client'])
 databases = config.get('databases', _DEFAULTS['databases'])

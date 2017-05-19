@@ -11,6 +11,7 @@ import SciAnalysis.config as config
 #some handlers
 from filestore.handlers import DATHandler, NpyHandler
 from .handlers_custom import PNGHandler
+from SciAnalysis.interfaces.databroker.handlers_custom import AreaDetectorTiffHandler
 
 '''
     # register some handlers
@@ -30,6 +31,12 @@ analysis_handlers = {
     'npy' : NpyHandler,
 }
 
+data_handlers = {
+    'AD_TIFF': AreaDetectorTiffHandler,
+}
+
+
+
 
 # specify as a function to allow re-initialization if needed
 # (for sqlite, this can help)
@@ -45,7 +52,10 @@ def initialize(dbname=None):
             print("dbname : {}; subdb : {}".format(dbname, subdbname))
             if subdbname == "analysis":
                 handlers = analysis_handlers
+            elif subdbname == "data":
+                handlers = data_handlers
             else:
+                # should not in principle get here
                 handlers = None
             databases[dbname + ":" + subdbname] = init_db(dbinfo['host'],
                                                           dbinfo['port'],

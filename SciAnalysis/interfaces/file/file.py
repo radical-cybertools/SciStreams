@@ -2,10 +2,12 @@ from collections import OrderedDict
 from SciAnalysis.interfaces.file.reading import FileDesc
 from SciAnalysis.interfaces.file.core import writers_dict
 import os
-
-_ROOTDIR = "/home/lhermitte/sqlite/file-tmp-data"
+import SciAnalysis.config as config
 
 import numpy as np
+
+_ROOTDIR = config.resultsroot
+_ROOTMAP = config.resultsrootmap
 
 def make_dir(directory):
     ''' Creates directory if doesn't exist.'''
@@ -37,20 +39,21 @@ def _make_fname_from_attrs(attrs):
     ''' make filename from attributes.
         This will likely be copied among a few interfaces.
     '''
-    if 'experiment_cycle' not in attrs:
-        raise ValueError("Error cannot find experiment_cycle in attributes")
-    else:
-        experiment_cycle = _cleanup_str(attrs['experiment_cycle'])
+    if 'experiment_alias_directory' not in attrs:
+        raise ValueError("Error cannot find experiment_alias_directory in attributes. Not saving.")
+
+    # remove the trailing slash
+    rootdir = attrs['experiment_alias_directory'].strip("/")
+
+    if _ROOTMAP is not None:
+        rootdir = rootdir.replace(_ROOTMAP[0], _ROOTMAP[1])
+    elif _ROOTDIR is not None:
+        rootdir = _ROOTDIR
 
     if 'detector_name' not in attrs:
         raise ValueError("Error cannot find detector_name in attributes")
     else:
         detector_name = _cleanup_str(attrs['detector_name'])
-
-    if 'experiment_group' not in attrs:
-        raise ValueError("Error cannot find experiment_group in attrbutess")
-    else:
-        experiment_group = _cleanup_str(attrs['experiment_group'])
 
     if 'sample_savename' not in attrs:
         raise ValueError("Error cannot find sample_savename in attributes")
@@ -68,7 +71,7 @@ def _make_fname_from_attrs(attrs):
     else:
         scan_id = _cleanup_str(str(attrs['scan_id']))
 
-    outdir = _ROOTDIR + "/" + experiment_cycle + "/" + experiment_group + "/" + detector_name + "/" + stream_name
+    outdir = rootdir + "/" + "/" + detector_name + "/" + stream_name + "/files"
     make_dir(outdir)
     outfile = outdir + "/" + sample_savename + "_" + scan_id
 
@@ -92,6 +95,7 @@ def store_results_file(results, writers={}):
 
     # prepare directory
     outfile = _make_fname_from_attrs(attrs)
+    print("writing to {}".format(outfile))
 
     if not isinstance(writers, list):
         writers = [writers]

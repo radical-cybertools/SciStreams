@@ -35,6 +35,8 @@ from PIL import Image
 
 from scipy import ndimage
 
+from dask.delayed import delayed
+
 from collections import ChainMap
 from SciAnalysis.data.Singlet import Singlet
 
@@ -49,8 +51,12 @@ from SciAnalysis.interfaces.detectors import detectors2D
     Notes : load should be a separate function
 '''
 
+def add_attributes(sdoc, **attr):
+    newsdoc = StreamDoc(sdoc)
+    newsdoc.add(attributes=attr)
+    return newsdoc
 
-from SciAnalysis.interfaces.StreamDoc import Stream
+from SciAnalysis.interfaces.StreamDoc import Stream, StreamDoc
 
 from collections import deque
 # cache for qmaps
@@ -99,7 +105,7 @@ def CalibrationStream(keymap_name=None, detector=None, wrapper=None):
 
     # the pipeline flow defined here
     sin = Stream(wrapper=wrapper)
-    s2 = sin.apply(lambda x : x.add_attributes(stream_name="Calibration"))
+    s2 = sin.apply(delayed(add_attributes), stream_name="Calibration")
     calib = s2.map(load_calib_dict, keymap=keymap, defaults=defaults)
     calib = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
 
@@ -390,7 +396,7 @@ def CircularAverageStream(wrapper=None):
     '''
     #TODO : extend file to mltiple writers?
     sin  = Stream(wrapper=wrapper)
-    s2 = sin.apply(lambda x : x.add_attributes(stream_name="CircularAverage"))
+    s2 = sin.apply(delayed(add_attributes), stream_name="CircularAverage")
     sout = s2.map(circavg)
     return sin, sout
 
@@ -478,7 +484,7 @@ def QPHIMapStream(wrapper=None, bins=(400,400)):
     '''
     sin = Stream(wrapper=wrapper)
     sout = sin.select(0, 'mask', 'origin')\
-            .apply(lambda x : x.add_attributes(stream_name="QPHIMapStream"))
+            .apply(delayed(add_attributes), stream_name="QPHIMapStream")
     sout = sout.map(qphiavg, bins=bins)
     #from dask import compute
     #sout.apply(compute).apply(print)
@@ -524,9 +530,9 @@ def ImageStitchingStream(wrapper=None):
 
     '''
     sin = Stream(wrapper=wrapper)
-    s2 = sin.apply(lambda x : x.add_attributes(stream_name="ImageStitch"))
+    s2 = sin.apply(delayed(add_attributes), stream_name="ImageStitch")
     # make the image, mask origin as the first three args
-    s3 = s2.select(('image', None), ('mask', None), ('origin', None), ('stitch', None))
+    s3 = s2.select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
     sout = s3.map(pack).accumulate(xystitch_accumulate)
 
     # debugging
@@ -573,7 +579,7 @@ def ThumbStream(wrapper=None, blur=None, crop=None, resize=None):
 
     '''
     sin = Stream(wrapper=wrapper)
-    s0 = sin.apply(lambda x : x.add_attributes(stream_name="Thumb"))
+    s0 = sin.apply(delayed(add_attributes), stream_name="Thumb")
     #s1 = sin.add_attributes(stream_name="ThumbStream")
     s1 = s0.map(_blur)
     s1 = s1.map(_crop)

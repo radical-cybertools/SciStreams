@@ -65,6 +65,8 @@ class StreamDoc(dict):
         self['attributes'].update(attributes)
         self['statistics'].update(statistics)
 
+        return self
+
     #def __stream_map__(self, func, **kwargs):
         #return parse_streamdoc("map")(func)(self, **kwargs)
 
@@ -222,13 +224,17 @@ class StreamDoc(dict):
             elif isinstance(newkey, str):
                 newparentkey = 'kwargs'
             elif isinstance(newkey, int):
-                raise ValueError("Integer tuple pairs not accepted")
+                errorstr = "Integer tuple pairs not accepted."
+                errorstr = errorstr + " This usually comes from trying a (1,1) or ('foo',1) mapping."
+                errorstr = errorstr + "Please try (1,None) or ('foo', None) instead"
+                raise ValueError(errorstr)
 
             if oldparentkey == 'kwargs' and oldkey not in streamdoc[oldparentkey] \
                or oldparentkey == 'args' and len(streamdoc[oldparentkey]) < oldkey:
                 errorstr = "streamdoc.select() : Error {} not in the {} of the current streamdoc.\n".format(oldkey, oldparentkey)
                 errorstr = errorstr + "Details : Tried to map key {} from {} to {}\n.".format(oldkey, oldparentkey, newparentkey)
                 errorstr = errorstr + "This usually occurs from selecting a streamdoc with missing information\n"
+                errorstr = errorstr + "(But could also come from missing data)\n"
                 raise KeyError(errorstr)
 
             if newparentkey == 'args':

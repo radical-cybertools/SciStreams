@@ -166,46 +166,29 @@ def get_attributes(sdoc):
     return StreamDoc(args=sdoc['attributes'])
 
 def add_attributes(sdoc, **attr):
-    sdoc.add(attributes=attr)
-    return sdoc
+    # make a copy
+    newsdoc = StreamDoc(sdoc)
+    newsdoc.add(attributes=attr)
+    return newsdoc
 
 import matplotlib.pyplot as plt
 plt.ion()
 plt.clf()
 
-def plot_line(*args, **kwargs):
-    plt.figure(2);plt.clf();
-    plt.plot(*args)
-    plt.pause(.1)
-
-# TODO : make sure saving is not pure=True!
-def plot_image(img):
-    plt.figure(1)
-    plt.clf();plt.imshow(img)
-    plt.draw();plt.pause(.5);
-
-def get_image(imgtmp):
-    global img
-    img = imgtmp
-
-def get_mask(imgtmp):
-    global mask
-    mask = imgtmp
-
-def get_stitch(attr, *args, **kwargs):
+def get_stitchback(attr, *args, **kwargs):
     #print(attr['stitch'])
     #print("kwargs : {}".format(kwargs))
     #print("args : {}".format(args))
-    return attr['stitch'],
+    return attr['stitchback'],
+
+# TODO merge check with get stitch
+def check_stitchback(sdoc):
+    if 'stitchback' not in sdoc['attributes']:
+        sdoc['attributes']['stitchback'] = 0
+    return StreamDoc(sdoc)
 
 def get_exposure_time(attr, *args, **kwargs):
     return attr['sample_exposure_time']
-
-def print_exposure(attr, **kwargs):
-    try:
-        print("exposure time from attr: {}".format(attr['sample_exposure_time']))
-    except Exception:
-        print("Cout not get exposure time")
 
 def norm_exposure(image=None, exposure_time=None, **kwargs):
     return image/exposure_time
@@ -216,114 +199,31 @@ def multiply(A, B):
 def divide(A, B):
     return A/B
 
-
 def set_detector_name(sdoc, detector_name='pilatus300'):
     sdoc['attributes']['detector_name'] = detector_name
-    return sdoc
+    return StreamDoc(sdoc)
 
+def safelog10(img):
+    img_out = np.zeros_like(img)
+    w = np.where(img > 0)
+    img_out[w] = np.log10(img[w])
+    return img_out
 
+def PCA_fit(data, n_components=10):
+    ''' Run principle component analysis on data.
+        n_components : num components (default 10)
+    '''
+    # first reshape data if needed
+    if data.ndim > 2:
+        datashape = data.shape[1:]
+        data = data.reshape((data.shape[0], -1))
 
-globaldict = dict()
-# This should be an interface
-def save_image_recent(sdoc, fignum=None, name=None):
-    global globaldict
-    # make sure it's not delayed
-    if fignum is None:
-        fignum = 20
-    if name is None:
-        name = 'recent.jpg'
-    img = sdoc['args'][0]
-    plt.figure(fignum);
-    #plt.title("log10img")
-    #plt.imshow(np.log10(img))
-    plt.title("img")
-    plt.imshow((img))
-    plt.savefig(name)
-
-    globaldict[name] = img
-    #from PIL import Image
-    #im = Image.fromarray(img)
-    #im.save(name)
-
-def save_data(sdoc, name='default'):
-    global globaldict
-    sdoc = sdoc
-    a = sdoc['args'][0]
-    globaldict[name] = a
-
-def check_stitch(sdoc):
-    if 'stitch' not in sdoc['attributes']:
-        sdoc['attributes']['stitch'] = 0
-    return sdoc
-
-
-from functools import partial
-# Stream setup, datbroker data comes here (a header for now)
-sin = Stream(wrapper=delayed_wrapper)
-# first expects a string, just apply (ignore wrappers)
-s_event = sin.apply(delayed(source_databroker.pullfromuid), dbname='cms:data').apply(delayed(check_stitch))
-#s2.apply(compute).apply(print)
-# next start working on result
-s_event = s_event.apply(lambda x : delayed(partial(x.add_attributes)(stream_name="InputStream")))#.apply(compute)
-s_event = s_event.apply(delayed(set_detector_name), detector_name='pilatus300')
-#sin.map(print, raw=True)
-#s2.apply(compute).apply(lambda x : print(x[0]['attributes']['stream_name']))
-
-#  separate data from attributes
-attributes = s_event.apply(delayed(get_attributes))
-#attributes.apply(compute).apply(print)
-
-# get image from the input stream
-#image = s2.select((detector_key,None))
-#s_event.apply(compute).apply(print)
-image = s_event.apply(lambda x : x.select((detector_key,None)))
-
-# calibration setup
-sin_calib, sout_calib = CalibrationStream(wrapper=delayed_wrapper)
-#sin_calib.apply(print)
-#sout_calib['q_maps'].apply(compute).apply(print)
-calib_qmap = sout_calib['q_maps']
-calibration = sout_calib['calibration']
-origin = sout_calib['origin']
-#origin.map(compute, raw=True)
-#calib_qmap.map(compute, raw=True)
-#calibration.map(compute, raw=True).map(print, raw=True)
-
-# connect attributes to sin_calib
-attributes.apply(sin_calib.emit)#.apply(compute)
-#attributes.map(print_exposure).apply(compute)
-
-
-# generate a mask
-mskstr = origin.map(mmg.generate)
-
-mask_stream = mskstr.select((0, 'mask'))
-# compute it to test later
-# TODO add when dask
-#mask = mask_stream.(compute)
-
-# circular average
-sin_image_qmap = image.merge(calib_qmap, mask_stream)
-sin_circavg, sout_circavg = CircularAverageStream(wrapper=delayed_wrapper)
-sin_image_qmap.select(0, 'q_map', 'r_map', 'mask').apply(sin_circavg.emit)
-
-# image stitching
-stitch = attributes.map(get_stitch).select((0, 'stitch'))
-exposure_time = attributes.map(get_exposure_time).select((0, 'exposure_time'))
-exposure_mask = mask_stream.select(('mask', None))
-exposure_mask = exposure_mask.merge(exposure_time.select(('exposure_time', None))).map(multiply)
-exposure_mask = exposure_mask.select((0, 'mask'))
-
-sin_imgstitch, sout_imgstitch = ImageStitchingStream(wrapper=delayed_wrapper)
-sout_imgstitch_log = sout_imgstitch.select(('image', None)).map(np.log10).select((0, 'image'))
-sout_imgstitch_log = sout_imgstitch_log.apply(lambda x : x.add_attributes(stream_name="ImgStitchLog"))
-img_masked = image.merge(mask_stream.select(('mask',None))).map(multiply)
-img_mask_origin = img_masked.select((0,'image')).merge(exposure_mask.select(('mask','mask')), origin.select((0, 'origin')), stitch)
-img_mask_origin.apply(sin_imgstitch.emit)
-#sin_imgstitch.apply(compute).apply(lambda x: print("printing : {}".format(x)))
-
-sin_thumb, sout_thumb = ThumbStream(wrapper=delayed_wrapper, blur=1, resize=2)
-image.apply(sin_thumb.emit)
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=n_components)
+    pca.fit(data)
+    components = pca.components_.copy()
+    components = components.reshape((n_components, *datashape))
+    return dict(components=components)
 
 # TODO :  need to fix this
 @delayed
@@ -371,27 +271,96 @@ def squash(sdocs):
 
     return newsdoc
 
-def PCA_fit(data, n_components=10):
-    ''' Run principle component analysis on data.
-        n_components : num components (default 10)
-    '''
-    # first reshape data if needed
-    if data.ndim > 2:
-        datashape = data.shape[1:]
-        data = data.reshape((data.shape[0], -1))
-
-    from sklearn.decomposition import PCA
-    pca = PCA(n_components=n_components)
-    pca.fit(data)
-    components = pca.components_.copy()
-    components = components.reshape((n_components, *datashape))
-    return dict(components=components)
+def isSAXS(sdoc):
+    ''' return true only if a SAXS expt.'''
+    attr = sdoc['attributes']
+    if 'experiment_type' in attr:
+        expttype = attr['experiment_type']
+        if expttype == 'SAXS':
+            return True
+    return False
 
 
-sout_img_partitioned = sout_thumb.select(('thumb', None)).partition(100).apply(squash)
+
+globaldict = dict()
+
+
+from functools import partial
+# Stream setup, datbroker data comes here (a header for now)
+sin = Stream(wrapper=delayed_wrapper)
+# first expects a string, just apply (ignore wrappers)
+s_event = sin.filter(delayed(isSAXS))
+s_event = s_event.apply(delayed(source_databroker.pullfromuid), dbname='cms:data').apply(delayed(check_stitchback))
+#s2.apply(compute).apply(print)
+# next start working on result
+s_event = s_event.apply(delayed(add_attributes), stream_name="InputStream")#.apply(compute)
+#s_event.apply(client.compute).apply(print)
+s_event = s_event.apply(delayed(set_detector_name), detector_name='pilatus300')
+#sin.map(print, raw=True)
+#s2.apply(compute).apply(lambda x : print(x[0]['attributes']['stream_name']))
+
+#  separate data from attributes
+attributes = s_event.apply(delayed(get_attributes))
+#attributes.apply(compute).apply(print)
+
+# get image from the input stream
+#image = s2.select((detector_key,None))
+#s_event.apply(compute).apply(print)
+image = s_event.apply(lambda x : delayed(x.select)((detector_key,None)))
+
+# calibration setup
+sin_calib, sout_calib = CalibrationStream(wrapper=delayed_wrapper)
+#sin_calib.apply(print)
+#sout_calib['q_maps'].apply(compute).apply(print)
+calib_qmap = sout_calib['q_maps']
+calibration = sout_calib['calibration']
+origin = sout_calib['origin']
+#origin.map(compute, raw=True)
+#calib_qmap.map(compute, raw=True)
+#calibration.map(compute, raw=True).map(print, raw=True)
+
+# connect attributes to sin_calib
+attributes.apply(sin_calib.emit)#.apply(compute)
+#attributes.map(print_exposure).apply(compute)
+
+
+# generate a mask
+mskstr = origin.map(mmg.generate)
+
+mask_stream = mskstr.select((0, 'mask'))
+# compute it to test later
+# TODO add when dask
+#mask = mask_stream.(compute)
+
+# circular average
+sin_image_qmap = image.merge(calib_qmap, mask_stream)
+sin_circavg, sout_circavg = CircularAverageStream(wrapper=delayed_wrapper)
+sin_image_qmap.select(0, 'q_map', 'r_map', 'mask').apply(sin_circavg.emit)
+
+# image stitching
+stitch = attributes.map(get_stitchback).select((0, 'stitchback'))
+exposure_time = attributes.map(get_exposure_time).select((0, 'exposure_time'))
+exposure_mask = mask_stream.select(('mask', None))
+exposure_mask = exposure_mask.merge(exposure_time.select(('exposure_time', None))).map(multiply)
+exposure_mask = exposure_mask.select((0, 'mask'))
+
+sin_imgstitch, sout_imgstitch = ImageStitchingStream(wrapper=delayed_wrapper)
+sout_imgstitch_log = sout_imgstitch.select(('image', None)).map(safelog10).select((0, 'image'))
+sout_imgstitch_log = sout_imgstitch_log.apply(delayed(add_attributes), stream_name="ImgStitchLog")
+img_masked = image.merge(mask_stream.select(('mask',None))).map(multiply)
+img_mask_origin = img_masked.select((0,'image')).merge(exposure_mask.select(('mask','mask')), origin.select((0, 'origin')), stitch)
+img_mask_origin.apply(sin_imgstitch.emit)
+#sin_imgstitch.apply(compute).apply(lambda x: print("printing : {}".format(x)))
+
+sin_thumb, sout_thumb = ThumbStream(wrapper=delayed_wrapper, blur=1, resize=2)
+image.apply(sin_thumb.emit)
+
+
+
+sout_img_partitioned = sout_thumb.select(('thumb', None)).partition(100).apply(delayed(squash))
 #sout_img_partitioned.apply(compute).apply(print)
 # saves dict with components key
-sout_img_pca = sout_img_partitioned.map(PCA_fit, n_components = 10).apply(lambda x : x.add_attributes(stream_name="PCA"))
+sout_img_pca = sout_img_partitioned.map(PCA_fit, n_components = 10).apply(delayed(add_attributes), stream_name="PCA")
 
 
 # fitting
@@ -407,15 +376,6 @@ sqphi_out.apply(client.compute).apply(sqphis.append)
 
 #sout_thumb.apply(client.compute).sink_to_deque()
 
-
-# some plotting/sinks
-#mask_stream.select(('mask', None)).apply(save_image_recent,fignum=21, name="mask.png")#.apply(compute)
-#image.apply(save_image_recent, fignum=22, name="image.png").apply(compute)
-#sout_imgstitch.select(('image', None)).apply(save_image_recent,fignum=23, name="stitched.png")#.apply(compute)
-#image.apply(save_image_recent, fignum=24, name="img_time.png").apply(compute)
-#sout_imgstitch.select(('mask', None)).apply(save_image_recent,fignum=25, name="stitch-mask.png")#.apply(compute)
-#sout_imgstitch.select(('origin', None)).apply(save_data, name="origin")#.apply(compute)
-
 # save to plots 
 resultsqueue = deque(maxlen=1000)
 sout_circavg.apply(delayed(source_plotting.store_results), lines=[('sqx', 'sqy')],\
@@ -425,8 +385,8 @@ sout_circavg.apply(delayed(source_plotting.store_results), lines=[('sqx', 'sqy')
 sout_imgstitch.apply(delayed(source_plotting.store_results), images=['image'], hideaxes=True).apply(client.compute).apply(resultsqueue.append)
 sout_imgstitch_log.apply(delayed(source_plotting.store_results), images=['image'], hideaxes=True).apply(client.compute).apply(resultsqueue.append)
 sout_thumb.apply(delayed(source_plotting.store_results), images=['thumb'], hideaxes=True).apply(client.compute).apply(resultsqueue.append)
-sout_thumb.select(('thumb', None)).map(np.log10).select((0,'thumb'))\
-        .apply(lambda x : x.add_attributes(stream_name="ThumbLog"))\
+sout_thumb.select(('thumb', None)).map(safelog10).select((0,'thumb'))\
+        .apply(delayed(add_attributes), stream_name="ThumbLog")\
         .apply(delayed(source_plotting.store_results), images=['thumb'], hideaxes=True)\
         .apply(client.compute).apply(resultsqueue.append)
 
@@ -440,23 +400,30 @@ sqphi_out.apply(delayed(source_plotting.store_results),
 sout_img_pca.apply(delayed(source_plotting.store_results),
                    images=['components']).apply(client.compute)\
                     .apply(resultsqueue.append)
-
 '''
+
 
 # save to file system
-'''
 sout_thumb.apply(delayed(source_file.store_results_file), {'writer' : 'npy', 'keys' : ['thumb']})\
         .apply(client.compute).apply(resultsqueue.append)
-'''
+sout_circavg.apply(delayed(source_file.store_results_file), {'writer' : 'npy', 'keys' : ['sqx', 'sqy']})\
+        .apply(client.compute).apply(resultsqueue.append)
+#sout_circavg.apply(client.compute).apply(print)
 
 
 # TODO : make databroker not save numpy arrays by default i flonger than a certain size 
 # (since it's likely an error and leads to garbage strings saved in mongodb)
 # save to databroker
-'''
 sout_thumb.apply(delayed(source_databroker.store_results_databroker), dbname="cms:analysis", external_writers={'thumb' : 'npy'})\
         .apply(client.compute).apply(resultsqueue.append)
-'''
+
+
+
+
+
+
+
+
 
 
 #origin.apply(compute).apply(lambda x : print("origin : {}".format(x)))
@@ -496,17 +463,7 @@ for uid in data_uids:
     sin.emit(uid)
     # probably good idea not to bombard dask with computations
     # add a small interval between requests
-    sleep(.1)
-
-
-
-
-# plot results
-#img = globaldict['stitched.png']
-#mask = globaldict['stitch-mask.png']
-#plt.figure(25);
-#plt.clf();
-#plt.imshow(img/mask)
+    sleep(.5)
 
 
 ''' FAQ :
@@ -531,6 +488,9 @@ for uid in data_uids:
         - args/kwargs mapping
         - zip not merge
         - etc...
+
+
+    Streams must never modify data, create a new copy everytime instead
 
     some function being ignored? maybe you redefined stream input!
         ex : sin = Stream()

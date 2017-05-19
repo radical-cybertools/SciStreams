@@ -12,7 +12,8 @@ if config.client is not None:
 else:
     import dask
     class client:
-        def compute(self, *args, **kwargs):
+        # make unbound method
+        def compute(*args, **kwargs):
             return dask.compute(*args, **kwargs)[0]
 
 

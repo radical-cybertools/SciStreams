@@ -20,7 +20,7 @@ _ANALYSIS_STORE_VERSION = 'beta-v2'
 # some of them may have already started a db conection, others not
 
 
-def Header2StreamDoc(header, dbname="cms:data"):
+def Header2StreamDoc(header, dbname="cms:data",fill=True):
     ''' Convert a header to a StreamDoc.
 
         Note: This assumes header contains only one event.
@@ -37,15 +37,14 @@ def Header2StreamDoc(header, dbname="cms:data"):
 
     # Assume first event
     try:
-        print("getting events")
-        event = list(db.get_events(header, fill=True))[0]
-        print("got event {}".format(event))
-        print("done")
+        event = list(db.get_events(header, fill=fill))[0]
         eventdata = event['data']
     except IndexError:
         # there are no events
+        print("Found no events")
         eventdata = []
     except KeyError:
+        print("Event was corrupt")
         eventdata = []
 
     sdoc.add(kwargs=eventdata)

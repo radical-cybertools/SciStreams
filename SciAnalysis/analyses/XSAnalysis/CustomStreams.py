@@ -1,7 +1,13 @@
 #try a partially filled lattice
 import numpy as np
-from SciAnalysis.interfaces.StreamDoc import Stream
-from dask import compute
+from SciAnalysis.interfaces.StreamDoc import Stream, StreamDoc
+from dask import compute, delayed
+
+# TODO : make this part of streams
+def add_attributes(sdoc, **attr):
+    newsdoc = StreamDoc(sdoc)
+    newsdoc.add(attributes=attr)
+    return newsdoc
 
 # Sample custom stream : fit to a sphere form factor
 
@@ -19,7 +25,7 @@ def SqFitStream(wrapper=None):
 
     '''
     sin = Stream(wrapper=wrapper)
-    s2 = sin.apply(lambda x : x.add_attributes(stream_name="SqFitCustom"))
+    s2 = sin.apply(delayed(add_attributes), stream_name="SqFitCustom")
     s3 = s2.select(('sqx', None), ('sqy', None))
     s4 = s3.map(fitsqsphere)
     sout = s4

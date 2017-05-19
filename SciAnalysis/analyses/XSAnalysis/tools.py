@@ -1,7 +1,7 @@
 # image stitching
 import numpy as np
 
-def xystitch_result(img_acc, mask_acc, origin_acc, stitch_acc):
+def xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc):
     ''' Stitch_acc may not be necessary, it should just be a binary flag.  But
             could be generalized to a sequence number so I leave it.
     '''
@@ -17,15 +17,15 @@ def xystitch_result(img_acc, mask_acc, origin_acc, stitch_acc):
     img_acc[w] = img_acc_old[w]/mask_acc[w]
     mask_acc = (mask_acc > 0).astype(int)
 
-    return dict(image=img_acc, mask=mask_acc, origin=origin_acc, stitch=stitch_acc)
+    return dict(image=img_acc, mask=mask_acc, origin=origin_acc, stitchback=stitchback_acc)
 
 def xystitch_accumulate(prevstate, newstate):
     '''
         (assumes IMG and mask np arrays)
-        prevstate : IMG, mask, (x0, y0), stitch
-        nextstate : incoming IMG, mask, (x0, y0), stitch
+        prevstate : IMG, mask, (x0, y0), stitchback
+        nextstate : incoming IMG, mask, (x0, y0), stitchback
 
-        rules for stitch:
+        rules for stitchback:
             if next state 0, re-initialize
             else : stitch from previous image
 
@@ -44,24 +44,24 @@ def xystitch_accumulate(prevstate, newstate):
                 good for shot noise limited regime)
     '''
 
-    img_next, mask_next, origin_next, stitch_next = newstate
+    img_next, mask_next, origin_next, stitchback_next = newstate
     # just in case
     img_next = img_next*(mask_next > 0).astype(int)
     shape_next = img_next.shape
 
     # logic for making new state
     # initialization:
-    if stitch_next == 0:
+    if stitchback_next == 0:
         # re-initialize
         img_acc = img_next.copy()
         shape_acc = img_acc.shape
         mask_acc = mask_next.copy()
         origin_acc = origin_next
-        stitch_acc = 0
-        return img_acc, mask_acc, origin_acc, stitch_acc
+        stitchback_acc = 0
+        return img_acc, mask_acc, origin_acc, stitchback_acc
 
     # else, stitch
-    img_acc, mask_acc, origin_acc, stitch_acc = prevstate
+    img_acc, mask_acc, origin_acc, stitchback_acc = prevstate
     shape_acc = img_acc.shape
 
     # logic for main iteration component
@@ -81,11 +81,11 @@ def xystitch_accumulate(prevstate, newstate):
     _placeimg2D(img_next, origin_next, img_acc, origin_acc)
     _placeimg2D(mask_next, origin_next, mask_acc, origin_acc)
 
-    stitch_acc = stitch_next
+    stitchback_acc = stitchback_next
     img_acc = img_acc*(mask_acc > 0)
     mask_acc = mask_acc*(mask_acc > 0)
 
-    return img_acc, mask_acc, origin_acc, stitch_acc
+    return img_acc, mask_acc, origin_acc, stitchback_acc
 
 def _placeimg2D(img_source, origin_source, img_dest, origin_dest):
     ''' place source image into dest image. use the origins for
