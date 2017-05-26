@@ -47,9 +47,13 @@ from SciAnalysis.interfaces.xml import xml as source_xml
 
 from SciAnalysis.interfaces.detectors import detectors2D
 
+from SciAnalysis.interfaces.StreamDoc import Arguments
+
 '''
     Notes : load should be a separate function
 '''
+
+from SciAnalysis.analyses.XSAnalysis.Data import Calibration
 
 def add_attributes(sdoc, **attr):
     newsdoc = StreamDoc(sdoc)
@@ -106,13 +110,20 @@ def CalibrationStream(keymap_name=None, detector=None, wrapper=None):
     # the pipeline flow defined here
     sin = Stream(wrapper=wrapper)
     s2 = sin.apply(delayed(add_attributes), stream_name="Calibration")
+    from dask import compute
     calib = s2.map(load_calib_dict, keymap=keymap, defaults=defaults)
-    calib = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
+    calib.apply(compute).apply(print)
+    #calib = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
+    calib_obj = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
+    calib_obj.apply(compute).apply(print)
 
-    q_maps = calib.map(_generate_qxyz_maps)
+    #q_maps = calib.map(_generate_qxyz_maps)
+    calib_obj = calib_obj.map(_generate_qxyz_maps)
+    #calib_obj.apply(compute).apply(lambda x : print("in cliabraion: {}".format(x)))
     # for distributed regime, store intermediate values
     # sink the cache for the qmaps
-    q_maps.apply(client.compute).sink(QMAP_CACHE.append)
+    #q_maps.apply(client.compute).sink(QMAP_CACHE.append)
+    calib_obj.apply(client.compute).sink(QMAP_CACHE.append)
     # compute it so that it's cached on cluster
     # TODO : figure out best way to make this dask and non dask compatible
     #q_maps.apply(print)
@@ -121,21 +132,22 @@ def CalibrationStream(keymap_name=None, detector=None, wrapper=None):
     # just select first 3 args
     # TODO : add to  FAQ "Integer tuple pairs not accepted" when giving (0,1,2)
     # for ex instaead of [0,1,2]
-    q_map = q_maps.select(0,1,2).map(_generate_q_map)
-    angle_map = calib.map(_generate_angle_map)
-    r_map = calib.map(_generate_r_map).select((0, 'r_map'))
-    origin = calib.map(get_beam_center)
+    #q_map = q_maps.select(0,1,2).map(_generate_q_map)
+    #angle_map = calib.map(_generate_angle_map)
+    #r_map = calib.map(_generate_r_map).select((0, 'r_map'))
+    #origin = calib.map(get_beam_center)
 
     # make final qmap stream
-    q_maps = q_maps.select((0, 'qx_map'), (1, 'qy_map'), (2, 'qz_map'), (3, 'qr_map'))
-    q_maps = q_maps.merge(q_map.select((0, 'q_map')), r_map)
-    q_maps = q_maps.merge(angle_map.select((0, 'angle_map')))
+    #q_maps = q_maps.select((0, 'qx_map'), (1, 'qy_map'), (2, 'qz_map'), (3, 'qr_map'))
+    #q_maps = q_maps.merge(q_map.select((0, 'q_map')), r_map)
+    #q_maps = q_maps.merge(angle_map.select((0, 'angle_map')))
 
     # rename to kwargs (easier to inspect)
-    calib = calib.select((0, 'calibration'))
+    #calib = calib.select((0, 'calibration'))
 
     # they're relative sinks
-    sout = dict(calibration=calib, q_maps=q_maps, origin=origin)
+    #sout = dict(calibration=calib, q_maps=q_maps, origin=origin)
+    sout = calib_obj
     # return sin and the endpoints
     return sin, sout
 
@@ -218,17 +230,16 @@ def load_calib_dict(attributes, keymap=None, defaults=None):
                            " in header : {}.".format(newkey) +
                            "Cannot proceed")
     # TODO : mention dicts need to be returned as tuples or encapsulated in a dict
-    return newdict,
+    # this is new syntax for putting arguments in dict
+    return newdict
 
 
 def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
     '''
         Update calibration with all keyword arguments fill in the defaults
     '''
-    calibration = calib_dict
-
     calib_tmp = dict()
-    calib_tmp.update(calibration)
+    calib_tmp.update(calib_dict)
 
     # use the detector info supplied
     # look up in local library
@@ -252,11 +263,11 @@ def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
     # energy
     h = 6.626068e-34  # m^2 kg / s
     c = 299792458  # m/s
-    wavelength = calib_tmp['wavelength']['value']*1e-10  # m
-    E = h*c/wavelength  # Joules
-    E *= 6.24150974e18  # electron volts
-    E /= 1000.0  # keV
-    calib_tmp.update(Singlet('energy', E, 'keV'))
+    wavelength = calib_tmp['wavelength']['value']# in Angs *1e-10  # m
+    #E = h*c/wavelength  # Joules
+    #E *= 6.24150974e18  # electron volts
+    #E /= 1000.0  # keV
+    #calib_tmp.update(Singlet('energy', E, 'keV'))
     # q per pixel (Small angle limit)
     '''Gets the delta-q associated with a single pixel. This is computed in
     the small-angle limit, so it should only be considered a approximate.
@@ -272,11 +283,31 @@ def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
     # some post calculations
     calibration = calib_tmp
 
-    return calibration,
+    pixel_size_um = pixel_size_x_val
+    distance_m = calib_tmp['sample_det_distance']['value']
+    wavelength_A = wavelength
+    calib_object = Calibration(wavelength_A=wavelength_A,
+                               distance_m=distance_m,
+                               pixel_size_um=pixel_size_um)
+    # NOTE : width, height reversed in calibration
+    height, width = calib_tmp['shape']['value']
+    calib_object.set_image_size(width, height)
+    calib_object.set_beam_position(calib_dict['beamx0']['value'], calib_dict['beamy0']['value'])
+
+    #return calibration,
+    return calib_object
+
+
+def _generate_qxyz_maps(calib_obj):
+    #print("generating qxyz maps")
+    calib_obj._generate_qxyz_maps()
+    #print(calib_obj.origin)
+    # MUST return the object if caching
+    return calib_obj
 
 
 # when delayed no longer depends on self
-def _generate_qxyz_maps(calibration):
+def _generate_qxyz_maps_old(calibration):
     ''' Note : assumes square pixels.'''
 
     # TODO : add units
@@ -397,9 +428,11 @@ def CircularAverageStream(wrapper=None):
     #TODO : extend file to mltiple writers?
     sin  = Stream(wrapper=wrapper)
     s2 = sin.apply(delayed(add_attributes), stream_name="CircularAverage")
-    sout = s2.map(circavg)
+    sout = s2.map(circavg_from_calibration)
     return sin, sout
 
+def circavg_from_calibration(image, calibration, mask=None, bins=None):
+    return circavg(image, q_map=calibration.q_map_data, r_map = calibration.r_map_data, mask=mask, bins=bins)
 
 def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
     ''' computes the circular average.'''
@@ -410,6 +443,7 @@ def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
         # guess q pixel bins from r_map
         if r_map is not None:
             # choose 1 pixel bins (roughly, not true at very high angles)
+            print("rmap not none, mask shape : {}, rmap shape : {}".format(mask.shape, r_map.shape))
             pxlst = np.where(mask == 1)
             nobins = int(np.max(r_map[pxlst]) - np.min(r_map[pxlst]) + 1)
             print("rmap is not none, decided on {} bins".format(nobins))
@@ -442,7 +476,7 @@ def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
     # the error is just the bin widths/2 here
     sqxerr = np.diff(rbinstat.bin_edges)/2.
 
-    return dict(sqx=sqx, sqy=sqy, sqyerr=sqyerr, sqxerr=sqxerr)
+    return Arguments(sqx=sqx, sqy=sqy, sqyerr=sqyerr, sqxerr=sqxerr)
 
 def center2edge(centers, positive=True):
     ''' Transform a set of bin centers to edges
@@ -501,9 +535,7 @@ def qphiavg(img, mask=None, bins=None, origin=None):
     sqphi = rphibinstat(img)
     qs = rphibinstat.bin_centers[0]
     phis = rphibinstat.bin_centers[1]
-    return dict(sqphi=sqphi, qs=qs, phis=phis)
-
-
+    return Arguments(sqphi=sqphi, qs=qs, phis=phis)
 
 
 
@@ -512,6 +544,12 @@ def pack(*args, **kwargs):
     return args
 
 from SciAnalysis.analyses.XSAnalysis.tools import xystitch_accumulate, xystitch_result
+def _xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc):
+    return Arguments(**xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc))
+
+def _xystitch_accumulate(prevstate, newstate):
+    return Arguments(*xystitch_accumulate(prevstate, newstate))
+
 ### Image stitching Stream
 def ImageStitchingStream(wrapper=None):
     '''
@@ -533,13 +571,13 @@ def ImageStitchingStream(wrapper=None):
     s2 = sin.apply(delayed(add_attributes), stream_name="ImageStitch")
     # make the image, mask origin as the first three args
     s3 = s2.select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
-    sout = s3.map(pack).accumulate(xystitch_accumulate)
+    sout = s3.map(pack).accumulate(_xystitch_accumulate)
 
     # debugging
     #sout = sout.select([(0, 'image'), (1, 'mask'), (2, 'origin'), (3, 'stitch')])
 
     from dask.delayed import compute
-    sout = sout.map(xystitch_result)
+    sout = sout.map(_xystitch_result)
 
     #    Testing a way to control flow based on stitch param, still working on
     #            it...
@@ -591,14 +629,14 @@ def _blur(img, sigma=None, **kwargs):
     if sigma is not None:
         from scipy.ndimage.filters import gaussian_filter
         img = gaussian_filter(img, sigma)
-    return img,
+    return img
 
 # TODO : fix
 def _crop(img, crop=None, **kwargs):
     if crop is not None:
         x0, x1, y0, y1 = crop
         img = img[y0:y1, x0:x1]
-    return img,
+    return img
 
 def _resize(img, resize=None, **kwargs):
     ''' Performs simple pixel binning
@@ -619,7 +657,7 @@ def _resize(img, resize=None, **kwargs):
                 for j in range(resize):
                     newimg += img[i::resize, j::resize]
             newimg = newimg/resize**2
-    return newimg,
+    return newimg
 
 # TODO : add pixel procesing/thresholding threshold_pixels((2**32-1)-1) # Eiger inter-module gaps
 # TODO : add thumb

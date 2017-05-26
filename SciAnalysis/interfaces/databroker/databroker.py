@@ -120,6 +120,10 @@ def pullfromuid(uid, dbname=None):
     if uid is None:
         raise ValueError("Need to specify a uid")
 
+    # TODO : keep up to date on issue databroker/#151 to see if this is
+    # resolved
+    # (so I can just dict(db[uid]), or not dict at all (if they make header
+    # serializable)
     header = dict(db[uid])
 
     scires = Header2StreamDoc(header, dbname)
@@ -165,12 +169,16 @@ def pull(dbname, protocol_name=None, **kwargs):
 
     for header in headers:
         try:
-            sdoc = Header2StreamDoc(header, db=db)
+            sdoc = Header2StreamDoc(header, dbname=dbname)
+            print('got item')
         except FileNotFoundError:
+            print('filenot found')
             continue
         except NoEventDescriptors:
+            print('no event desc')
             continue
         except IndexError:  # no events
+            print('index error')
             continue
 
         yield sdoc

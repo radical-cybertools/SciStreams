@@ -53,7 +53,9 @@ def _make_fname_from_attrs(attrs):
     if 'detector_name' not in attrs:
         raise ValueError("Error cannot find detector_name in attributes")
     else:
-        detector_name = _cleanup_str(attrs['detector_name'])
+        detname = _cleanup_str(attrs['detector_name'])
+        # get name from lookup table first
+        detector_name = config.detector_names.get(detname, detname)
 
     if 'sample_savename' not in attrs:
         raise ValueError("Error cannot find sample_savename in attributes")
@@ -71,7 +73,7 @@ def _make_fname_from_attrs(attrs):
     else:
         scan_id = _cleanup_str(str(attrs['scan_id']))
 
-    outdir = rootdir + "/" + "/" + detector_name + "/" + stream_name + "/files"
+    outdir = rootdir + "/" + detector_name + "/" + stream_name + "/files"
     make_dir(outdir)
     outfile = outdir + "/" + sample_savename + "_" + scan_id
 

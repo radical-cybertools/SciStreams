@@ -33,6 +33,7 @@ class AreaDetectorTiffHandler(HandlerBase):
             ret.extend(self._fnames_for_point(**d_kw))
         return ret
 
+from filestore.handlers import AreaDetectorTiffHandler
 # create quick handler
 class PNGHandler:
     def __init__(self, fpath, **kwargs):

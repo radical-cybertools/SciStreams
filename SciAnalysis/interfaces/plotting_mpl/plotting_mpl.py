@@ -1,12 +1,17 @@
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import SciAnalysis.config as config
 import os.path
+import time
 
 import numpy as np
 
 _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
 
+from collections import deque
+fig_buffer = deque()
 
 # store results decorator for plotting library
 # as of now function that returns decorator takes no arguments
@@ -30,8 +35,6 @@ def _make_fname_from_attrs(attrs):
     ''' make filename from attributes.
         This will likely be copied among a few interfaces.
     '''
-    if 'experiment_alias_directory' not in attrs:
-        raise ValueError("Error cannot find experiment_alias_directory in attributes. Not saving.")
 
     # remove the trailing slash
     rootdir = attrs['experiment_alias_directory'].strip("/")
@@ -44,7 +47,9 @@ def _make_fname_from_attrs(attrs):
     if 'detector_name' not in attrs:
         raise ValueError("Error cannot find detector_name in attributes")
     else:
-        detector_name = _cleanup_str(attrs['detector_name'])
+        detname = _cleanup_str(attrs['detector_name'])
+        # get name from lookup table first
+        detector_name = config.detector_names.get(detname, detname)
 
     if 'sample_savename' not in attrs:
         raise ValueError("Error cannot find sample_savename in attributes")
@@ -62,7 +67,7 @@ def _make_fname_from_attrs(attrs):
     else:
         scan_id = _cleanup_str(str(attrs['scan_id']))
 
-    outdir = rootdir + "/" + "/" + detector_name + "/" + stream_name + "/plots"
+    outdir = rootdir + "/" + detector_name + "/" + stream_name + "/plots"
     make_dir(outdir)
     outfile = outdir + "/" + sample_savename + "_" + scan_id
 
@@ -87,6 +92,8 @@ def store_results(results, **plot_opts):
             ylabel
             title
     '''
+    import matplotlib.pyplot as plt
+
     # TODO : move some of the plotting into a general object
     if 'file_format' in plot_opts:
         file_format = plot_opts['file_format']
@@ -116,10 +123,21 @@ def store_results(results, **plot_opts):
 
     xlims = None
     ylims = None
-    plt.ioff()
-    fig = plt.figure(figsize=(10,10))
-    plt.clf()
-    ax = plt.subplot()
+    #plt.ioff()
+    '''
+    timeout = 100# in seconds
+    t_start = time.time()
+    while(len(fig_queue) == 0):
+        if time.time() - t_start > timeout:
+            raise Exception("Timed out when waiting for a figure to be released")
+        time.sleep(1)
+    '''
+
+    # grab fig from queue. do some cleanup (if a fig
+    # has not been released for some time, release it)
+    fig = plt.figure(0);#int(np.random.random()*MAXFIGNUM))
+    fig.clf()
+    ax = fig.gca()
     for key in images:
         # find some reasonable color scale
         image = data[key]
@@ -140,6 +158,7 @@ def store_results(results, **plot_opts):
             for j in range(len(image)):
                 if isinstance(image, np.ndarray):
                     axes[j].imshow(image[j])
+
     for line in lines:
         if isinstance(line, tuple) and len(line) == 2:
             x = data[line[0]]
@@ -158,6 +177,7 @@ def store_results(results, **plot_opts):
         else:
             ylims[0] = np.min([np.min(y), ylims[0]])
             ylims[1] = np.max([np.max(y), ylims[1]])
+
     if xlims is not None:
         plt.xlim(xlims[0], xlims[1])
     if ylims is not None:
@@ -186,29 +206,43 @@ def store_results(results, **plot_opts):
     if 'title' in plot_opts:
         title = plot_opts['title']
         plt.title(title)
+
     if 'scale' in plot_opts:
         scale = plot_opts['scale']
-        if scale is 'loglog':
+        if scale == 'loglog':
             ax.set_xscale('log')
             ax.set_yscale('log')
-        elif scale is 'semilogx':
+            correct_ylimits(ax)
+        elif scale == 'semilogx':
             ax.set_xscale('log')
-        elif scale is 'semilogy':
+        elif scale == 'semilogy':
             ax.set_yscale('log')
+            correct_ylimits(ax)
         # else ignore
 
     if hideaxes:
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
 
-
-
     # save
     fig.savefig(outfile)
     # make sure no mem leaks, just close
     plt.close(fig)
 
-    # now do the plotting
+
+def correct_ylimits(ax):
+    # correct for funky plots, mainly for loglog
+    lns = ax.get_lines()
+    vmin = None
+    for ln in lns:
+        x, y = ln.get_data()
+        w = np.where(y > 0)
+        vmintmp = np.min(y[w])
+        if vmin is None:
+            vmin = vmintmp
+        else:
+            vmin = np.minimum(vmin, vmintmp)
+    ax.set_ylim(vmin, None)
 
 def findLowHigh(img, maxcts=None):
     ''' Find the reasonable low and high values of an image

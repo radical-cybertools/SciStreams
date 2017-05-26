@@ -5,6 +5,8 @@ filename = os.path.expanduser("~/.config/scianalysis/scianalysis.yml")
 f = open(filename)
 config = yaml.load(f)
 
+detector_names = dict(pilatus300='saxs', psccd='waxs')
+
 #for data
 cmsdb_data=dict(
 host = "localhost",

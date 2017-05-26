@@ -3,14 +3,31 @@
     layer should reside. Conversions from other interfaces to StreamDoc are
     found in corresponding interface folders.
 '''
-from functools import wraps
+from functools import wraps, singledispatch
 import time
 import sys
+import linecache
 from uuid import uuid4
 from SciAnalysis.interfaces.streams import Stream
 
 # convenience routine to return a hash of the streamdoc
-from dask.delayed import tokenize
+from dask.delayed import tokenize, delayed
+
+class Arguments:
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+# general idea : use single dispatch to act differently on different function
+# inputs. This allows one to change behaviour of how output args and kwargs are sent
+@singledispatch
+def parse_args(res):
+    return Arguments(res)
+
+@parse_args.register(Arguments)
+def parse_args_Arguments(res):
+    return Arguments(*res.args, **res.kwargs)
+
 
 class StreamDoc(dict):
     def __init__(self, streamdoc=None, args=(), kwargs={}, attributes={}, wrapper=None):
@@ -120,25 +137,6 @@ class StreamDoc(dict):
                 res = self
 
         return res
-
-    def tokenize(self):
-        ''' Get the properties specific to data. So args and kwargs.
-            Don't return the attributes, stats or uid which are specific to a
-        StreamDoc instance.
-
-            This is a convenience routine meant for routines that cache results.
-            Some identifier is necessary to cache the results.
-        '''
-        args = self['args']
-        kwargs = self['kwargs']
-        hsh = tokenize(*args, **kwargs)
-        # If stream name is given, make hash easier to read by giving the stream name
-        if 'function_list' in self['attributes']:
-            funlist = self['attributes']['function_list']
-            last_func_name = funlist[len(funlist)-1]
-            hsh = last_func_name + "-" + hsh
-        #print("tokenized {}".format(hsh))
-        return hsh
 
     def repr(self):
         mystr = "args : {}\n\n".format(self['args'])
@@ -304,14 +302,21 @@ def parse_streamdoc(name):
             try:
                 # now run the function
                 result = f(*args, **kwargs)
+                #print("args : {}".format(args))
+                #print("kwargs : {}".format(kwargs))
                 statistics['status'] = "Success"
             except Exception:
                 result = {}
                 statistics['status'] = "Failure"
-                type, value, traceback = sys.exc_info()
+                type, value, tb = sys.exc_info()
+                err_frame = tb.tb_frame
+                err_lineno = tb.tb_lineno
+                err_filename = err_frame.f_code.co_filename
                 statistics['error_message'] = value
                 print("time : {}".format(time.ctime(time.time())))
                 print("caught exception {}".format(value))
+                print("line number {}".format(err_lineno))
+                print("in file {}".format(err_filename))
                 #print("traceback:  {}".format(traceback.__dir__()))
 
 
@@ -329,10 +334,8 @@ def parse_streamdoc(name):
             streamdoc = StreamDoc(attributes=attributes)
             # load in attributes
             # Save outputs to StreamDoc
-            if isinstance(result, dict):
-                streamdoc.add(kwargs=result)
-            else:
-                streamdoc.add(args=result)
+            arguments_obj = parse_args(result)
+            streamdoc.add(args=arguments_obj.args, kwargs=arguments_obj.kwargs)
 
             return streamdoc
 
@@ -340,42 +343,17 @@ def parse_streamdoc(name):
 
     return streamdoc_dec
 
-# This decorator is necessary to provide a way to find out what stream doc is
-# unique. We need to tokenize only the args, kwargs and attributes of
-# StreamDoc, nothing else
-def make_delayed_stream_dec(pure=True):
-    def delayed_stream_dec(f):
-        @wraps(f)
-        def f_new(*args, **kwargs):
-            hshlist_args = list()
-            hshlist_kwargs = dict()
-            # if it's a streamdoc, call tokenize
-            # which will hash only args, kwargs and attributes
-            # (not uid or stats)
-            for arg in args:
-                print(arg)
-                if _is_streamdoc(arg):
-                    #print("is streamdoc")
-                    hshlist_args.append(arg.tokenize())
-                else:
-                    #print("not streamdoc")
-                    hshlist_args.append(arg)
-            for k, v in kwargs.items():
-                if _is_streamdoc(v):
-                    hshlist_kwargs[k] = v.tokenize()
-                else:
-                    hshlist_kwargs[k] = v
-
-            hsh = tokenize(*hshlist_args, **hshlist_kwargs)
-            hsh = f.__name__ + "-" + hsh
-            #print("function hash: {}".format(hsh))
-            return delayed(f, pure=pure, name=hsh)(*args, **kwargs)
-        return f_new
-    return delayed_stream_dec
+# for delayed objects, to ensure caching
+# uses dispatch in dask delayed to define hash function
+# for the StreamDoc object
+from dask.base import normalize_token
+#@normalize_token.register(StreamDoc)
+#def tokenize_sdoc(sdoc):
+    #return normalize_token((sdoc['args'], sdoc['kwargs']))
 
 def delayed_wrapper(name):
     def decorator(f):
-        @make_delayed_stream_dec(pure=True)
+        @delayed(pure=True)
         @parse_streamdoc(name)
         @wraps(f)
         def f_new(*args, **kwargs):
