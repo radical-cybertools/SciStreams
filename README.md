@@ -1,7 +1,7 @@
-##SciAnalysis for CMS pipeline.
+#SciAnalysis for CMS pipeline.
 
-#####Author : Kevin G. Yager
-#####Ported to git by : Julien Lhermitte
+##Author : Kevin G. Yager
+##Ported to git by : Julien Lhermitte
 
 This is a work in progress. For various notes, see internal page:
 http://gisaxs.com/CS/index.php/Databroker
