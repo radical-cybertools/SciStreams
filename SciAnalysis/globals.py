@@ -1,12 +1,11 @@
 from dask import set_options
 from dask.cache import Cache
-from distributed import Client
-import cachey
 
 # client information
 # TODO : remove this client information
 import SciAnalysis.config as config
 if config.client is not None:
+    from distributed import Client
     client = Client(config.client)
 #no client, compute should compute and return nothing
 else:
@@ -18,9 +17,13 @@ else:
 
 
 # assume all functions are pure globally
-set_options(delayed_pure=True)
-cache = Cache(1e9)
-cache.register()
+try:
+    import cachey
+    cache = Cache(1e9)
+    cache.register()
+except ImportError:
+    pass
 
-tmp_cache = cachey.Cache(1e9)
+set_options(delayed_pure=True)
+
 
