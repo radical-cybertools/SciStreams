@@ -206,9 +206,9 @@ sout = sout.map(PCA_fit)
 sout.map(plot_recent).apply(compute)
 
 
-import os.path
-DDIR = os.path.expanduser("~/research/projects/pyCXD/storage")
-dataset = np.load(DDIR + "/0670-matrix-trainingsets.npz")
+#import os.path
+#DDIR = os.path.expanduser("~/research/projects/pyCXD/storage")
+dataset = np.load("0670-matrix-trainingsets.npz")
 
 Xtrain = dataset['Xtrain']
 ytrain = dataset['ytrain']
@@ -221,7 +221,6 @@ typenames = names[vals]
 cnt = 0
 for image, type in zip(Xtrain, typenames):
     sdoc = StreamDoc(kwargs=dict(image=image), attributes=dict(type=typenames))
-    #print(image)
-    print("sending image {}".format(cnt))
-    cnt +=1 
-    sin.emit(sdoc)
+vals = np.argmax(ytrain, axis=1)
+names = np.array(['type 1', 'type 2', 'type 3', 'type 4'])
+typenames = names[vals]
