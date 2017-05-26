@@ -2,8 +2,11 @@ import yaml
 import os.path
 # reads yaml file from user directory
 filename = os.path.expanduser("~/.config/scianalysis/scianalysis.yml")
-f = open(filename)
-config = yaml.load(f)
+try:
+    f = open(filename)
+    config = yaml.load(f)
+except FileNotFoundError:
+    config = dict()
 
 detector_names = dict(pilatus300='saxs', psccd='waxs')
 
