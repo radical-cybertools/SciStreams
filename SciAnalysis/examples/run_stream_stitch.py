@@ -1,7 +1,7 @@
-# test a XS run
+## test a XS run
 import os
-import matplotlib
-matplotlib.use("Agg")
+#import matplotlib
+#matplotlib.use("Agg")
 
 # dask imports
 # set up the distributed client
@@ -28,8 +28,8 @@ import numpy as np
 
 # SciAnalysis imports
 ## interfaces
-from SciAnalysis.interfaces.databroker import databroker as source_databroker
 from SciAnalysis.interfaces.plotting_mpl import plotting_mpl as source_plotting
+from SciAnalysis.interfaces.databroker import databroker as source_databroker
 from SciAnalysis.interfaces.file import file as source_file
 from SciAnalysis.interfaces.detectors import detectors2D
 ## Analyses
@@ -370,13 +370,12 @@ sout_imgstitch.apply(compute)
 sout_thumb.apply(compute)
 
 # save to plots 
-'''
 resultsqueue = deque(maxlen=1000)
 sout_circavg.apply(delayed(source_plotting.store_results), lines=[('sqx', 'sqy')],\
                    scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$",
                    ylabel="I(q)").apply(client.compute).apply(resultsqueue.append)
 sout_imgstitch.apply(delayed(source_plotting.store_results), images=['image'], hideaxes=True).apply(client.compute).apply(resultsqueue.append)
-sout_imgstitch_log.apply(delayed(source_plotting.store_results), images=['image'], hideaxes=True).apply(client.compute).apply(resultsqueue.append)
+#sout_imgstitch_log.apply(delayed(source_plotting.store_results), images=['image'], hideaxes=True).apply(client.compute).apply(resultsqueue.append)
 sout_thumb.apply(delayed(source_plotting.store_results), images=['thumb'], hideaxes=True).apply(client.compute).apply(resultsqueue.append)
 sout_thumb.select(('thumb', None)).map(safelog10).select((0,'thumb'))\
         .apply(delayed(add_attributes), stream_name="ThumbLog")\
@@ -385,9 +384,7 @@ sout_thumb.select(('thumb', None)).map(safelog10).select((0,'thumb'))\
 
 tmpqueue = deque(maxlen=10)
 sqfit_out.apply(client.compute).apply(tmpqueue.append)
-'''
 
-'''
 sqfit_out.apply(delayed(source_plotting.store_results),
                                            lines=[('sqx', 'sqy'), ('sqx', 'sqfit')],
                                            scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$", ylabel="I(q)")\
@@ -411,6 +408,7 @@ sout_circavg.apply(delayed(source_file.store_results_file), {'writer' : 'npy', '
 # TODO : make databroker not save numpy arrays by default i flonger than a certain size 
 # (since it's likely an error and leads to garbage strings saved in mongodb)
 # save to databroker
+'''
 sout_thumb.apply(delayed(source_databroker.store_results_databroker), dbname="cms:analysis", external_writers={'thumb' : 'npy'})\
         .apply(client.compute).apply(resultsqueue.append)
 

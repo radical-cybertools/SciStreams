@@ -1,6 +1,5 @@
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import SciAnalysis.config as config
 import os.path
 import time
@@ -93,7 +92,6 @@ def store_results(results, **plot_opts):
             title
     '''
     import matplotlib.pyplot as plt
-
     # TODO : move some of the plotting into a general object
     if 'file_format' in plot_opts:
         file_format = plot_opts['file_format']
@@ -140,43 +138,53 @@ def store_results(results, **plot_opts):
     ax = fig.gca()
     for key in images:
         # find some reasonable color scale
-        image = data[key]
-        vmin, vmax = findLowHigh(image)
-        if 'vmin' in plot_opts:
-            vmin = plot_opts['vmin']
-        if 'vmax' in plot_opts:
-            vmax = plot_opts['vmax']
-        if image.ndim == 2:
-            if isinstance(image, np.ndarray):
-                plt.imshow(image,vmin=vmin, vmax=vmax)
-                plt.colorbar()
-        elif image.ndim == 3:
-            nimgs = image.shape[0]
-            dim = int(np.ceil(np.sqrt(nimgs)))
-            fig, axes = plt.subplots(dim,dim)
-            axes = np.array(axes).ravel()
-            for j in range(len(image)):
+        if key in data:
+            image = data[key]
+            vmin, vmax = findLowHigh(image)
+            if 'vmin' in plot_opts:
+                vmin = plot_opts['vmin']
+            if 'vmax' in plot_opts:
+                vmax = plot_opts['vmax']
+            if image.ndim == 2:
                 if isinstance(image, np.ndarray):
-                    axes[j].imshow(image[j])
+                    plt.imshow(image,vmin=vmin, vmax=vmax)
+                    plt.colorbar()
+            elif image.ndim == 3:
+                nimgs = image.shape[0]
+                dim = int(np.ceil(np.sqrt(nimgs)))
+                fig, axes = plt.subplots(dim,dim)
+                axes = np.array(axes).ravel()
+                for j in range(len(image)):
+                    if isinstance(image, np.ndarray):
+                        axes[j].imshow(image[j])
+        else:
+            print("Warning : key {} not found in data for plotting(mpl)".format(key))
 
     for line in lines:
         if isinstance(line, tuple) and len(line) == 2:
-            x = data[line[0]]
-            y = data[line[1]]
+            if line[0] in data and line[1] in data:
+                x = data[line[0]]
+                y = data[line[1]]
+            else:
+                x, y = None, None
         else:
-            x = np.arange(len(y))
-            y = line
-        plt.plot(x,y)
-        if xlims is None:
-            xlims = [np.min(x), np.max(x)]
-        else:
-            xlims[0] = np.min([np.min(x), xlims[0]])
-            xlims[1] = np.max([np.max(x), xlims[1]])
-        if ylims is None:
-            ylims = [np.min(y), np.max(y)]
-        else:
-            ylims[0] = np.min([np.min(y), ylims[0]])
-            ylims[1] = np.max([np.max(y), ylims[1]])
+            if line in data:
+                y = data[line]
+                x = np.arange(len(y))
+            else:
+                x, y = None, None
+        if x is not None and y is not None:
+            plt.plot(x,y)
+            if xlims is None:
+                xlims = [np.min(x), np.max(x)]
+            else:
+                xlims[0] = np.min([np.min(x), xlims[0]])
+                xlims[1] = np.max([np.max(x), xlims[1]])
+            if ylims is None:
+                ylims = [np.min(y), np.max(y)]
+            else:
+                ylims[0] = np.min([np.min(y), ylims[0]])
+                ylims[1] = np.max([np.max(y), ylims[1]])
 
     if xlims is not None:
         plt.xlim(xlims[0], xlims[1])

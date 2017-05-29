@@ -5,6 +5,9 @@
 import time
 from uuid import uuid4
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
+
 from databroker.broker import Header
 import json
 
@@ -170,15 +173,15 @@ def pull(dbname, protocol_name=None, **kwargs):
     for header in headers:
         try:
             sdoc = Header2StreamDoc(header, dbname=dbname)
-            print('got item')
+            #print('got item')
         except FileNotFoundError:
-            print('filenot found')
+            print('Warning (databroker) : File not found')
             continue
         except NoEventDescriptors:
-            print('no event desc')
+            print('Warning (databroker) : no event desc')
             continue
         except IndexError:  # no events
-            print('index error')
+            print('Warning (databroker) : index error')
             continue
 
         yield sdoc
