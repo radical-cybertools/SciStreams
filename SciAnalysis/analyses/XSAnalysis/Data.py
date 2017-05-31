@@ -303,17 +303,33 @@ class Calibration(object):
     (such as beam size and beam divergence).
     '''
 
-    def __init__(self, wavelength_A=None, distance_m=None, pixel_size_um=None):
+    def __init__(self, wavelength_A=None, distance_m=None, pixel_size_um=None,
+                 width=None, height=None, x0=None, y0=None):
 
         self.wavelength_A = wavelength_A
         self.distance_m = distance_m
         self.pixel_size_um = pixel_size_um
         # TODO :should we force these to be defined?
         # or add another object inheritance layer?
-        self.width=None
-        self.height=None
-        self.x0 = None
-        self.y0 = None
+        if width is None:
+            self.width = None
+        else:
+            self.width = width
+
+        if height is None:
+            self.height = None
+        else:
+            self.height = height
+
+        if x0 is None:
+            self.x0 = None
+        else:
+            self.x0 = x0
+
+        if y0 is None:
+            self.y0 = None
+        else:
+            self.y0 = y0
 
 
         # Data structures will be generated as needed

@@ -53,9 +53,9 @@ from SciAnalysis.interfaces.StreamDoc import Arguments
     Notes : load should be a separate function
 '''
 
-from SciAnalysis.analyses.XSAnalysis.Data import Calibration
+#from SciAnalysis.analyses.XSAnalysis.Data import Calibration
 # use RQConv now
-#from SciAnalysis.analyses.XSAnalysis.DataRQconv import CalibrationRQconv as Calibration
+from SciAnalysis.analyses.XSAnalysis.DataRQconv import CalibrationRQconv as Calibration
 
 def add_attributes(sdoc, **attr):
     newsdoc = StreamDoc(sdoc)

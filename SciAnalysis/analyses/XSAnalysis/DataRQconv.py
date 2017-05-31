@@ -33,7 +33,9 @@ class CalibrationRQconv(Calibration):
     http://dx.doi.org/10.1107/S0909049512048984
 
     """
-    def __init__(self, wavelength_A=None, distance_m=None, pixel_size_um=None, det_orient=0., det_tilt=0., det_phi=0., incident_angle=0., sample_normal=0.):
+    def __init__(self, wavelength_A=None, distance_m=None, pixel_size_um=None,
+                 x0=None, y0=None, width=None, height=None, det_orient=0.,
+                 det_tilt=0., det_phi=0., incident_angle=0., sample_normal=0.):
 
         self.det_orient = det_orient
         self.det_tilt = det_tilt
@@ -44,7 +46,9 @@ class CalibrationRQconv(Calibration):
 
 
         self.rot_matrix = None
-        super().__init__(wavelength_A=wavelength_A, distance_m=distance_m, pixel_size_um=pixel_size_um)
+        super().__init__(wavelength_A=wavelength_A, distance_m=distance_m,
+                         pixel_size_um=pixel_size_um, height=height,
+                         width=width, x0=x0, y0=y0)
 
 
     # Experimental parameters
@@ -120,7 +124,7 @@ class CalibrationRQconv(Calibration):
 
         (w,h) = (self.width, self.height)
         # y is columnds, x is rows
-        self.Y, self.X = np.meshgrid(h, w, indexing='ij')
+        self.Y, self.X = np.meshgrid(np.arange(h), np.arange(w), indexing='ij')
         X = self.X.ravel()
         Y = self.Y.ravel()
 
@@ -161,11 +165,10 @@ class CalibrationRQconv(Calibration):
         # x0, y0 is considerence the origin, which is also beam center
         RT = np.vstack((X - self.x0, -(Y - self.y0), 0.*X))
 
-        # ratio of pixel size to sample to detector distance
+        # get distance from sample in number of pixels (detector coordinates)
         dr = self.get_ratioDw()*self.width
         # position vectors in lab coordinates, sample at the origin
         [X1, Y1, Z1] = np.dot(self.rot_matrix, RT)
-        # TODO : fix this logic step (dr not defined correctly?)
         Z1 -= dr
 
         # angles
