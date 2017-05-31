@@ -308,6 +308,12 @@ class Calibration(object):
         self.wavelength_A = wavelength_A
         self.distance_m = distance_m
         self.pixel_size_um = pixel_size_um
+        # TODO :should we force these to be defined?
+        # or add another object inheritance layer?
+        self.width=None
+        self.height=None
+        self.x0 = None
+        self.y0 = None
 
 
         # Data structures will be generated as needed
@@ -574,10 +580,14 @@ def tokenize_calibration(self):
     # need to specify pure=True flag
     args = [self.wavelength_A, self.distance_m]
     args.append(self.pixel_size_um)
-    args.append(self.width)
-    args.append(self.height)
-    args.append(self.x0)
-    args.append(self.y0)
+    if self.width is not None:
+        args.append(self.width)
+    if self.height is not None:
+        args.append(self.height)
+    if self.x0 is not None:
+        args.append(self.x0)
+    if self.y0 is not None:
+        args.append(self.y0)
     if self.angle_map_data is not None:
         args.append(self.angle_map_data)
     if self.q_map_data is not None:

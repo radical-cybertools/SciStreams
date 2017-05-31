@@ -23,6 +23,7 @@
 
 from .Data import *
 
+from dask.base import normalize_token
 
 # Calibration
 ################################################################################
@@ -239,6 +240,35 @@ class CalibrationRQconv(Calibration):
 
     # End class CalibrationRQconv(Calibration)
     ########################################
+
+@normalize_token.register(CalibrationRQconv)
+def tokenize_calibrationrqconv(self):
+    '''
+        This function will first inherit the tokenization from Calibration
+        then run it for the RQConv case.
+        It then runs it for the new arguments and appends to the args list.
+
+        It will return something like:
+            'list, [1,1,1], 'list', [1,3,4] etc
+            it looks messy but at least it is hashable
+    '''
+    # inherit dispatch from Calibration object
+    #calib_norm = normalize_token.dispatch(Calibration)
+    #args = calib_norm(self)
+    from SciAnalysis.analyses.XSAnalysis.Data import tokenize_calibration
+    args = tokenize_calibration(self)
+    # finally now tokenize the rest
+    newargs = list()
+    newargs.append(self.det_orient)
+    newargs.append(self.det_tilt)
+    newargs.append(self.det_phi)
+    newargs.append(self.incident_angle)
+    newargs.append(self.sample_normal)
+    newargs.append(self.rot_matrix)
+    newargs = normalize_token(newargs)
+    args = (args, newargs)
+
+    return args
 
 
 
