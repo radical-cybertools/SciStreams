@@ -13,6 +13,10 @@ from SciAnalysis.interfaces.streams import Stream
 # convenience routine to return a hash of the streamdoc
 from dask.delayed import tokenize, delayed
 
+# this class is used to wrap outputs to inputs
+# for ex, if a function returns Arguments(12,34, g=23,h=20)
+# will assume the output will serve as input f(12,34, g=23, h=20)
+# to some function (unless another streamdoc is merged etc)
 class Arguments:
     def __init__(self, *args, **kwargs):
         self.args = args
