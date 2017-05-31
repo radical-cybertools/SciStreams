@@ -54,6 +54,8 @@ from SciAnalysis.interfaces.StreamDoc import Arguments
 '''
 
 from SciAnalysis.analyses.XSAnalysis.Data import Calibration
+# use RQConv now
+#from SciAnalysis.analyses.XSAnalysis.DataRQconv import CalibrationRQconv as Calibration
 
 def add_attributes(sdoc, **attr):
     newsdoc = StreamDoc(sdoc)
@@ -112,10 +114,10 @@ def CalibrationStream(keymap_name=None, detector=None, wrapper=None):
     s2 = sin.apply(delayed(add_attributes), stream_name="Calibration")
     from dask import compute
     calib = s2.map(load_calib_dict, keymap=keymap, defaults=defaults)
-    calib.apply(compute).apply(print)
+    #calib.apply(compute).apply(print)
     #calib = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
     calib_obj = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
-    calib_obj.apply(compute).apply(print)
+    #calib_obj.apply(compute).apply(print)
 
     #q_maps = calib.map(_generate_qxyz_maps)
     calib_obj = calib_obj.map(_generate_qxyz_maps)
@@ -443,10 +445,10 @@ def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
         # guess q pixel bins from r_map
         if r_map is not None:
             # choose 1 pixel bins (roughly, not true at very high angles)
-            print("rmap not none, mask shape : {}, rmap shape : {}".format(mask.shape, r_map.shape))
+            #print("rmap not none, mask shape : {}, rmap shape : {}".format(mask.shape, r_map.shape))
             pxlst = np.where(mask == 1)
             nobins = int(np.max(r_map[pxlst]) - np.min(r_map[pxlst]) + 1)
-            print("rmap is not none, decided on {} bins".format(nobins))
+            #print("rmap is not none, decided on {} bins".format(nobins))
         else:
             # crude guess, I'll be off by a factor between 1-sqrt(2) or so
             # (we'll have that factor less bins than we should)
@@ -576,7 +578,7 @@ def ImageStitchingStream(wrapper=None):
     # debugging
     #sout = sout.select([(0, 'image'), (1, 'mask'), (2, 'origin'), (3, 'stitch')])
 
-    from dask.delayed import compute
+    from dask import compute
     sout = sout.map(_xystitch_result)
 
     #    Testing a way to control flow based on stitch param, still working on
@@ -635,7 +637,7 @@ def _blur(img, sigma=None, **kwargs):
 def _crop(img, crop=None, **kwargs):
     if crop is not None:
         x0, x1, y0, y1 = crop
-        img = img[y0:y1, x0:x1]
+        img = img[int(y0):int(y1), int(x0):int(x1)]
     return img
 
 def _resize(img, resize=None, **kwargs):

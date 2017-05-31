@@ -5,10 +5,6 @@ def xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc):
     ''' Stitch_acc may not be necessary, it should just be a binary flag.  But
             could be generalized to a sequence number so I leave it.
     '''
-    from SciAnalysis.globals import tmp_cache
-    tmp_cache.put('mask_acc', mask_acc, 10)
-    tmp_cache.put('img_acc', img_acc, 10)
-
     mask_acc = mask_acc.astype(int)
     # need to make a copy
     img_acc_old = img_acc

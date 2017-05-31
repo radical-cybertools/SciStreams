@@ -29,12 +29,10 @@ from dask.base import normalize_token
 ################################################################################
 class CalibrationRQconv(Calibration):
     """
-    The geomatric claculations used here are described in Yang, J Synch Rad (2013) 20, 211–218
+    The geometric claculations used here are described in Yang, J Synch Rad (2013) 20, 211–218
     http://dx.doi.org/10.1107/S0909049512048984
 
     """
-
-
     def __init__(self, wavelength_A=None, distance_m=None, pixel_size_um=None, det_orient=0., det_tilt=0., det_phi=0., incident_angle=0., sample_normal=0.):
 
         self.det_orient = det_orient
@@ -61,7 +59,7 @@ class CalibrationRQconv(Calibration):
         self.sample_normal = sample_normal
 
     def get_ratioDw(self):
-
+        ''' ratio of sample to detector distance to width.'''
         width_mm = self.width*self.pixel_size_um/1000.
         return self.distance_m/(width_mm/1000.)
 
@@ -121,10 +119,10 @@ class CalibrationRQconv(Calibration):
         self.calc_rot_matrix()
 
         (w,h) = (self.width, self.height)
-        self.X = np.repeat(np.arange(w), h).reshape((w, h)).T
-        X = self.X.flatten()
-        Y = np.repeat(np.arange(h), w)
-        self.Y = Y.reshape((h, w))
+        # y is columnds, x is rows
+        self.Y, self.X = np.meshgrid(h, w, indexing='ij')
+        X = self.X.ravel()
+        Y = self.Y.ravel()
 
         (Q, Phi, Qx, Qy, Qz, Qr, Qn, FPol, FSA) = self.calc_from_XY(X, Y, calc_cor_factors=True)
 
@@ -160,11 +158,14 @@ class CalibrationRQconv(Calibration):
         # the position vectors for each pixel, origin at the postion of beam impact
         # R.shape should be (3, w*h), but R.T is more convinient for matrix calculation
         # RT.T[i] is a vector
+        # x0, y0 is considerence the origin, which is also beam center
         RT = np.vstack((X - self.x0, -(Y - self.y0), 0.*X))
 
+        # ratio of pixel size to sample to detector distance
         dr = self.get_ratioDw()*self.width
         # position vectors in lab coordinates, sample at the origin
         [X1, Y1, Z1] = np.dot(self.rot_matrix, RT)
+        # TODO : fix this logic step (dr not defined correctly?)
         Z1 -= dr
 
         # angles
@@ -215,7 +216,7 @@ class CalibrationRQconv(Calibration):
                 [np.sin(angle),  np.cos(angle), 0.],
                 [0., 0., 1.]])
         else:
-            raise ValueError('unkown axis %s' % axis)
+            raise ValueError('unknown axis %s' % axis)
 
         return rot
 
@@ -231,11 +232,6 @@ class CalibrationRQconv(Calibration):
         # Rotate detector about x-ray beam
         tm3 = self.RotationMatrix('z', np.radians(self.det_orient+self.det_phi))
         self.rot_matrix = np.dot(np.dot(tm3, tm2), tm1)
-
-
-
-
-
 
 
     # End class CalibrationRQconv(Calibration)
@@ -271,6 +267,9 @@ def tokenize_calibrationrqconv(self):
     return args
 
 
+################ Below is not to be used
+###   These are just the experimental parameters  #################
+#################
 
 class ExpPara:
     """
@@ -493,7 +492,3 @@ class ExpPara:
         tm2 = self.RotationMatrix('y', np.radians(self.det_tilt))
         tm3 = self.RotationMatrix('z', np.radians(self.det_orient+self.det_phi))
         self.rot_matrix = np.dot(np.dot(tm3, tm2), tm1)
-
-
-
-
