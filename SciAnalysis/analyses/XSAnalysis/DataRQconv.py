@@ -31,6 +31,37 @@ class CalibrationRQconv(Calibration):
     """
     The geometric claculations used here are described in Yang, J Synch Rad (2013) 20, 211–218
     http://dx.doi.org/10.1107/S0909049512048984
+    (See Appendix A)
+
+    For the rotations, let's assume that the detector is initially
+    oriented in the x-y plane, with the xray beam traveling along the
+    negative z direction (as figure 5 in paper).
+
+    The symbols in the paper translate to the following variables:
+        chi : det_phi
+            This can be thought of the orientation of the detector about
+            the beam center (with all other angles zero).
+            A positive motion of this results in a counter-clockwize
+            rotation of the detector in the x-y plane (or a clockwise
+            rotation of the coordinates).
+        phi : det_orient
+            this angle specifies angle of the axis with which the
+            detector tilts. The tilt itself is specified by tau (next
+            variable).
+        tau : det_tilt
+            This is the amount of tilt of the detector about some axis
+            that is in the plane of the detector. The axis has an extra
+            degree of freedom defined by p
+            defined. It appears to be the negative of the axis defined
+            in the paper (TODO : to verify)
+            Note that no tilt (in tau) results in no movement
+                (regardless of phi).
+
+
+    Just to rephrase what is said in paper. When he says that chi (or
+    det_phi) is only for "grazing-incident measurements", he means that
+    the data will not be azimuthally averaged. Note that there are still
+    plenty of SAXS measurements where this tilt is still important.
 
     """
     def __init__(self, wavelength_A=None, distance_m=None, pixel_size_um=None,
@@ -71,6 +102,7 @@ class CalibrationRQconv(Calibration):
     # Maps
     ########################################
 
+    @property
     def q_map(self):
         '''Returns a 2D map of the q-value associated with each pixel position
         in the detector image.'''
@@ -80,6 +112,7 @@ class CalibrationRQconv(Calibration):
 
         return self.q_map_data
 
+    @property
     def angle_map(self):
         '''Returns a map of the angle for each pixel (w.r.t. origin).
         0 degrees is vertical, +90 degrees is right, -90 degrees is left.'''
@@ -89,24 +122,28 @@ class CalibrationRQconv(Calibration):
 
         return self.angle_map_data
 
+    @property
     def qx_map(self):
         if self.qx_map_data is None:
             self._generate_maps()
 
         return self.qx_map_data
 
+    @property
     def qy_map(self):
         if self.qy_map_data is None:
             self._generate_maps()
 
         return self.qy_map_data
 
+    @property
     def qz_map(self):
         if self.qz_map_data is None:
             self._generate_maps()
 
         return self.qz_map_data
 
+    @property
     def qr_map(self):
         if self.qr_map_data is None:
             self._generate_maps()

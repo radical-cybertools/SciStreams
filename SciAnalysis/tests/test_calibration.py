@@ -40,6 +40,9 @@ def test_calib_rqconv():
                      width=300, height=400, x0=100, y0=200)
 
     assert_almost_equal(calib.q_per_pixel, .000216, places=3)
-    q_map = calib.q_map()
+    q_map = calib.q_map
     q_map_old = calib_old.q_map()
     assert_array_almost_equal(q_map, q_map_old)
+
+    calib = CalibrationRQconv(wavelength_A=1.0, distance_m=5.0, pixel_size_um=172,
+                     width=300, height=400, x0=100, y0=200, det_orient=10, det_tilt=0, det_phi=0.)
