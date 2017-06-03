@@ -1,6 +1,9 @@
 from dask import set_options
 from dask.cache import Cache
 
+from collections import deque
+debugcache = deque(maxlen=1)
+
 # client information
 # TODO : remove this client information
 import SciAnalysis.config as config

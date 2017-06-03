@@ -70,7 +70,7 @@ QMAP_CACHE = deque(maxlen=1000)
 
 # Calibration for SAXS data
 # NOTE : Makes the assumption that the wrapper provides 'select' functionality
-def CalibrationStream(keymap_name=None, detector=None, wrapper=None):
+def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
     '''
         This returns a stream of calibration methods.
 
@@ -110,11 +110,12 @@ def CalibrationStream(keymap_name=None, detector=None, wrapper=None):
     keymap, defaults = _get_keymap_defaults(keymap_name)
 
     # the pipeline flow defined here
-    sin = Stream(wrapper=wrapper)
-    s2 = sin.apply(delayed(add_attributes), stream_name="Calibration")
+    sin = Stream()
+    s2 = sin.map(delayed(add_attributes), stream_name="Calibration", raw=True)
     from dask import compute
+    #s2.map(compute, raw=True).map(print, raw=True)
     calib = s2.map(load_calib_dict, keymap=keymap, defaults=defaults)
-    #calib.apply(compute).apply(print)
+    #calib.map(compute, raw=True).map(print, raw=True)
     #calib = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
     calib_obj = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
     #calib_obj.apply(compute).apply(print)
@@ -125,7 +126,8 @@ def CalibrationStream(keymap_name=None, detector=None, wrapper=None):
     # for distributed regime, store intermediate values
     # sink the cache for the qmaps
     #q_maps.apply(client.compute).sink(QMAP_CACHE.append)
-    calib_obj.apply(client.compute).sink(QMAP_CACHE.append)
+    calib_obj.map(client.compute, raw=True).sink(QMAP_CACHE.append)
+    #calib_obj.map(print, raw=True)
     # compute it so that it's cached on cluster
     # TODO : figure out best way to make this dask and non dask compatible
     #q_maps.apply(print)
@@ -161,6 +163,7 @@ def get_beam_center(obj):
 
 def _get_keymap_defaults(name):
     ''' Get the keymap for the calibration, along with default values.'''
+    print("_get_keymap_defaults, name : {}".format(name))
     if name == "cms":
         keymap = {
                     'wavelength': 'calibration_wavelength_A',
@@ -217,12 +220,17 @@ def load_calib_dict(attributes, keymap=None, defaults=None):
                 beamy0 : y center of beam (cols) (pixels)
                 sample_det_distance : the sample detector distance (m)
     '''
+    print("load_calib_dict, attributes: {}".format(attributes))
+    print("load_calib_dict, keymap: {}".format(keymap))
+    print("load_calib_dict, defaults: {}".format(defaults))
     calib_keymap = keymap
     calib_defaults = defaults
 
     # TODO Allow for different units
     olddict = attributes
     newdict = dict()
+    #print("load_calib_dict, newdict : {}".format(newdict))
+    #print("load_calib_dict, calib_keymap: {}".format(calib_keymap))
     for key, newkey in calib_keymap.items():
         try:
             newdict.update(Singlet(key, olddict[newkey],
@@ -233,6 +241,7 @@ def load_calib_dict(attributes, keymap=None, defaults=None):
                            "Cannot proceed")
     # TODO : mention dicts need to be returned as tuples or encapsulated in a dict
     # this is new syntax for putting arguments in dict
+    #print("load_calib_dict, newdict : {}".format(newdict))
     return newdict
 
 
@@ -295,14 +304,17 @@ def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
     height, width = calib_tmp['shape']['value']
     calib_object.set_image_size(width, height)
     calib_object.set_beam_position(calib_dict['beamx0']['value'], calib_dict['beamy0']['value'])
+    print("calibration object: {}".format(calib_object))
+    print("calibration object members: {}".format(calib_object.__dict__))
 
     #return calibration,
     return calib_object
 
 
 def _generate_qxyz_maps(calib_obj):
-    #print("generating qxyz maps")
-    calib_obj._generate_qxyz_maps()
+    print("_generate_qxyz_maps calib_obj : {}".format(calib_obj))
+    calib_obj._generate_maps()
+    print("_generate_qxyz_maps calib object qxmap shape : {}".format(calib_obj.qx_map.shape))
     #print(calib_obj.origin)
     # MUST return the object if caching
     return calib_obj
@@ -347,7 +359,9 @@ def CircularAverageStream(wrapper=None):
     '''
     #TODO : extend file to mltiple writers?
     sin  = Stream(wrapper=wrapper)
-    s2 = sin.apply(delayed(add_attributes), stream_name="CircularAverage")
+    s2 = sin.map(delayed(add_attributes), stream_name="CircularAverage", raw=True)
+    from dask import compute
+    s2.map(compute,raw=True).map(lambda x : print("in CircAvgStream add_attributes output : {}".format(x)), raw=True)
     sout = s2.map(circavg_from_calibration)
     return sin, sout
 
@@ -438,7 +452,7 @@ def QPHIMapStream(wrapper=None, bins=(400,400)):
     '''
     sin = Stream(wrapper=wrapper)
     sout = sin.select(0, 'mask', 'origin')\
-            .apply(delayed(add_attributes), stream_name="QPHIMapStream")
+            .map(delayed(add_attributes), stream_name="QPHIMapStream", raw=True)
     sout = sout.map(qphiavg, bins=bins)
     #from dask import compute
     #sout.apply(compute).apply(print)
@@ -450,6 +464,7 @@ def qphiavg(img, mask=None, bins=None, origin=None):
     '''
     # TODO : replace with method that takes qphi maps
     # TODO : also return q and phi of this...
+    print("In qphi average stream")
     from skbeam.core.accumulators.binned_statistic import RPhiBinnedStatistic
     rphibinstat = RPhiBinnedStatistic(img.shape, mask=mask, origin=origin, bins=bins)
     sqphi = rphibinstat(img)
@@ -463,12 +478,20 @@ def pack(*args, **kwargs):
     ''' pack arguments into one set of arguments.'''
     return args
 
+def toargs(res):
+    return Arguments(*res)
+
+def tokwargs(res):
+    return Arguments(**res)
+
 from SciAnalysis.analyses.XSAnalysis.tools import xystitch_accumulate, xystitch_result
 def _xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc):
-    return Arguments(**xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc))
+    print("_xystitch_result, img_acc : {}".format(img_acc))
+    return delayed(tokwargs)(xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc))
 
 def _xystitch_accumulate(prevstate, newstate):
-    return Arguments(*xystitch_accumulate(prevstate, newstate))
+    print("_xystitch_accumulate, prevstate: {}".format(prevstate))
+    return delayed(toargs)(xystitch_accumulate(prevstate, newstate))
 
 ### Image stitching Stream
 def ImageStitchingStream(wrapper=None):
@@ -485,19 +508,40 @@ def ImageStitchingStream(wrapper=None):
 
         NOTE : you should normalize images by exposure time before giving to
         this stream
-
     '''
     sin = Stream(wrapper=wrapper)
-    s2 = sin.apply(delayed(add_attributes), stream_name="ImageStitch")
+    s2 = sin.map(delayed(add_attributes), stream_name="ImageStitch", raw=True)
     # make the image, mask origin as the first three args
     s3 = s2.select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
-    sout = s3.map(pack).accumulate(_xystitch_accumulate)
+    sout = s3.map(pack).map(lambda x : compute(x)[0], raw=True).accumulate(_xystitch_accumulate)
+    from dask import compute
+    sout = sout.map(_xystitch_result)
+
+    # now window the results and only output if stitchback from previous is nonzero
+    # save previous value, grab previous stitchback value
+    swin = sout.map(lambda x : compute(x)[0], raw=True).sliding_window(2)
+
+    def stitchbackcomplete(xtuple):
+        next = xtuple[1]['attributes']['stitchback']
+        return next == 0
+
+    swin.map(lambda x : print("result : {}".format(x)), raw=True)
+
+    # only get results where stitch is stopped
+    # NOTE : need to compute before filtering here
+    swinout = swin.map(lambda x : compute(x), raw=True).filter(stitchbackcomplete)
+    def getprevstitch(x):
+        x0 = x[0]
+        return x0
+
+    swinout = swinout.map(getprevstitch, raw=True)
+
+    # now emit some dummy value to swin
+    sout.emit(dict(attributes=dict(stitchback=0)))
 
     # debugging
     #sout = sout.select([(0, 'image'), (1, 'mask'), (2, 'origin'), (3, 'stitch')])
 
-    from dask import compute
-    sout = sout.map(_xystitch_result)
 
     #    Testing a way to control flow based on stitch param, still working on
     #            it...
@@ -522,7 +566,7 @@ def ImageStitchingStream(wrapper=None):
     #    sout = sout.filter(predicate).apply(get_first)
     #    
 
-    return sin, sout
+    return sin, swinout
 
 
 
@@ -537,7 +581,7 @@ def ThumbStream(wrapper=None, blur=None, crop=None, resize=None):
 
     '''
     sin = Stream(wrapper=wrapper)
-    s0 = sin.apply(delayed(add_attributes), stream_name="Thumb")
+    s0 = sin.map(delayed(add_attributes), stream_name="Thumb", raw=True)
     #s1 = sin.add_attributes(stream_name="ThumbStream")
     s1 = s0.map(_blur)
     s1 = s1.map(_crop)

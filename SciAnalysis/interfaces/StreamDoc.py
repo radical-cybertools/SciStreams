@@ -9,9 +9,10 @@ import sys
 import linecache
 from uuid import uuid4
 from SciAnalysis.interfaces.streams import Stream
+from SciAnalysis.globals import debugcache
 
 # convenience routine to return a hash of the streamdoc
-from dask.delayed import tokenize, delayed
+from dask.delayed import tokenize, delayed, Delayed
 
 # this class is used to wrap outputs to inputs
 # for ex, if a function returns Arguments(12,34, g=23,h=20)
@@ -21,6 +22,17 @@ class Arguments:
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
+
+
+from SciAnalysis.interfaces.streams import stream_map, stream_accumulate
+@stream_map.register(Delayed)
+def stream_map_delayed(obj, func, **kwargs):
+    return delayed(func)(obj)
+
+@stream_accumulate.register(Delayed)
+def stream_accumulate_delayed(obj, func, accumulator, **kwargs):
+    return delayed(func)(accumulator, obj)
+
 
 # general idea : use single dispatch to act differently on different function
 # inputs. This allows one to change behaviour of how output args and kwargs are sent
@@ -249,6 +261,16 @@ class StreamDoc(dict):
 
         return streamdoc
 
+@stream_map.register(StreamDoc)
+def stream_map_streamdoc(self, func, **kwargs):
+    return parse_streamdoc("map")(func)(self, **kwargs)
+
+@stream_accumulate.register(StreamDoc)
+def stream_accumulate_streamdoc(prevobj, nextobj, func=None, **kwargs):
+    print("accumulating a streamdoc")
+    return prevobj, parse_streamdoc("accumulate")(func)(prevobj, nextobj, **kwargs)
+    #def __stream_reduce__(self, func, accumulator):
+        #return parse_streamdoc("reduce")(func)(accumulator, self)
 
 def _is_streamdoc(doc):
     if isinstance(doc, dict) and '_StreamDoc' in doc:
@@ -279,6 +301,7 @@ def parse_streamdoc(name):
     def streamdoc_dec(f):
         @wraps(f)
         def f_new(x, x2=None, **kwargs_additional):
+            #print("Running in {}".format(f.__name__))
             if x2 is None:
                 if _is_streamdoc(x):
                     # extract the args and kwargs
@@ -300,6 +323,8 @@ def parse_streamdoc(name):
                     raise ValueError("Two normal arguments not accepted")
 
             kwargs.update(kwargs_additional)
+            #print("args : {}, kwargs : {}".format(args, kwargs))
+            debugcache.append(dict(args=args, kwargs=kwargs, attributes=attributes, funcname=f.__name__))
 
             statistics = dict()
             t1 = time.time()
@@ -319,13 +344,16 @@ def parse_streamdoc(name):
                 statistics['error_message'] = value
                 print("time : {}".format(time.ctime(time.time())))
                 print("caught exception {}".format(value))
+                print("func name : {}".format(f.__name__))
+                #print("args : {}".format(args))
+                #print("kwargs : {}".format(kwargs))
                 print("line number {}".format(err_lineno))
                 print("in file {}".format(err_filename))
                 #print("traceback:  {}".format(traceback.__dir__()))
 
 
             t2 = time.time()
-            statistics['runtime'] = t1-t2
+            statistics['runtime'] = t1 - t2
             statistics['runstart'] = t1
 
             if 'function_list' not in attributes:

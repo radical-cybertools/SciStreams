@@ -1,14 +1,19 @@
 from collections import deque
-import math
+from functools import singledispatch, partial, wraps
 from time import time
 
 import toolz
 from tornado import gen
 from tornado.locks import Condition
-from tornado.ioloop import IOLoop, PeriodicCallback
+from tornado.ioloop import IOLoop
 from tornado.queues import Queue
 
+
 no_default = '--no-default--'
+
+
+def identity(x):
+    return x
 
 
 class Stream(object):
@@ -20,10 +25,6 @@ class Stream(object):
     subscribe to it.  Downstream Stream objects may connect at any point of a
     Stream graph to get a full view of the data coming off of that point to do
     with as they will.
-
-    wrapper : Streams can also have wrapper methods. These are treated
-    as decorators which intercept the inputs and outputs. See StreamDoc
-    for an example wrapper.
 
     Examples
     --------
@@ -55,20 +56,14 @@ class Stream(object):
             self.children = [child]
         if kwargs.get('loop'):
             self._loop = kwargs.get('loop')
-        self._wrapper = kwargs.get('wrapper', None)
-
         for child in self.children:
             if child:
                 child.parents.append(self)
-                # takes the wrapper from latest child, all children must have
-                # same wrapper
-                if child._wrapper is not None:
-                    self._wrapper = child._wrapper
 
     def emit(self, x):
         """ Push data into the stream at this point
 
-        This is typically done only at source Streams but can theoretically be
+        This is typically done only at source Streams but can theortically be
         done at any point
         """
         result = []
@@ -78,7 +73,7 @@ class Stream(object):
                 result.extend(r)
             else:
                 result.append(r)
-        return result
+        return [element for element in result if element is not None]
 
     @property
     def child(self):
@@ -102,38 +97,16 @@ class Stream(object):
         self._loop = IOLoop.current()
         return self._loop
 
-    def map(self, func, **kwargs):
+    def map(self, func, *args, **kwargs):
         """ Apply a function to every element in the stream """
-        return map(func, self, **kwargs)
+        return map(func, self, *args, **kwargs)
 
-    # TODO : Make Stream inherit all this
+    # TODO : Make Stream inherit all this (function registry?)
     def select(self, *elems, **kwargs):
         """ Access the select attribute of the stream."""
         def select(obj, *elems):
             return obj.select(*elems, **kwargs)
-        return apply(select, self, *elems, **kwargs)
-
-    # TODO : Make Stream inherit all this
-    def get_attributes(self):
-        """ Access the select attribute of the stream."""
-        def get_attributes(obj):
-            return obj.get_attributes()
-
-        return apply(get_attributes, self)
-
-    def add_attributes(self, **attrs):
-        ''' Set the attributes in stream.'''
-        def add_attributes(obj):
-            obj.add(attributes=attrs)
-            return obj
-        return apply(add_attributes, self)
-
-    def apply(self, func, *args, **kwargs):
-        """ Apply a function to every element in the stream on the header level.
-            Note : The header/data separation is define by the function wrapper.
-            If no wrapper is set, this is equivalent to map.
-        """
-        return apply(func, self, *args, **kwargs)
+        return map(select, self, *elems, raw=True, **kwargs)
 
     def filter(self, predicate):
         """ Only pass through elements that satisfy the predicate """
@@ -144,7 +117,7 @@ class Stream(object):
         """
         return filter(lambda x: not predicate(x), self)
 
-    def accumulate(self, func, start=no_default):
+    def accumulate(self, func, raw=False, start=no_default):
         """ Accumulate results with previous state
 
         This preforms running or cumulative reductions, applying the function
@@ -165,7 +138,7 @@ class Stream(object):
         10
         15
         """
-        return scan(func, self, start=start)
+        return scan(func, self, raw=raw, start=start)
 
     scan = accumulate
 
@@ -237,6 +210,14 @@ class Stream(object):
         """ Add a time delay to results """
         return delay(interval, self, loop=None)
 
+    def combine_latest(self, *others):
+        """ Combine multiple streams together to a stream of tuples
+
+        This will emit a new tuple of all of the most recent elements seen from
+        any stream.
+        """
+        return combine_latest(self, *others)
+
     def concat(self):
         """ Flatten streams of lists or iterables into a stream of elements
 
@@ -258,7 +239,21 @@ class Stream(object):
 
     flatten = concat
 
-    def unique(self, history=None):
+    def union(self, *others):
+        """ Combine multiple streams into one
+
+        Every element from any of the children streams will immediately flow
+        into the output stream.  They will not be combined with elements from
+        other streams.
+
+        See also
+        --------
+        Stream.zip
+        Stream.combine_latest
+        """
+        return union(children=(self,) + others)
+
+    def unique(self, history=None, key=identity):
         """ Avoid sending through repeated elements
 
         This deduplicates a stream so that only new elements pass through.
@@ -277,14 +272,34 @@ class Stream(object):
         1
         3
         """
-        return unique(self, history=history)
+        return unique(self, history=history, key=key)
+
+    def collect(self, cache=None):
+        """
+        Hold elements in a cache and emit them as a collection when flushed.
+
+        Examples
+        --------
+        >>> source1 = Stream()
+        >>> source2 = Stream()
+        >>> collector = collect(source1)
+        >>> collector.sink(print)
+        >>> source2.sink(collector.flush)
+        >>> source1.emit(1)
+        >>> source1.emit(2)
+        >>> source2.emit('anything')  # flushes collector
+        ...
+        [1, 2]
+        """
+        return collect(self, cache=cache)
 
     def zip(self, *other):
-        """ Combine additional streams together into a stream of tuples """
+        """ Combine two streams together into a stream of tuples """
         return zip(self, *other)
 
+    # TODO : dispatch for zip
     def merge(self, *other):
-        """ Merge streams togehter. This assumes streams are represented by
+        """ Merge streams together. This assumes streams are represented by
         dicts."""
         #print("in merge streams : {}".format(other))
         return merge(self, *other)
@@ -337,22 +352,6 @@ class Stream(object):
         Sink(L.append, self)
         return L
 
-    def sink_to_deque(self, maxlen=None):
-        """ Append all elements of a stream to a deque as they come in
-
-        Examples
-        --------
-        >>> source = Stream()
-        >>> L = source.map(lambda x: 10 * x).sink_to_list()
-        >>> for i in range(5):
-        ...     source.emit(i)
-        >>> L
-        [0, 10, 20, 30, 40]
-        """
-        L = deque(maxlen=maxlen)
-        Sink(L.append, self)
-        return L
-
     def frequencies(self):
         """ Count occurrences of elements """
         def update_frequencies(last, x):
@@ -363,11 +362,7 @@ class Stream(object):
 
 class Sink(Stream):
     def __init__(self, func, child):
-        self._wrapper = child._wrapper
-        if self._wrapper is None:
-            self.func = func
-        else:
-            self.func = self._wrapper("sink")(func)
+        self.func = func
 
         Stream.__init__(self, child)
 
@@ -380,31 +375,19 @@ class Sink(Stream):
 
 
 class map(Stream):
-    def __init__(self, func, child, **kwargs):
-        self._wrapper = child._wrapper
-        if self._wrapper is None:
-            self.func = func
-        else:
-            self.func = self._wrapper("map")(func)
-        self.kwargs = kwargs
-
-        Stream.__init__(self, child)
-
-    def update(self, x, who=None):
-        return self.emit(self.func(x, **self.kwargs))
-
-class apply(Stream):
-    def __init__(self, func, child, *args, **kwargs):
-        ''' Like map but the wrapper is not applied.'''
-        self._wrapper = child._wrapper
+    def __init__(self, func, child, *args, raw=False, **kwargs):
         self.func = func
         self.kwargs = kwargs
         self.args = args
+        self.raw = raw
 
         Stream.__init__(self, child)
 
     def update(self, x, who=None):
-        return self.emit(self.func(x, *self.args, **self.kwargs))
+        if self.raw:
+            return self.emit(self.func(x, *self.args, **self.kwargs))
+
+        return self.emit(_stream_map(x, *self.args, func=self.func, **self.kwargs))
 
 
 class filter(Stream):
@@ -419,20 +402,24 @@ class filter(Stream):
 
 
 class scan(Stream):
-    def __init__(self, func, child, start=no_default):
+    def __init__(self, func, child, raw=False, start=no_default):
+        self.func = func
+        self.raw = raw
         self.state = start
         Stream.__init__(self, child)
-        if self._wrapper is not None:
-            self.func = self._wrapper("scan")(func)
-        else:
-            self.func = func
 
     def update(self, x, who=None):
-        if self.state is no_default:
-            self.state = x
+        if self.raw:
+            # prevstate, newstate
+            result = self.func(self.state, x)
         else:
-            self.state = self.func(self.state, x)
-            return self.emit(self.state)
+            result = _stream_accumulate(self.state, x, func=self.func)
+        self.state = result
+
+        if result is not no_default:
+            return self.emit(result)
+        else:
+            return []
 
 
 class partition(Stream):
@@ -544,6 +531,27 @@ class buffer(Stream):
             x = yield self.queue.get()
             yield self.emit(x)
 
+
+class zip(Stream):
+    def __init__(self, *children, **kwargs):
+        self.maxsize = kwargs.pop('maxsize', 10)
+        self.buffers = [deque() for _ in children]
+        self.condition = Condition()
+        Stream.__init__(self, children=children)
+
+    def update(self, x, who=None):
+        L = self.buffers[self.children.index(who)]
+        L.append(x)
+        if len(L) == 1 and all(self.buffers):
+            tup = tuple(buf.popleft() for buf in self.buffers)
+            self.condition.notify_all()
+            if tup and hasattr(tup[0], '__stream_merge__'):
+                tup = tup[0].__stream_merge__(*tup[1:])
+            return self.emit(tup)
+        elif len(L) > self.maxsize:
+            return self.condition.wait()
+
+
 class merge(Stream):
     ''' This assumes that each stream is some kind of dictionary.
         Apply a rightermost update rule.
@@ -578,40 +586,6 @@ class merge(Stream):
         elif len(L) > self.maxsize:
             return self.condition.wait()
 
-class split(Stream):
-    def __init__(self, child, splitfunc, n=100, loop=None):
-        self.queue = Queue(maxsize=n)
-        Stream.__init__(self, child, loop=loop)
-
-        self.loop.add_callback(self.cb)
-
-    def update(self, x, who=None):
-        return self.queue.put(x)
-
-    @gen.coroutine
-    def cb(self):
-        while True:
-            x = yield self.queue.get()
-            yield self.emit(x)
-
-
-class zip(Stream):
-    def __init__(self, *children, **kwargs):
-        self.maxsize = kwargs.pop('maxsize', 10)
-        self.buffers = [deque() for _ in children]
-        self.condition = Condition()
-        Stream.__init__(self, children=children)
-
-    def update(self, x, who=None):
-        L = self.buffers[self.children.index(who)]
-        L.append(x)
-        if len(L) == 1 and all(self.buffers):
-            tup = tuple(buf.popleft() for buf in self.buffers)
-            self.condition.notify_all()
-            return self.emit(tup)
-        elif len(L) > self.maxsize:
-            return self.condition.wait()
-
 
 class combine_latest(Stream):
     def __init__(self, *children):
@@ -625,7 +599,10 @@ class combine_latest(Stream):
 
         self.last[self.children.index(who)] = x
         if not self.missing:
-            self.emit(tuple(self.last))
+            tup = tuple(self.last)
+            if tup and hasattr(tup[0], '__stream_merge__'):
+                tup = tup[0].__stream_merge__(*tup[1:])
+            return self.emit(tup)
 
 
 class concat(Stream):
@@ -641,8 +618,9 @@ class concat(Stream):
 
 
 class unique(Stream):
-    def __init__(self, child, history=None):
+    def __init__(self, child, history=None, key=identity):
         self.seen = dict()
+        self.key = key
         if history:
             from zict import LRU
             self.seen = LRU(history, self.seen)
@@ -650,6 +628,70 @@ class unique(Stream):
         Stream.__init__(self, child)
 
     def update(self, x, who=None):
-        if x not in self.seen:
-            self.seen[x] = 1
+        y = self.key(x)
+        if y not in self.seen:
+            self.seen[y] = 1
             return self.emit(x)
+
+
+class union(Stream):
+    def update(self, x, who=None):
+        return self.emit(x)
+
+
+class collect(Stream):
+    def __init__(self, child, cache=None):
+        if cache is None:
+            cache = deque()
+        self.cache = cache
+
+        Stream.__init__(self, child)
+
+    def update(self, x, who=None):
+        self.cache.append(x)
+
+    def flush(self, _=None):
+        out = tuple(self.cache)
+        self.emit(out)
+        self.cache.clear()
+
+
+def _stream_map(obj, *args, func=None, **kwargs):
+    if hasattr(obj, '__stream_map__'):
+        return obj.__stream_map__(wraps(func)(partial(_stream_map, *args, func=func, **kwargs)))
+    else:
+        sm = stream_map.dispatch(type(obj))
+        if sm is base_stream_map:
+            return func(obj, *args, **kwargs)
+        else:
+            return sm(obj, wraps(func)(partial(_stream_map, *args, func=func, **kwargs)))
+
+def _stream_accumulate(prevobj, nextobj, *args, func=None, **kwargs):
+    if hasattr(prevobj, '__stream_accumulate__'):
+        return prevobj.__stream_accumulate__(wraps(func)(partial(_stream_accumulate, nextobj, *args, func=func, **kwargs)))
+    else:
+        sm = stream_accumulate.dispatch(type(prevobj))
+        if sm is base_stream_map:
+            return func(prevobj, nextobj, *args, **kwargs)
+        else:
+            return sm(prevobj, nextobj, wraps(func)(partial(_stream_map, *args, func=func, **kwargs)))
+
+
+
+@singledispatch
+def stream_map(obj, func, **kwargs):
+    return func(obj, **kwargs)
+
+
+base_stream_map = stream_map.dispatch(object)
+
+
+@singledispatch
+def stream_accumulate(prevobj, nextobj, func):
+    if prevobj is no_default:
+        return nextobj
+    else:
+        result = func(prevobj, nextobj)
+        return result
+
+base_stream_accumulate = stream_map.dispatch(object)

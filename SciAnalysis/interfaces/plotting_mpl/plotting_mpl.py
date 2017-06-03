@@ -216,24 +216,30 @@ def store_results(results, **plot_opts):
         plt.title(title)
 
     if 'scale' in plot_opts:
-        scale = plot_opts['scale']
-        if scale == 'loglog':
-            ax.set_xscale('log')
-            ax.set_yscale('log')
-            correct_ylimits(ax)
-        elif scale == 'semilogx':
-            ax.set_xscale('log')
-        elif scale == 'semilogy':
-            ax.set_yscale('log')
-            correct_ylimits(ax)
-        # else ignore
+        try:
+            scale = plot_opts['scale']
+            if scale == 'loglog':
+                ax.set_xscale('log')
+                ax.set_yscale('log')
+                correct_ylimits(ax)
+            elif scale == 'semilogx':
+                ax.set_xscale('log')
+            elif scale == 'semilogy':
+                ax.set_yscale('log')
+                correct_ylimits(ax)
+            # else ignore
+        except Exception:
+            print("plotting_mpl : Error in setting scales (array is likely zeros)")
 
     if hideaxes:
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
 
     # save
-    fig.savefig(outfile)
+    try:
+        fig.savefig(outfile)
+    except Exception:
+        print("Error in fig saving, ignoring... file : {}".format(outfile))
     # make sure no mem leaks, just close
     plt.close(fig)
 
