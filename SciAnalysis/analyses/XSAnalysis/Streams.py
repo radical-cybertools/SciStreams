@@ -111,7 +111,7 @@ def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
 
     # the pipeline flow defined here
     sin = Stream()
-    s2 = sin.map(delayed(add_attributes), stream_name="Calibration", raw=True)
+    s2 = sin.map((add_attributes), stream_name="Calibration", raw=True)
     from dask import compute
     #s2.map(compute, raw=True).map(print, raw=True)
     calib = s2.map(load_calib_dict, keymap=keymap, defaults=defaults)
@@ -320,7 +320,7 @@ def _generate_qxyz_maps(calib_obj):
     return calib_obj
 
 
-def CircularAverageStream(wrapper=None):
+def CircularAverageStream():
     ''' Circular average stream.
 
         Inputs :
@@ -358,8 +358,8 @@ def CircularAverageStream(wrapper=None):
 
     '''
     #TODO : extend file to mltiple writers?
-    sin  = Stream(wrapper=wrapper)
-    s2 = sin.map(delayed(add_attributes), stream_name="CircularAverage", raw=True)
+    sin  = Stream()
+    s2 = sin.map((add_attributes), stream_name="CircularAverage", raw=True)
     from dask import compute
     s2.map(compute,raw=True).map(lambda x : print("in CircAvgStream add_attributes output : {}".format(x)), raw=True)
     sout = s2.map(circavg_from_calibration)
@@ -441,7 +441,7 @@ def center2edge(centers, positive=True):
     return edges
 
 
-def QPHIMapStream(wrapper=None, bins=(400,400)):
+def QPHIMapStream(bins=(400,400)):
     '''
         Input :
                 image
@@ -450,9 +450,9 @@ def QPHIMapStream(wrapper=None, bins=(400,400)):
         Output :
             qphimap
     '''
-    sin = Stream(wrapper=wrapper)
+    sin = Stream()
     sout = sin.select(0, 'mask', 'origin')\
-            .map(delayed(add_attributes), stream_name="QPHIMapStream", raw=True)
+            .map((add_attributes), stream_name="QPHIMapStream", raw=True)
     sout = sout.map(qphiavg, bins=bins)
     #from dask import compute
     #sout.apply(compute).apply(print)
@@ -478,23 +478,26 @@ def pack(*args, **kwargs):
     ''' pack arguments into one set of arguments.'''
     return args
 
-def toargs(res):
-    return Arguments(*res)
+def unpack(args):
+    ''' assume input is a tuple, split into arguments.'''
+    #print("Arguments : {}".format(args))
+    return Arguments(*args)
 
-def tokwargs(res):
-    return Arguments(**res)
+def todict(kwargs):
+    ''' assume input is a dictionary, split into kwargs.'''
+    return Arguments(**kwargs)
 
 from SciAnalysis.analyses.XSAnalysis.tools import xystitch_accumulate, xystitch_result
 def _xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc):
     print("_xystitch_result, img_acc : {}".format(img_acc))
-    return delayed(tokwargs)(xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc))
+    return xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc)
 
 def _xystitch_accumulate(prevstate, newstate):
     print("_xystitch_accumulate, prevstate: {}".format(prevstate))
-    return delayed(toargs)(xystitch_accumulate(prevstate, newstate))
+    return xystitch_accumulate(prevstate, newstate)
 
 ### Image stitching Stream
-def ImageStitchingStream(wrapper=None):
+def ImageStitchingStream():
     '''
         Image stitching
         Inputs:
@@ -509,17 +512,23 @@ def ImageStitchingStream(wrapper=None):
         NOTE : you should normalize images by exposure time before giving to
         this stream
     '''
-    sin = Stream(wrapper=wrapper)
-    s2 = sin.map(delayed(add_attributes), stream_name="ImageStitch", raw=True)
-    # make the image, mask origin as the first three args
-    s3 = s2.select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
-    sout = s3.map(pack).map(lambda x : compute(x)[0], raw=True).accumulate(_xystitch_accumulate)
+    sin = Stream()
     from dask import compute
-    sout = sout.map(_xystitch_result)
+    # TODO : remove compute requirement
+    s2 = sin.map((add_attributes), stream_name="ImageStitch", raw=True)
+    # make the image, mask origin as the first three args
+    s2.map(lambda x : print("in image stitch : {}".format(x)), raw=True)
+    #s3 = s2.map(lambda x : compute(x)[0]).select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
+    s3 = s2.select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
+    sout = s3.map(pack).accumulate(_xystitch_accumulate)
+    sout.map(lambda x : print("imagestitch sdoc before unpack : {}".format(x)),raw=True)
+    sout = sout.map(unpack)
+    sout.map(lambda x : print("imagestitch sdoc : {}".format(x)),raw=True)
+    sout = sout.map(_xystitch_result).map(todict)
 
     # now window the results and only output if stitchback from previous is nonzero
     # save previous value, grab previous stitchback value
-    swin = sout.map(lambda x : compute(x)[0], raw=True).sliding_window(2)
+    swin = sout.sliding_window(2)
 
     def stitchbackcomplete(xtuple):
         next = xtuple[1]['attributes']['stitchback']
@@ -529,15 +538,17 @@ def ImageStitchingStream(wrapper=None):
 
     # only get results where stitch is stopped
     # NOTE : need to compute before filtering here
-    swinout = swin.map(lambda x : compute(x), raw=True).filter(stitchbackcomplete)
+
+    # now emit some dummy value to swin, before connecting more to stream
+    swin.emit(dict(attributes=dict(stitchback=0)))
+
+    swinout = swin.filter(stitchbackcomplete)
     def getprevstitch(x):
         x0 = x[0]
         return x0
 
     swinout = swinout.map(getprevstitch, raw=True)
 
-    # now emit some dummy value to swin
-    sout.emit(dict(attributes=dict(stitchback=0)))
 
     # debugging
     #sout = sout.select([(0, 'image'), (1, 'mask'), (2, 'origin'), (3, 'stitch')])
@@ -570,7 +581,7 @@ def ImageStitchingStream(wrapper=None):
 
 
 
-def ThumbStream(wrapper=None, blur=None, crop=None, resize=None):
+def ThumbStream(blur=None, crop=None, resize=None):
     ''' Thumbnail stream
 
         inputs :
@@ -580,8 +591,8 @@ def ThumbStream(wrapper=None, blur=None, crop=None, resize=None):
             reduced image
 
     '''
-    sin = Stream(wrapper=wrapper)
-    s0 = sin.map(delayed(add_attributes), stream_name="Thumb", raw=True)
+    sin = Stream()
+    s0 = sin.map((add_attributes), stream_name="Thumb", raw=True)
     #s1 = sin.add_attributes(stream_name="ThumbStream")
     s1 = s0.map(_blur)
     s1 = s1.map(_crop)

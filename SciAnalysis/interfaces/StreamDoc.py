@@ -266,12 +266,13 @@ def check_sdoc(sdoc):
 
 @stream_map.register(StreamDoc)
 def stream_map_streamdoc(obj, func, **kwargs):
+    #print("in stream map for StreamDoc, obj : {}".format(obj))
     return parse_streamdoc("map")(func)(obj, **kwargs)
 
 @stream_accumulate.register(StreamDoc)
 def stream_accumulate_streamdoc(prevobj, nextobj, func=None, **kwargs):
     print("accumulating a streamdoc")
-    return prevobj, parse_streamdoc("accumulate")(func)(prevobj, nextobj, **kwargs)
+    return parse_streamdoc("accumulate")(func)(prevobj, nextobj, **kwargs)
     #def __stream_reduce__(self, func, accumulator):
         #return parse_streamdoc("reduce")(func)(accumulator, self)
 
@@ -370,6 +371,7 @@ def parse_streamdoc(name):
             # load in attributes
             # Save outputs to StreamDoc
             arguments_obj = parse_args(result)
+            #print("StreamDoc, parse_streamdoc : parsed args : {}".format(arguments_obj.args))
             streamdoc.add(args=arguments_obj.args, kwargs=arguments_obj.kwargs)
 
             return streamdoc

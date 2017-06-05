@@ -121,8 +121,8 @@ from functools import wraps
 # This decorator is necessary to provide a way to find out what stream doc is
 # unique. We need to tokenize only the args, kwargs and attributes of
 # StreamDoc, nothing else
-from SciAnalysis.interfaces.StreamDoc import delayed_wrapper
-input_wrapper = delayed_wrapper
+#from SciAnalysis.interfaces.StreamDoc import delayed_wrapper
+#input_wrapper = delayed_wrapper
 
 #def inspect_stream(stream):
     #stream.apply(compute).apply(lambda x : print(x[0]))
@@ -146,7 +146,7 @@ def get_stitchback(attr, *args, **kwargs):
     #print(attr['stitch'])
     #print("kwargs : {}".format(kwargs))
     #print("args : {}".format(args))
-    return attr['stitchback'],
+    return attr['stitchback']
 
 # TODO merge check with get stitch
 def check_stitchback(sdoc):
@@ -265,24 +265,24 @@ sin = Stream()
 # TODO : have this run asynchronously somehow
 # i.e. : control loops should be run elsewhere from the data uid fetching
 # alternative, only pass metadata without loading image, may be more practical and faster
-s_event = sin.map(source_databroker.pullfromuid, dbname='cms:data',raw=True).map(compute,raw=True).filter(isSAXS).map(delayed,raw=True)
-s_event = s_event.map(delayed(check_stitchback),raw=True)
+s_event = sin.map(source_databroker.pullfromuid, dbname='cms:data',raw=True).map(compute,raw=True).filter(isSAXS)#.map(delayed,raw=True)
+s_event = s_event.map((check_stitchback),raw=True)
 #s2.apply(compute).apply(print)
 # next start working on result
-s_event = s_event.map(delayed(add_attributes), stream_name="InputStream",raw=True)#.apply(compute)
+s_event = s_event.map((add_attributes), stream_name="InputStream",raw=True)#.apply(compute)
 #s_event.apply(client.compute).apply(print)
-s_event = s_event.map(delayed(set_detector_name), detector_name='pilatus300',raw=True)
+s_event = s_event.map((set_detector_name), detector_name='pilatus300',raw=True)
 #sin.map(print, raw=True)
 #s2.apply(compute).apply(lambda x : print(x[0]['attributes']['stream_name']))
 
 #  separate data from attributes
-attributes = s_event.map(delayed(get_attributes),raw=True)
+attributes = s_event.map((get_attributes),raw=True)
 #attributes.map(compute, raw=True).map(print, raw=True)
 
 # get image from the input stream
 #image = s2.select((detector_key,None))
 #s_event.apply(compute).apply(print)
-image = s_event.map(lambda x : delayed(x.select)((detector_key,None)),raw=True)
+image = s_event.map(lambda x : (x.select)((detector_key,None)),raw=True)
 
 # calibration setup
 sin_calib, sout_calib = CalibrationStream()
@@ -325,7 +325,7 @@ def pack(*args):
 ## circular average
 sin_image_qmap = image.merge(sout_calib, mask_stream)
 out_list = deque(maxlen=10)
-sin_circavg, sout_circavg = CircularAverageStream(wrapper=delayed_wrapper)
+sin_circavg, sout_circavg = CircularAverageStream()
 sin_image_qmap.select(0, 1, 'mask').map(sin_circavg.emit, raw=True)
 #sout_circavg.apply(compute).apply(print)
 #sout_circavg.select(('sqx',None),('sqy', None)).map(pack).map(out_list.append).apply(compute)
@@ -337,8 +337,8 @@ exposure_mask = mask_stream.select(('mask', None))
 exposure_mask = exposure_mask.merge(exposure_time.select(('exposure_time', None))).map(multiply)
 exposure_mask = exposure_mask.select((0, 'mask'))
 
-sin_imgstitch, sout_imgstitch = ImageStitchingStream(wrapper=delayed_wrapper)
-sout_imgstitch.map(print, raw=True).map(compute, raw=True)
+sin_imgstitch, sout_imgstitch = ImageStitchingStream()
+#sout_imgstitch.map(print, raw=True).map(compute, raw=True)
 #sout_imgstitch_log = sout_imgstitch.select(('image', None)).map(safelog10).select((0, 'image'))
 #sout_imgstitch_log = sout_imgstitch_log.map(delayed(add_attributes), stream_name="ImgStitchLog", raw=True)
 img_masked = image.merge(mask_stream.select(('mask',None))).map(multiply)
@@ -346,7 +346,7 @@ img_mask_origin = img_masked.select((0,'image')).merge(exposure_mask.select(('ma
 img_mask_origin.map(sin_imgstitch.emit, raw=True)
 #sin_imgstitch.apply(compute).apply(lambda x: print("printing : {}".format(x)))
 
-sin_thumb, sout_thumb = ThumbStream(wrapper=delayed_wrapper, blur=1, resize=2)
+sin_thumb, sout_thumb = ThumbStream(blur=1, resize=2)
 image.map(sin_thumb.emit, raw=True)
 images = list()
 image.map(compute, raw=True).map(images.append)
@@ -360,13 +360,13 @@ image.map(compute, raw=True).map(images.append)
 #
 #
 ## fitting
-#sqfit_in, sqfit_out = SqFitStream(wrapper=delayed_wrapper)
+#sqfit_in, sqfit_out = SqFitStream()
 #sout_circavg.apply(sqfit_in.emit)
 #
 #
 ##
 #sqphis = deque(maxlen=10)
-#sqphi_in, sqphi_out = QPHIMapStream(wrapper=delayed_wrapper)
+#sqphi_in, sqphi_out = QPHIMapStream()
 #image.merge(mask_stream, origin.select((0, 'origin'))).apply(sqphi_in.emit)
 ##sqphi_out.apply(client.compute).apply(sqphis.append)
 #
@@ -380,15 +380,15 @@ image.map(compute, raw=True).map(images.append)
 #
 # save to plots 
 resultsqueue = deque(maxlen=1000)
-sout_circavg.map(delayed(source_plotting.store_results), lines=[('sqx', 'sqy')],\
+sout_circavg.map((source_plotting.store_results), lines=[('sqx', 'sqy')],\
                    scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$",
                    ylabel="I(q)", raw=True).map(client.compute, raw=True).map(resultsqueue.append, raw=True)
-#sout_imgstitch.map(delayed(source_plotting.store_results), images=['image'], hideaxes=True, raw=True).map(client.compute, raw=True).map(resultsqueue.append, raw=True)
-#sout_imgstitch_log.apply(delayed(source_plotting.store_results), images=['image'], hideaxes=True).apply(client.compute).apply(resultsqueue.append)
-sout_thumb.map(delayed(source_plotting.store_results), images=['thumb'], hideaxes=True, raw=True).map(client.compute, raw=True).map(resultsqueue.append, raw=True)
+sout_imgstitch.map((source_plotting.store_results), images=['image'], hideaxes=True, raw=True).map(client.compute, raw=True).map(resultsqueue.append, raw=True)
+#sout_imgstitch_log.map((source_plotting.store_results), images=['image'], hideaxes=True, raw=True).map(client.compute, raw=True).map(resultsqueue.append, raw=True)
+sout_thumb.map((source_plotting.store_results), images=['thumb'], hideaxes=True, raw=True).map(client.compute, raw=True).map(resultsqueue.append, raw=True)
 sout_thumb.select(('thumb', None)).map(safelog10).select((0,'thumb'))\
-        .map(delayed(add_attributes), stream_name="ThumbLog", raw=True)\
-        .map(delayed(source_plotting.store_results), images=['thumb'], hideaxes=True, raw=True)\
+        .map((add_attributes), stream_name="ThumbLog", raw=True)\
+        .map((source_plotting.store_results), images=['thumb'], hideaxes=True, raw=True)\
         .map(client.compute, raw=True).map(resultsqueue.append, raw=True)
 
 #tmpqueue = deque(maxlen=10)
@@ -407,9 +407,9 @@ sout_thumb.select(('thumb', None)).map(safelog10).select((0,'thumb'))\
 #
 #
 ## save to file system
-sout_thumb.map(delayed(source_file.store_results_file), {'writer' : 'npy', 'keys' : ['thumb']}, raw=True)\
+sout_thumb.map((source_file.store_results_file), {'writer' : 'npy', 'keys' : ['thumb']}, raw=True)\
         .map(client.compute, raw=True).map(resultsqueue.append, raw=True)
-sout_circavg.map(delayed(source_file.store_results_file), {'writer' : 'npy', 'keys' : ['sqx', 'sqy']}, raw=True)\
+sout_circavg.map((source_file.store_results_file), {'writer' : 'npy', 'keys' : ['sqx', 'sqy']}, raw=True)\
         .map(client.compute).map(resultsqueue.append, raw=True)
 #sout_circavg.apply(client.compute).apply(print)
 #
