@@ -8,8 +8,8 @@ import time
 import sys
 import linecache
 from uuid import uuid4
-from SciAnalysis.interfaces.streams import Stream
-from SciAnalysis.globals import debugcache
+from .streams import Stream
+from ..globals import debugcache
 
 # convenience routine to return a hash of the streamdoc
 from dask.delayed import tokenize, delayed, Delayed
@@ -24,7 +24,7 @@ class Arguments:
         self.kwargs = kwargs
 
 
-from SciAnalysis.interfaces.streams import stream_map, stream_accumulate
+from .streams import stream_map, stream_accumulate
 @stream_map.register(Delayed)
 def stream_map_delayed(obj, func, **kwargs):
     return delayed(func)(obj)
@@ -261,9 +261,12 @@ class StreamDoc(dict):
 
         return streamdoc
 
+def check_sdoc(sdoc):
+    return isinstance(sdoc, StreamDoc)
+
 @stream_map.register(StreamDoc)
-def stream_map_streamdoc(self, func, **kwargs):
-    return parse_streamdoc("map")(func)(self, **kwargs)
+def stream_map_streamdoc(obj, func, **kwargs):
+    return parse_streamdoc("map")(func)(obj, **kwargs)
 
 @stream_accumulate.register(StreamDoc)
 def stream_accumulate_streamdoc(prevobj, nextobj, func=None, **kwargs):

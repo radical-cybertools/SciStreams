@@ -656,25 +656,34 @@ class collect(Stream):
         self.cache.clear()
 
 
-def _stream_map(obj, *args, func=None, **kwargs):
-    if hasattr(obj, '__stream_map__'):
-        return obj.__stream_map__(wraps(func)(partial(_stream_map, *args, func=func, **kwargs)))
-    else:
-        sm = stream_map.dispatch(type(obj))
-        if sm is base_stream_map:
-            return func(obj, *args, **kwargs)
+# dispatch on first arg
+def _stream_map(*args, func=None, **kwargs):
+    if len(args) > 0:
+        obj = args[0]
+        if hasattr(obj, '__stream_map__'):
+            # assume map is done on first arg only
+            return obj.__stream_map__(wraps(func)(partial(_stream_map, *args[1:],func=func, **kwargs)))
         else:
-            return sm(obj, wraps(func)(partial(_stream_map, *args, func=func, **kwargs)))
+            # assume map is done on first arg only
+            sm = stream_map.dispatch(type(obj))
+            if sm is base_stream_map:
+                # run on args instead
+                return func(*args, **kwargs)
+            else:
+                # assume map is done on first arg only
+                return sm(obj, wraps(func)(partial(_stream_map, *args[1:], func=func, **kwargs)))
+    else:
+        return func(*args, **kwargs)
 
-def _stream_accumulate(prevobj, nextobj, *args, func=None, **kwargs):
+def _stream_accumulate(prevobj, nextobj, func=None, **kwargs):
     if hasattr(prevobj, '__stream_accumulate__'):
-        return prevobj.__stream_accumulate__(wraps(func)(partial(_stream_accumulate, nextobj, *args, func=func, **kwargs)))
+        return prevobj.__stream_accumulate__(wraps(func)(partial(_stream_accumulate, nextobj, func=func, **kwargs)))
     else:
         sm = stream_accumulate.dispatch(type(prevobj))
-        if sm is base_stream_map:
-            return func(prevobj, nextobj, *args, **kwargs)
+        if sm is base_stream_accumulate:
+            return func(prevobj, nextobj, **kwargs)
         else:
-            return sm(prevobj, nextobj, wraps(func)(partial(_stream_map, *args, func=func, **kwargs)))
+            return sm(prevobj, nextobj, wraps(func)(partial(_stream_accumulate, func=func, **kwargs)))
 
 
 
@@ -682,9 +691,7 @@ def _stream_accumulate(prevobj, nextobj, *args, func=None, **kwargs):
 def stream_map(obj, func, **kwargs):
     return func(obj, **kwargs)
 
-
 base_stream_map = stream_map.dispatch(object)
-
 
 @singledispatch
 def stream_accumulate(prevobj, nextobj, func):
