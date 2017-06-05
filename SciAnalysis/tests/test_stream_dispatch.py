@@ -1,7 +1,7 @@
 #from SciAnalysis.interfaces.streams import Stream
 #from SciAnalysis.interfaces.streams import map
 
-from streams import Stream, map
+from SciAnalysis.interfaces.streams import Stream, map
 from functools import singledispatch
 # register as a singledispatch
 @map.register(object)
@@ -29,5 +29,5 @@ class NewStream(Stream):
 # TODO : need to develop a function registry for streams
 s = Stream()
 s2 = s.map(lambda x : x+1).filter(lambda x : x > 0).map(lambda x : x+1)
-s2.newmap(lambda x : x + 1)#.filter(lambda x : x > 0).map(lambda x : x + 1)
+#s2.newmap(lambda x : x + 1)#.filter(lambda x : x > 0).map(lambda x : x + 1)
 s.emit(1)

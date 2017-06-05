@@ -374,6 +374,7 @@ class Sink(Stream):
             return []
 
 
+@singledispatch
 class map(Stream):
     def __init__(self, func, child, *args, raw=False, **kwargs):
         self.func = func
@@ -657,8 +658,10 @@ class collect(Stream):
 
 
 # dispatch on first arg
+# another option is to supply a wrapper function
 def _stream_map(*args, func=None, **kwargs):
     if len(args) > 0:
+        # check the first argument, whether it has a dispatch
         obj = args[0]
         if hasattr(obj, '__stream_map__'):
             # assume map is done on first arg only
