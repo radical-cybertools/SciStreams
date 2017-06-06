@@ -365,10 +365,10 @@ image.map(compute, raw=True).map(images.append)
 #
 #
 ##
-#sqphis = deque(maxlen=10)
-#sqphi_in, sqphi_out = QPHIMapStream()
-#image.merge(mask_stream, origin.select((0, 'origin'))).apply(sqphi_in.emit)
-##sqphi_out.apply(client.compute).apply(sqphis.append)
+sqphis = deque(maxlen=10)
+sqphi_in, sqphi_out = QPHIMapStream()
+image.merge(mask_stream, origin.select((0, 'origin'))).map(sqphi_in.emit, raw=True)
+sqphi_out.map(sqphis.append, raw=True)
 #
 #'''
 #
@@ -398,9 +398,9 @@ sout_thumb.select(('thumb', None)).map(safelog10).select((0,'thumb'))\
 #                                           lines=[('sqx', 'sqy'), ('sqx', 'sqfit')],
 #                                           scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$", ylabel="I(q)")\
 #        .apply(client.compute)
-#sqphi_out.apply(delayed(source_plotting.store_results),
-#                                           images=['sqphi'], xlabel="$\phi$", ylabel="$q$", vmin=0, vmax=100)\
-#        .apply(client.compute).apply(resultsqueue.append)
+sqphi_out.map(source_plotting.store_results,raw=True,
+                                           images=['sqphi'], xlabel="$\phi$", ylabel="$q$", vmin=0, vmax=100)\
+        .map(resultsqueue.append, raw=True)
 #sout_img_pca.apply(delayed(source_plotting.store_results),
 #                   images=['components']).apply(client.compute)\
 #                    .apply(resultsqueue.append)

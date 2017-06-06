@@ -513,17 +513,19 @@ def ImageStitchingStream():
         this stream
     '''
     sin = Stream()
+    sin.map(lambda x : print("Beginning of stream data\n\n\n"))
     from dask import compute
     # TODO : remove compute requirement
     s2 = sin.map((add_attributes), stream_name="ImageStitch", raw=True)
+    s2.map(print,raw=True)
     # make the image, mask origin as the first three args
-    s2.map(lambda x : print("in image stitch : {}".format(x)), raw=True)
+    #s2.map(lambda x : print("in image stitch : {}".format(x)), raw=True)
     #s3 = s2.map(lambda x : compute(x)[0]).select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
     s3 = s2.select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
     sout = s3.map(pack).accumulate(_xystitch_accumulate)
-    sout.map(lambda x : print("imagestitch sdoc before unpack : {}".format(x)),raw=True)
+    #sout.map(lambda x : print("imagestitch sdoc before unpack : {}".format(x)),raw=True)
     sout = sout.map(unpack)
-    sout.map(lambda x : print("imagestitch sdoc : {}".format(x)),raw=True)
+    #sout.map(lambda x : print("imagestitch sdoc : {}".format(x)),raw=True)
     sout = sout.map(_xystitch_result).map(todict)
 
     # now window the results and only output if stitchback from previous is nonzero
@@ -534,7 +536,7 @@ def ImageStitchingStream():
         next = xtuple[1]['attributes']['stitchback']
         return next == 0
 
-    swin.map(lambda x : print("result : {}".format(x)), raw=True)
+    #swin.map(lambda x : print("result : {}".format(x)), raw=True)
 
     # only get results where stitch is stopped
     # NOTE : need to compute before filtering here
@@ -548,6 +550,7 @@ def ImageStitchingStream():
         return x0
 
     swinout = swinout.map(getprevstitch, raw=True)
+    swinout.map(lambda x : print("End of stream data\n\n\n"))
 
 
     # debugging
