@@ -16,6 +16,7 @@ def identity(x):
     return x
 
 
+
 class Stream(object):
     """ A Stream is an infinite sequence of data
 
@@ -400,6 +401,8 @@ class filter(Stream):
     def update(self, x, who=None):
         if self.predicate(x):
             return self.emit(x)
+        #else:
+            #return self.emit(NOOP())
 
 
 class scan(Stream):
@@ -697,7 +700,7 @@ def _stream_accumulate(prevobj, nextobj, func=None, **kwargs):
     '''
     # if first time, return next
     if prevobj is no_default:
-        print("No defaults, passing nexobj : {}".format(nextobj))
+        #print("No defaults, passing nexobj : {}".format(nextobj))
         return nextobj
 
     if hasattr(prevobj, '__stream_accumulate__'):
@@ -705,9 +708,9 @@ def _stream_accumulate(prevobj, nextobj, func=None, **kwargs):
     else:
         sm = stream_accumulate.dispatch(type(prevobj))
         if sm is base_stream_accumulate:
-            print("stream_accumulate, previous object: {}".format(prevobj))
-            print("stream_accumulate, next object: {}".format(nextobj))
-            print("stream_accumulate, no defaults : {}".format(no_default))
+            #print("stream_accumulate, previous object: {}".format(prevobj))
+            #print("stream_accumulate, next object: {}".format(nextobj))
+            #print("stream_accumulate, no defaults : {}".format(no_default))
             return func(prevobj, nextobj, **kwargs)
         else:
             return sm(prevobj, nextobj, wraps(func)(partial(_stream_accumulate, func=func, **kwargs)))
@@ -726,3 +729,11 @@ def stream_accumulate(prevobj, nextobj, func):
     return result
 
 base_stream_accumulate = stream_accumulate.dispatch(object)
+
+# for control statements
+class NOOP:
+    pass
+
+@stream_map.register(NOOP)
+def _(*args, **kwargs):
+    return NOOP()

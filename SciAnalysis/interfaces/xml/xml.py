@@ -1,6 +1,10 @@
 # doesn't need to be an object
 import os.path
 
+import SciAnalysis.config as config
+_ROOTDIR = config.resultsroot
+_ROOTMAP = config.resultsrootmap
+
 
 def make_dir(directory):
     ''' Creates directory if doesn't exist.'''
@@ -21,18 +25,6 @@ def get_filebase(name):
     basename, ext = os.path.splitext(basename)
     return basename
 
-# store results decorator
-# first is a function that returns a decorator
-# the decorator is a function that takes a function and 
-# returns a new function
-def store_results(outputs=None):
-    def store_results_decorator(f):
-        def f_new(*args, **kwargs):
-            res = f(*args, **kwargs)
-            store_results_xml(res, outputs=outputs)
-            return res
-        return f_new
-    return store_results_decorator
 
 def parse_attrs_xml(attrs):
     ''' parse the attributes into a string for each element'''
@@ -53,6 +45,50 @@ def _cleanup_str(string):
     string = string.replace(":", "_")
     return string
 
+def _make_fname_from_attrs(attrs):
+    ''' make filename from attributes.
+        This will likely be copied among a few interfaces.
+    '''
+    if 'experiment_alias_directory' not in attrs:
+        raise ValueError("Error cannot find experiment_alias_directory in attributes. Not saving.")
+
+    # remove the trailing slash
+    rootdir = attrs['experiment_alias_directory'].strip("/")
+
+    if _ROOTMAP is not None:
+        rootdir = rootdir.replace(_ROOTMAP[0], _ROOTMAP[1])
+    elif _ROOTDIR is not None:
+        rootdir = _ROOTDIR
+
+    if 'detector_name' not in attrs:
+        raise ValueError("Error cannot find detector_name in attributes")
+    else:
+        detname = _cleanup_str(attrs['detector_name'])
+        # get name from lookup table first
+        detector_name = config.detector_names.get(detname, detname)
+
+    if 'sample_savename' not in attrs:
+        raise ValueError("Error cannot find sample_savename in attributes")
+    else:
+        sample_savename = _cleanup_str(attrs['sample_savename'])
+
+    if 'stream_name' not in attrs:
+        #raise ValueError("Error cannot find stream_name in attributes")
+        stream_name = 'unnamed_analysis'
+    else:
+        stream_name = _cleanup_str(attrs['stream_name'])
+
+    if 'scan_id' not in attrs:
+        raise ValueError("Error cannot find scan_id in attributes")
+    else:
+        scan_id = _cleanup_str(str(attrs['scan_id']))
+
+    outdir = rootdir + "/" + detector_name + "/" + stream_name + "/xml"
+    make_dir(outdir)
+    outfile = outdir + "/" + sample_savename + "_" + scan_id + ".xml"
+
+    return outfile
+
 def store_results_xml(results, outputs=None):
     '''
         Store the results from the corresponding protocol.
@@ -68,31 +104,16 @@ def store_results_xml(results, outputs=None):
     '''
     # TODO : maybe add date folder too?
     # TODO : add detector as well?
+    if 'kwargs' not in results:
+        raise ValueError("kwargs not in the sciresults. (Is this a valid SciResult object?)")
+    results_dict = results['kwargs']
     if 'attributes' not in results:
         raise ValueError("attributes not in the sciresults. (Is this a valid SciResult object?)")
 
     attrs = results['attributes']
+    outfile = _make_fname_from_attrs(attrs)
 
-    if 'experiment_cycle' not in attrs or 'experiment_group' not in attrs or 'sample_savename' not in attrs or 'protocol_name' not in attrs:
-        raise ValueError("Error cannot find experiment_cyle, experiment_group or sample_savename in results"
-                "Either results object is not a sciresult or it has not been formatted properly."
-                "Cannot save to XML")
-
-    from SciAnalysis.config import XMLDIR
     from lxml import etree
-    experiment_cycle = attrs['experiment_cycle']
-    experiment_cycle = _cleanup_str(experiment_cycle)
-    scan_id = str(attrs['scan_id'])
-    scan_id = _cleanup_str(scan_id)
-    experiment_group = attrs['experiment_group']
-    experiment_group = _cleanup_str(experiment_group)
-    sample_savename = attrs['sample_savename']
-    sample_savename = _cleanup_str(sample_savename)
-    protocol_name = attrs['protocol_name']
-    protocol_name = _cleanup_str(protocol_name)
-    outdir = XMLDIR + "/" + experiment_cycle + "/" + experiment_group +"/" + protocol_name
-    make_dir(outdir)
-    outfile = outdir + "/" + sample_savename + "_" + scan_id + ".xml"
     # just add to the sciresults so user knows it's been saved to xml
     results['attributes']['xml-outfile'] = outfile
 
@@ -100,10 +121,13 @@ def store_results_xml(results, outputs=None):
         # Result XML file already exists
         parser = etree.XMLParser(remove_blank_text=True)
         root = etree.parse(outfile, parser).getroot()
-
     else:
         # Create new XML file
         # TODO: Add characteristics of outfile
+        if 'sample_savename' in attrs:
+            sample_savename = attrs['sample_savename']
+        else:
+            sample_savename = "No sample savename"
         root = etree.Element('DataFile', name=sample_savename)
 
     # TODO : instead of parsing (changing to str), walk through all elements in tree of dicts
@@ -114,21 +138,21 @@ def store_results_xml(results, outputs=None):
     if outputs is not None:
         for output in outputs:
             name = output
-            content = results['outputs'][name]
+            content = results_dict[name]
             if name[0] == '_':
                 continue  # ignore hidden variables, like _start etc
             import numpy as np
-    
+
             if isinstance(content, dict):
                 content = dict([k, str(v)] for k, v in content.items())
                 etree.SubElement(prot, 'result', name=name, **content)
-    
+
             elif isinstance(content, list) or isinstance(content, np.ndarray):
-    
+
                 res = etree.SubElement(prot, 'result', name=name, type='list')
                 for i, element in enumerate(content):
                     etree.SubElement(res, 'element', index=str(i), value=str(element))
-    
+
             else:
                 etree.SubElement(prot, 'result', name=name, value=str(content))
 

@@ -464,6 +464,7 @@ class Calibration(object):
         self.qr_map_data = None
 
 
+    @property
     def r_map(self):
         '''Returns a 2D map of the distance from the origin (in pixel units) for
         each pixel position in the detector image.'''

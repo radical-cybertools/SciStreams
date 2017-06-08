@@ -24,10 +24,11 @@ class Arguments:
         self.kwargs = kwargs
 
 
+
 from .streams import stream_map, stream_accumulate
-@stream_map.register(Delayed)
-def stream_map_delayed(obj, func, **kwargs):
-    return delayed(func)(obj)
+#@stream_map.register(Delayed)
+#def stream_map_delayed(obj, func, **kwargs):
+    #return delayed(func)(obj)
 
 @stream_accumulate.register(Delayed)
 def stream_accumulate_delayed(obj, func, accumulator, **kwargs):
@@ -271,7 +272,7 @@ def stream_map_streamdoc(obj, func, **kwargs):
 
 @stream_accumulate.register(StreamDoc)
 def stream_accumulate_streamdoc(prevobj, nextobj, func=None, **kwargs):
-    print("accumulating a streamdoc")
+    #print("accumulating a streamdoc")
     return parse_streamdoc("accumulate")(func)(prevobj, nextobj, **kwargs)
     #def __stream_reduce__(self, func, accumulator):
         #return parse_streamdoc("reduce")(func)(accumulator, self)
@@ -384,9 +385,9 @@ def parse_streamdoc(name):
 # uses dispatch in dask delayed to define hash function
 # for the StreamDoc object
 from dask.base import normalize_token
-#@normalize_token.register(StreamDoc)
-#def tokenize_sdoc(sdoc):
-    #return normalize_token((sdoc['args'], sdoc['kwargs']))
+@normalize_token.register(StreamDoc)
+def tokenize_sdoc(sdoc):
+    return normalize_token((sdoc['args'], sdoc['kwargs']))
 
 def delayed_wrapper(name):
     def decorator(f):

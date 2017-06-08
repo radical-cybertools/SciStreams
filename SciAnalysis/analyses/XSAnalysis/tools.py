@@ -80,8 +80,9 @@ def xystitch_accumulate(prevstate, newstate):
     stitchback_acc = stitchback_next
     img_acc = img_acc*(mask_acc > 0)
     mask_acc = mask_acc*(mask_acc > 0)
+    newstate = img_acc, mask_acc, origin_acc, stitchback_acc
 
-    return img_acc, mask_acc, origin_acc, stitchback_acc
+    return newstate
 
 def _placeimg2D(img_source, origin_source, img_dest, origin_dest):
     ''' place source image into dest image. use the origins for

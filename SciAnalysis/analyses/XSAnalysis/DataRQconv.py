@@ -25,6 +25,7 @@ from .Data import *
 
 from dask.base import normalize_token
 
+
 # Calibration
 ################################################################################
 class CalibrationRQconv(Calibration):
@@ -98,7 +99,6 @@ class CalibrationRQconv(Calibration):
         width_mm = self.width*self.pixel_size_um/1000.
         return self.distance_m/(width_mm/1000.)
 
-
     # Maps
     ########################################
 
@@ -108,7 +108,7 @@ class CalibrationRQconv(Calibration):
         in the detector image.'''
 
         if self.q_map_data is None:
-            self._generate_maps()
+            self.generate_maps()
 
         return self.q_map_data
 
@@ -118,45 +118,47 @@ class CalibrationRQconv(Calibration):
         0 degrees is vertical, +90 degrees is right, -90 degrees is left.'''
 
         if self.angle_map_data is not None:
-            self._generate_maps()
+            self.generate_maps()
 
         return self.angle_map_data
 
     @property
     def qx_map(self):
         if self.qx_map_data is None:
-            self._generate_maps()
+            self.generate_maps()
 
         return self.qx_map_data
 
     @property
     def qy_map(self):
         if self.qy_map_data is None:
-            self._generate_maps()
+            self.generate_maps()
 
         return self.qy_map_data
 
     @property
     def qz_map(self):
         if self.qz_map_data is None:
-            self._generate_maps()
+            self.generate_maps()
 
         return self.qz_map_data
 
     @property
     def qr_map(self):
         if self.qr_map_data is None:
-            self._generate_maps()
+            self.generate_maps()
 
         return self.qr_map_data
 
+    # r_map already defined in parent object
 
-    def _generate_maps(self):
+
+    def generate_maps(self):
         """
         calculate all coordinates (pixel position as well as various derived values)
         all coordinates are stored in 2D arrays, as is the data itself in Data2D
         """
-
+        print("Generating qmaps (expensive computation)")
         self.calc_rot_matrix()
 
         (w,h) = (self.width, self.height)

@@ -3,7 +3,7 @@ from tornado.locks import Condition
 from tornado.queues import Queue
 from tornado import gen
 
-from .core import Stream, no_default, stream_map, stream_accumulate
+from .streams import Stream, no_default, stream_map, stream_accumulate
 
 
 @stream_map.register(Future)

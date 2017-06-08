@@ -5,9 +5,9 @@ import os
 
 # dask imports
 # set up the distributed client
-from dask.cache import Cache
-_cache = Cache(1e9)
-_cache.register()
+#from dask.cache import Cache
+#_cache = Cache(1e9)
+#_cache.register()
 
 #from distributed import Client
 #client = Client("10.11.128.3:8786")
@@ -31,6 +31,7 @@ import numpy as np
 from SciAnalysis.interfaces.plotting_mpl import plotting_mpl as source_plotting
 from SciAnalysis.interfaces.databroker import databroker as source_databroker
 from SciAnalysis.interfaces.file import file as source_file
+from SciAnalysis.interfaces.xml import xml as source_xml
 from SciAnalysis.interfaces.detectors import detectors2D
 ## Analyses
 #from SciAnalysis.analyses.XSAnalysis.Protocols_streams import CircularAverage, Thumbnail
@@ -47,7 +48,7 @@ cddb = databases['cms:data']
 
 # Streams include stuff
 # select needed for mapping
-from SciAnalysis.interfaces.StreamDoc import StreamDoc, Stream, parse_streamdoc
+from SciAnalysis.interfaces.StreamDoc import StreamDoc, Stream, parse_streamdoc, Arguments
 #from streams.core import Stream
 
 
@@ -158,7 +159,7 @@ def get_exposure_time(attr, *args, **kwargs):
     return attr['sample_exposure_time']
 
 def norm_exposure(image=None, exposure_time=None, **kwargs):
-    return image/exposure_time
+    return image.astype(float)/exposure_time
 
 def multiply(A, B):
     return A*B
@@ -175,6 +176,12 @@ def safelog10(img):
     w = np.where(img > 0)
     img_out[w] = np.log10(img[w])
     return img_out
+
+def todict(arg):
+    return Arguments(**arg)
+
+def toargs(arg):
+    return Arguments(*arg)
 
 def PCA_fit(data, n_components=10):
     ''' Run principle component analysis on data.
@@ -193,7 +200,7 @@ def PCA_fit(data, n_components=10):
     return dict(components=components)
 
 # TODO :  need to fix this
-@delayed
+#@delaye
 def squash(sdocs):
     newsdoc = StreamDoc()
     for sdoc in sdocs:
@@ -282,7 +289,7 @@ attributes = s_event.map((get_attributes),raw=True)
 # get image from the input stream
 #image = s2.select((detector_key,None))
 #s_event.apply(compute).apply(print)
-image = s_event.map(lambda x : (x.select)((detector_key,None)),raw=True)
+image = s_event.map(lambda x : (x.select)((detector_key,None)),raw=True).map(lambda x : x.astype(float))
 
 # calibration setup
 sin_calib, sout_calib = CalibrationStream()
@@ -353,10 +360,11 @@ image.map(compute, raw=True).map(images.append)
 #
 #
 #
-#sout_img_partitioned = sout_thumb.select(('thumb', None)).partition(100).apply(delayed(squash))
+sout_img_partitioned = sout_thumb.select(('thumb', None)).partition(100).map(squash, raw=True)
 ##sout_img_partitioned.apply(compute).apply(print)
 ## saves dict with components key
-#sout_img_pca = sout_img_partitioned.map(PCA_fit, n_components = 10).apply(delayed(add_attributes), stream_name="PCA")
+sout_img_pca = sout_img_partitioned.map(PCA_fit, n_components = 16).map(add_attributes, stream_name="PCA", raw=True).map(todict)
+#sout_img_pca.map(lambda x : print("pca sdoc : {}".format(x)), raw=True)
 #
 #
 ## fitting
@@ -401,9 +409,9 @@ sout_thumb.select(('thumb', None)).map(safelog10).select((0,'thumb'))\
 sqphi_out.map(source_plotting.store_results,raw=True,
                                            images=['sqphi'], xlabel="$\phi$", ylabel="$q$", vmin=0, vmax=100)\
         .map(resultsqueue.append, raw=True)
-#sout_img_pca.apply(delayed(source_plotting.store_results),
-#                   images=['components']).apply(client.compute)\
-#                    .apply(resultsqueue.append)
+sout_img_pca.map(source_plotting.store_results,
+                   images=['components'], raw=True).map(client.compute, raw=True)\
+                    .map(resultsqueue.append, raw=True)
 #
 #
 ## save to file system
@@ -414,6 +422,9 @@ sout_circavg.map((source_file.store_results_file), {'writer' : 'npy', 'keys' : [
 #sout_circavg.apply(client.compute).apply(print)
 #
 #
+# save to xml
+sout_circavg.map((source_xml.store_results_xml), outputs=None, raw=True)\
+        .map(client.compute).map(resultsqueue.append, raw=True)
 ## TODO : make databroker not save numpy arrays by default i flonger than a certain size 
 ## (since it's likely an error and leads to garbage strings saved in mongodb)
 ## save to databroker
@@ -451,12 +462,14 @@ with open(filename,"r") as f:
 
 # Emitting data
 
+''' AgBH_Julien
 #sdoc_gen = source_databroker.search(dbname_data, **search_kws)
 data_uids = []
 #sdoc_gen = source_databroker.pull(dbname_data, **search_kws)
 sdoc_gen = source_databroker.pull(dbname_data, sample_name="AgBH_Julien")
 for sdoc in sdoc_gen:
     data_uids.append(sdoc['attributes']['data_uid'])
+'''
 
 #sdoc_gen = source_databroker.pullfromuids(dbname_data, data_uids)
 
@@ -470,7 +483,12 @@ for uid in data_uids:
     # add delayed wrapper
     #sdoc._wrapper = delayed
     #sin.emit(delayed(sdoc))
-    sin.emit(uid)
-    # probably good idea not to bombard dask with computations
-    # add a small interval between requests
-    sleep(.1)
+    try:
+        sin.emit(uid)
+        # probably good idea not to bombard dask with computations
+        # add a small interval between requests
+        sleep(.1)
+    except KeyError:
+        print("Got a keyerror (no image likely), ignoring")
+    except ValueError as e:
+        print("got ValueError: {}".format(e))

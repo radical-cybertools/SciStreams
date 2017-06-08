@@ -1,5 +1,4 @@
 from dask import set_options
-from dask.cache import Cache
 
 from collections import deque
 debugcache = deque(maxlen=1)
@@ -21,12 +20,11 @@ else:
 
 # assume all functions are pure globally
 try:
-    import cachey
+    from dask.cache import Cache
     cache = Cache(1e9)
     cache.register()
 except ImportError:
+    print("Error cachey not available. Will not be caching")
     pass
 
 set_options(delayed_pure=True)
-
-
