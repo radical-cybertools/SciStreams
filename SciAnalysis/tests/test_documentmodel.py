@@ -7,10 +7,20 @@ def latest_start(prevobj, newdoc):
             updates the start event if it's a new start event
         or returns an event with the start added.
 
-        prev : curstart, curdesc
+        It returns a 3 tuple of:
+            curstart, curdesc, curevent
 
-        # TODO : this should eventually be a buffer
+        # TODO : this could eventually be a buffer
         # of starts and descriptors with uids
+        # when an event comes in, the matching start and desc would be returned
+        # if a stop document comes in, then the start and desc are cleared from buffer
+        # Note : this requires re-writing scan so that the accumul function returns:
+            newstate, result = func(oldstate, incoming)
+            as opposed to:
+            newstate = func(oldstate, incoming)
+
+            (the latter is more general and way more powerful basically a function
+                with its own built in memory)
     '''
     curstart, curdesc, curevent = prevobj
 
