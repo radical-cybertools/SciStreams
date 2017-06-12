@@ -124,10 +124,9 @@ def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
     #calib_obj.apply(compute).apply(print)
 
     #q_maps = calib.map(_generate_qxyz_maps)
-    #calib_obj = calib_obj.map(delayed, raw=True, pure=True).map(_generate_qxyz_maps)
-    calib_obj = calib_obj.map(_generate_qxyz_maps)
-    #calib_obj.map(print, raw=True)
-    #calib_obj = calib_obj.map(lambda x : compute(x)[0], raw=True)
+    calib_obj = calib_obj.map(delayed, raw=True, pure=True).map(_generate_qxyz_maps)
+    #calib_obj = calib_obj.map(_generate_qxyz_maps)
+    calib_obj.map(print, raw=True)
     def printcache(obj):
         from SciAnalysis.globals import cache
         print("cache is {}".format(cache.cache.data))
@@ -138,6 +137,7 @@ def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
     # sink the cache for the qmaps
     #q_maps.apply(client.compute).sink(QMAP_CACHE.append)
     calib_obj.map(client.compute, raw=True).sink(QMAP_CACHE.append)
+    calib_obj = calib_obj.map(lambda x : compute(x)[0], raw=True)
     #calib_obj.map(print, raw=True)
     # compute it so that it's cached on cluster
     # TODO : figure out best way to make this dask and non dask compatible
@@ -485,6 +485,27 @@ def qphiavg(img, mask=None, bins=None, origin=None):
     qs = rphibinstat.bin_centers[0]
     phis = rphibinstat.bin_centers[1]
     return Arguments(sqphi=sqphi, qs=qs, phis=phis)
+
+def AngularCorrelatorStream():
+    ''' Stream to run angular correlations.
+        inputs : shape, origin, mask
+    '''
+    from SciAnalysis.analyses.XSAnalysis import rdpc
+    s = Stream()
+    #sout.
+
+    return s, sout
+
+
+
+def prepare_correlation(shape, origin, mask, rbins=800, phibins=360, method='bgest'):
+    rdphicorr = rdpc.RDeltaPhiCorrelator(image.shape,  origin=origin, mask=mask, rbins=rbins,phibins=phibins)
+    return rdphicorr
+
+def angularcorrelation(rdphicorr, image):
+    ''' Run the angular correlation on the angular correlation object.'''
+    rdphicorr.run(image)
+    return rdphicorr.rdeltaphiavg_n
 
 
 

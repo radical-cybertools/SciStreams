@@ -269,7 +269,8 @@ from functools import partial
 sin = Stream()
 # first expects a string, just apply (ignore wrappers)
 # this can't be delayed because filter contains an if statement
-# TODO : have this run asynchronously somehow
+# TODO : run asynchronously 
+# (maybe clients spawn other clients eventually)
 # i.e. : control loops should be run elsewhere from the data uid fetching
 # alternative, only pass metadata without loading image, may be more practical and faster
 s_event = sin.map(source_databroker.pullfromuid, dbname='cms:data',raw=True).map(compute,raw=True).filter(isSAXS)#.map(delayed,raw=True)

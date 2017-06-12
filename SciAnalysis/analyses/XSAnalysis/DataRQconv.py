@@ -24,6 +24,7 @@
 from .Data import *
 
 from dask.base import normalize_token
+from SciAnalysis.analyses.XSAnalysis.tools import roundbydigits
 
 
 # Calibration
@@ -297,12 +298,13 @@ def tokenize_calibrationrqconv(self):
     args = tokenize_calibration(self)
     # finally now tokenize the rest
     newargs = list()
-    newargs.append(self.det_orient)
-    newargs.append(self.det_tilt)
-    newargs.append(self.det_phi)
-    newargs.append(self.incident_angle)
-    newargs.append(self.sample_normal)
-    newargs.append(self.rot_matrix)
+    # round
+    newargs.append(roundbydigits(self.det_orient, 3))
+    newargs.append(roundbydigits(self.det_tilt, 3))
+    newargs.append(roundbydigits(self.det_phi, 3))
+    newargs.append(roundbydigits(self.incident_angle, 3))
+    newargs.append(roundbydigits(self.sample_normal, 3))
+    newargs.append(roundbydigits(self.rot_matrix, 3))
     newargs = normalize_token(newargs)
     args = (args, newargs)
 

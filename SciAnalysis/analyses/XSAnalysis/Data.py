@@ -33,6 +33,8 @@ from SciAnalysis.interfaces.detectors import detectors2D
 from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage.interpolation import rotate as scipy_rotate
 
+from SciAnalysis.analyses.XSAnalysis.tools import xystitch_accumulate, roundbydigits
+
 from dask.delayed import tokenize
 '''
     def run_default(protocol_name, xml=True, file=True, databroker=True, delay=
@@ -190,7 +192,6 @@ def make_submask(master_mask, master_cen, shape=None, origin=None,
 
     return submask*(submask > 0.5)
 
-from SciAnalysis.analyses.XSAnalysis.tools import xystitch_accumulate
 
 class Obstruction:
     ''' General obstruction on a detector. This is used to generate a mask.
@@ -601,22 +602,25 @@ def tokenize_calibration(self):
         args.append(self.width)
     if self.height is not None:
         args.append(self.height)
+
+    # round these by 3 digits
     if self.x0 is not None:
-        args.append(self.x0)
+        args.append(roundbydigits(self.x0, 3))
     if self.y0 is not None:
-        args.append(self.y0)
+        args.append(roundbydigits(self.y0, 3))
     if self.angle_map_data is not None:
-        args.append(self.angle_map_data)
+        args.append(roundbydigits(self.angle_map_data, 3))
     if self.q_map_data is not None:
-        args.append(self.q_map_data)
+        args.append(roundbydigits(self.q_map_data, 3))
     if self.qr_map_data is not None:
-        args.append(self.qr_map_data)
+        args.append(roundbydigits(self.qr_map_data, 3))
     if self.qx_map_data is not None:
-        args.append(self.qx_map_data)
+        args.append(roundbydigits(self.qx_map_data, 3))
     if self.qy_map_data is not None:
-        args.append(self.qy_map_data)
+        args.append(roundbydigits(self.qy_map_data, 3))
     if self.qz_map_data is not None:
-        args.append(self.qz_map_data)
+        args.append(roundbydigits(self.qz_map_data, 3))
+
     return normalize_token(args)
 
 

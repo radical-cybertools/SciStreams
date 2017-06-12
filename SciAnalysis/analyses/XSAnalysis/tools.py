@@ -1,6 +1,35 @@
 # image stitching
 import numpy as np
 
+def roundbydigits(n, digits=3):
+    ''' round by the number of digits.
+        n can be an array
+
+        treat 0 and nans
+    '''
+    if n is None:
+        return None
+    power = np.round(np.log10(n), decimals=0)
+    if isinstance(power, np.ndarray):
+        w = np.where(~np.isinf(power)*~np.isnan(power))
+        n_new = np.zeros_like(n)
+        if len(w[0]) > 0:
+            power[w] = power[w].astype(int)
+            n_new[w] = np.round(n[w]/10**power[w], decimals=digits-1)
+            n_new[w]= n_new[w]*(10**power[w])
+    else:
+        if ~np.isnan(power)*~np.isinf(power):
+            power = int(power)
+            n_new = np.round(n/10**power, decimals=digits-1)
+            n_new= n_new*(10**power)
+        else:
+            n_new = 0
+
+    return n_new
+
+
+
+
 def xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc):
     ''' Stitch_acc may not be necessary, it should just be a binary flag.  But
             could be generalized to a sequence number so I leave it.
@@ -47,13 +76,14 @@ def xystitch_accumulate(prevstate, newstate):
 
     # logic for making new state
     # initialization:
-    if stitchback_next == 0:
+    # make backwards compatible
+    if stitchback_next == 0 or stitchback_next is False:
         # re-initialize
         img_acc = img_next.copy()
         shape_acc = img_acc.shape
         mask_acc = mask_next.copy()
         origin_acc = origin_next
-        stitchback_acc = 0
+        stitchback_acc = False
         return img_acc, mask_acc, origin_acc, stitchback_acc
 
     # else, stitch
