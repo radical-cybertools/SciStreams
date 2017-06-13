@@ -226,7 +226,10 @@ def search(dbname, start_time=None, stop_time=None, **kwargs):
 
 
 def safe_parse_databroker(val, nested=False):
-    ''' Parse an arg, make sure it's safe for databroker.'''
+    ''' Parse an arg, make sure it's safe for databroker.
+        Also, if it's a huge numpy array, it'll be truncated.
+            Big arrays shouldn't be here.
+    '''
     if isinstance(val, dict):
         for key, subval in val.items():
             val[key] = safe_parse_databroker(subval, nested=True)
@@ -237,8 +240,8 @@ def safe_parse_databroker(val, nested=False):
         newval = list([safe_parse_databroker(v,nested=True) for v in val])
         val = newval
     elif isinstance(val, np.ndarray):
-        # do nothing
-        pass
+        # don't print the full np array to databroker
+        val = repr(val)
     elif np.isscalar(val):
         # convenient to check if it's a number
         pass
@@ -275,17 +278,6 @@ def make_descriptor(val):
     return dict(dtype=dtype, shape=shape)
 
 # a decorator
-def store_results(dbname, external_writers={}):
-    def decorator(f):
-        def newf(*args, **kwargs):
-            import SciAnalysis.interfaces.databroker.databroker as source_databroker
-            results = f(*args, **kwargs)
-            # TODO : fill in (after working on xml storage)
-            attributes = {}
-            source_databroker.store_results_databroker(results, dbname, external_writers=external_writers)
-            return results
-        return newf
-    return decorator
 
 def store_results_databroker(sdoc, dbname=None, external_writers={}):
     ''' Save results to a databroker instance.
@@ -339,6 +331,10 @@ def store_results_databroker(sdoc, dbname=None, external_writers={}):
         # save to filestore
         if key in external_writers:
             writer_key = external_writers[key]
+            if writer_key not in _writers_dict:
+                print("Databroker writer : Error, key {} not present in writers dict."
+                      " Allowed keys : {}".format(_writers_dict.keys()))
+                event_doc['data'][key] = 'Error'
             writer = _writers_dict[writer_key](db.fs)
             # TODO : Move this assumption of file path elsewhere?
             time_now = time.localtime()

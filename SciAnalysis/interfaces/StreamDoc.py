@@ -30,9 +30,9 @@ from .streams import stream_map, stream_accumulate
 #def stream_map_delayed(obj, func, **kwargs):
     #return delayed(func)(obj)
 
-@stream_accumulate.register(Delayed)
-def stream_accumulate_delayed(obj, func, accumulator, **kwargs):
-    return delayed(func)(accumulator, obj)
+#@stream_accumulate.register(Delayed)
+#def stream_accumulate_delayed(obj, func, accumulator, **kwargs):
+    #return delayed(func)(accumulator, obj)
 
 
 # general idea : use single dispatch to act differently on different function
@@ -51,7 +51,7 @@ class StreamDoc(dict):
         ''' A generalized document meant to be parsed by Streams.
 
             Components:
-                attributes : the metadata
+                attributes :None the metadata
                 outputs : a dictionary of outputs from stream
                 args : a list of args
                 kwargs : a list of kwargs
@@ -339,22 +339,23 @@ def parse_streamdoc(name):
                 #print("args : {}".format(args))
                 #print("kwargs : {}".format(kwargs))
                 statistics['status'] = "Success"
+            except TypeError:
+                print("Error, inputs do not match function type")
+                import inspect
+                sig = inspect.signature(f)
+                ba = sig.bind_partial(*args, **kwargs)
+                print("Error : Input mismatch on function")
+                print("This means there is an issue with "\
+                      "The stream architecture")
+                print("Got {} arguments".format(len(ba.args)))
+                print("Got kwargs : {}".format(list(ba.kwargs.keys())))
+                print("But expected : {}".format(sig))
+                print("Returning empty result")
+                result = {}
+                _cleanexit(f, statistics)
             except Exception:
                 result = {}
-                statistics['status'] = "Failure"
-                type, value, tb = sys.exc_info()
-                err_frame = tb.tb_frame
-                err_lineno = tb.tb_lineno
-                err_filename = err_frame.f_code.co_filename
-                statistics['error_message'] = value
-                print("time : {}".format(time.ctime(time.time())))
-                print("caught exception {}".format(value))
-                print("func name : {}".format(f.__name__))
-                #print("args : {}".format(args))
-                #print("kwargs : {}".format(kwargs))
-                print("line number {}".format(err_lineno))
-                print("in file {}".format(err_filename))
-                #print("traceback:  {}".format(traceback.__dir__()))
+                _cleanexit(f, statistics)
 
 
             t2 = time.time()
@@ -365,6 +366,7 @@ def parse_streamdoc(name):
                 attributes['function_list'] = list()
             else:
                 attributes['function_list'] = attributes['function_list'].copy()
+            #print("updated function list: {}".format(attributes['function_list']))
             attributes['function_list'].append(f.__name__)
             #print("Running function {}".format(f.__name__))
             # instantiate new stream doc
@@ -380,6 +382,26 @@ def parse_streamdoc(name):
         return f_new
 
     return streamdoc_dec
+
+def _cleanexit(f, statistics):
+    ''' convenience routine
+        to log errors from exception for
+        function f into statistics dict
+    '''
+    statistics['status'] = "Failure"
+    type, value, tb = sys.exc_info()
+    err_frame = tb.tb_frame
+    err_lineno = tb.tb_lineno
+    err_filename = err_frame.f_code.co_filename
+    statistics['error_message'] = value
+    print("time : {}".format(time.ctime(time.time())))
+    print("caught exception {}".format(value))
+    print("func name : {}".format(f.__name__))
+    #print("args : {}".format(args))
+    #print("kwargs : {}".format(kwargs))
+    print("line number {}".format(err_lineno))
+    print("in file {}".format(err_filename))
+    #print("traceback:  {}".format(traceback.__dir__()))
 
 # for delayed objects, to ensure caching
 # uses dispatch in dask delayed to define hash function

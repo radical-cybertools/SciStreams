@@ -401,8 +401,8 @@ class filter(Stream):
     def update(self, x, who=None):
         if self.predicate(x):
             return self.emit(x)
-        #else:
-            #return self.emit(NOOP())
+        else:
+            return self.emit(NOOP())
 
 
 class scan(Stream):
@@ -602,7 +602,8 @@ class combine_latest(Stream):
             self.missing.remove(who)
 
         self.last[self.children.index(who)] = x
-        if not self.missing:
+        # only emit from the parent child
+        if not self.missing and who == self.children[0]:
             tup = tuple(self.last)
             if tup and hasattr(tup[0], '__stream_merge__'):
                 tup = tup[0].__stream_merge__(*tup[1:])
@@ -723,6 +724,7 @@ def stream_map(obj, func, **kwargs):
 
 base_stream_map = stream_map.dispatch(object)
 
+# TODO : stream_accumulate should also keep internal state
 @singledispatch
 def stream_accumulate(prevobj, nextobj, func):
     result = func(prevobj, nextobj)
@@ -731,9 +733,9 @@ def stream_accumulate(prevobj, nextobj, func):
 base_stream_accumulate = stream_accumulate.dispatch(object)
 
 # for control statements
-class NOOP:
-    pass
+#class NOOP:
+    #pass
 
-@stream_map.register(NOOP)
-def _(*args, **kwargs):
-    return NOOP()
+#@stream_map.register(NOOP)
+#def _(*args, **kwargs):
+    #return NOOP()

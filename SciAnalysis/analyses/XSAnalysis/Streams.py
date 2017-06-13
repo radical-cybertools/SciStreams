@@ -21,6 +21,7 @@
 ################################################################################
 
 from SciAnalysis.globals import cache, client
+cache.register()
 
 
 from dask import compute
@@ -115,7 +116,9 @@ def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
 
     # the pipeline flow defined here
     sin = Stream()
+    #s2 = dask_streams.scatter(sin)
     s2 = sin.map((add_attributes), stream_name="Calibration", raw=True)
+    #s2 = dask_streams.gather(s2)
     #s2.map(compute, raw=True).map(print, raw=True)
     calib = s2.map(load_calib_dict, keymap=keymap, defaults=defaults)
     #calib.map(compute, raw=True).map(print, raw=True)
@@ -234,6 +237,8 @@ def load_calib_dict(attributes, keymap=None, defaults=None):
     #print("load_calib_dict, attributes: {}".format(attributes))
     #print("load_calib_dict, keymap: {}".format(keymap))
     #print("load_calib_dict, defaults: {}".format(defaults))
+    if keymap is None:
+        keymap, defaults = _get_keymap_defaults("None")
     calib_keymap = keymap
     calib_defaults = defaults
 

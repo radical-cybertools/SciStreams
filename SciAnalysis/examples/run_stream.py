@@ -267,9 +267,13 @@ sout_circavg.map((source_file.store_results_file), {'writer' : 'npy', 'keys' : [
 ## save to xml
 sout_circavg.map((source_xml.store_results_xml), outputs=None, raw=True)\
         .map(client.compute).map(resultsqueue.append, raw=True)
+
 ## TODO : make databroker not save numpy arrays by default i flonger than a certain size 
 ## (since it's likely an error and leads to garbage strings saved in mongodb)
 ## save to databroker
+sout_circavg.map(source_databroker.store_results_databroker, dbname='cms:analysis',
+                 external_writers={'sqx' : 'npy', 'sqy' : 'npy', 'sqxerr' :
+                                   'npy', 'sqyerr' : 'npy'}, raw=True)
 
 
 
