@@ -41,4 +41,3 @@ s.emit(sdoc)
 import numpy as np
 img = np.random.random((100,100))
 s_ml.emit(dict(img=img))
-
