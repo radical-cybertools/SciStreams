@@ -5,41 +5,63 @@
 import time
 from uuid import uuid4
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
+
 from databroker.broker import Header
 import json
 
 from SciAnalysis.interfaces.databroker.writers_custom import writers_dict as _writers_dict
-from SciAnalysis.interfaces.SciResult import SciResult
+from SciAnalysis.interfaces.StreamDoc import StreamDoc
+from metadatastore.core import NoEventDescriptors
 
-_ANALYSIS_STORE_VERSION = 'beta-v1'
+
+_ANALYSIS_STORE_VERSION = 'beta-v2'
 # TODO : Ask Dan if databroker is smart enough to know if connection was already made?
 # for ex: running Broker(config) multiple times, should not recreate connection
 # I am thinking of in distributed regime where multiple nodes will be running
 # some of them may have already started a db conection, others not
 
 
-def Header2SciResult(header, db=None):
-    ''' Convert a header to a SciResult. '''
-    # TODO : write
-    scires =  SciResult()
-    scires['attributes'] = dict(**header['start'])
-    scires['attributes']['data_uid'] = scires['attributes']['uid']
-    scires['output_names'] = list(header['descriptors'][0]['data_keys'].keys())
-    # TODO : pass conf information for database instead and reconstruct here
-    if db is None:
-        raise ValueError("Error, need to specify db")
-    event = list(db.get_events(header, fill=True))[0]
-    output_names = scires['output_names']
-    for output_name in output_names:
-        scires['outputs'][output_name] = event['data'][output_name]
-    scires['run_stats'] = dict() # no run stats for a conversion
-    return scires
+def Header2StreamDoc(header, dbname="cms:data",fill=True):
+    ''' Convert a header to a StreamDoc.
+
+        Note: This assumes header contains only one event.
+            Need to add to function if dealing with multiple events.
+    '''
+    sdoc =  StreamDoc()
+    attributes = header['start'].copy()
+    attributes['data_uid'] = attributes['uid']
+    sdoc.add(attributes=attributes)
+
+    from SciAnalysis.interfaces.databroker.databases import databases
+
+    db = databases[dbname]
+
+    # Assume first event
+    try:
+        event = list(db.get_events(header, fill=fill))[0]
+        eventdata = event['data']
+    except IndexError:
+        # there are no events
+        print("Found no events")
+        eventdata = []
+    except KeyError:
+        print("Event was corrupt")
+        eventdata = []
+
+    sdoc.add(kwargs=eventdata)
+
+    return sdoc
+
 
 '''
-    This routine looks up the last entry of a certain type
+    Useful routines for searching of databroker items.
 '''
 def pullrecent(dbname, protocol_name=None, **kwargs):
     ''' Pull from a databroker database
+
+        This routine looks up the last entry of a certain type
 
         Parameters
         ----------
@@ -52,20 +74,14 @@ def pullrecent(dbname, protocol_name=None, **kwargs):
 
         Returns
         -------
-        SciResult of data
+        StreamDoc of data
 
     '''
-    # Returns a SciResult Basically the SciResult constructor for databroker
-    from SciAnalysis.interfaces.databroker.databases import initialize
+    from SciAnalysis.interfaces.databroker.databases import databases
     # TODO : Remove the initialization when moving from sqlite to other
     # (sqlite requires db to be initialized every time... but db it can
     # be a running instance in the imported library for that process)
-    if ":" in dbname:
-        dbname = dbname.split(":")
-    else:
-        dbname = [dbname, 'analysis']
-    dbs = initialize()
-    db = dbs[dbname[0]][dbname[1]]
+    db = databases[dbname]
     kwargs['protocol_name'] = protocol_name
     # search and get latest
     headers = db(**kwargs)
@@ -73,9 +89,53 @@ def pullrecent(dbname, protocol_name=None, **kwargs):
         header = headers[0]
     else:
         raise IndexError("Error, no headers found for database lookup")
-    scires = Header2SciResult(header, db=db)
+    sdoc = Header2StreamDoc(header, dbname=dbname)
+
+    return sdoc
+
+def pullfromuid(uid, dbname=None):
+    ''' Pull from a databroker database from a uid
+
+        Parameters
+        ----------
+
+        dbname : str
+            Input name is of format "dbname:subdbname"
+            For example : "cms:data", or "cms:analysis"
+            if just database name supplied, then it's assumed
+            to be analysis.
+
+        uid : the uid of dataset
+
+        Returns
+        -------
+        StreamDoc of data
+
+    '''
+    if dbname is None:
+        raise ValueError("Error must supply a dbname")
+    from SciAnalysis.interfaces.databroker.databases import databases
+    # TODO : Remove the initialization when moving from sqlite to other
+    # (sqlite requires db to be initialized every time... but db it can
+    # be a running instance in the imported library for that process)
+    db = databases[dbname]
+    # search and get latest
+    if uid is None:
+        raise ValueError("Need to specify a uid")
+
+    # TODO : keep up to date on issue databroker/#151 to see if this is
+    # resolved
+    # (so I can just dict(db[uid]), or not dict at all (if they make header
+    # serializable)
+    header = dict(db[uid])
+
+    scires = Header2StreamDoc(header, dbname)
 
     return scires
+
+def pullfromuids(dbname, uids):
+    for uid in uids:
+        yield pullfromuid(dbname, uid)
 
 def pull(dbname, protocol_name=None, **kwargs):
     ''' Pull from a databroker database
@@ -90,34 +150,86 @@ def pull(dbname, protocol_name=None, **kwargs):
             if just database name supplied, then it's assumed
             to be analysis.
 
+        protocol_name : the protocol name used (if analysis database)
+
+        kwargs : entries in metadatabase to search for. searches for exact
+        matches. See search for searching for substrings
+
         Returns
         -------
-        SciResult of data
+        StreamDoc of data
 
     '''
-    # Returns a SciResult Basically the SciResult constructor for databroker
-    from SciAnalysis.interfaces.databroker.databases import initialize
+    # Returns a StreamDoc Basically the StreamDoc constructor for databroker
+    from SciAnalysis.interfaces.databroker.databases import databases
     # TODO : Remove the initialization when moving from sqlite to other
-    if ":" in dbname:
-        dbname = dbname.split(":")
-    else:
-        dbname = [dbname, 'analysis']
-    dbs = initialize()
-    db = dbs[dbname[0]][dbname[1]]
-    kwargs['protocol_name'] = protocol_name
+    dbs = databases
+    db = dbs[dbname]
+    if protocol_name is not None:
+        kwargs['protocol_name'] = protocol_name
     # search and get latest
     headers = db(**kwargs)
 
     for header in headers:
         try:
-            scires = Header2SciResult(header, db=db)
+            sdoc = Header2StreamDoc(header, dbname=dbname)
+            #print('got item')
         except FileNotFoundError:
+            print('Warning (databroker) : File not found')
+            continue
+        except NoEventDescriptors:
+            print('Warning (databroker) : no event desc')
+            continue
+        except IndexError:  # no events
+            print('Warning (databroker) : index error')
             continue
 
-        yield scires
+        yield sdoc
+
+def search(dbname, start_time=None, stop_time=None, **kwargs):
+    ''' search database for a substring in one of the fields.
+
+        TODO : allow start and stop times to be numbers (number of seconds
+        before now)
+
+    '''
+    # Returns a StreamDoc Basically the StreamDoc constructor for databroker
+    from SciAnalysis.interfaces.databroker.databases import databases
+    # TODO : Remove the initialization when moving from sqlite to other
+
+    db = databases[dbname]
+
+    if start_time is None or stop_time is None:
+        print("Warning, please select a start or stop time (or else this"
+                " would just take forever")
+
+    headers = db(start_time=start_time, stop_time=stop_time)
+    results = list()
+
+
+    for header in headers:
+        start_doc = header['start']
+        found = True
+        for  key, val in kwargs.items():
+            if key not in start_doc:
+                found = False
+            elif val not in start_doc[key]:
+                found = False
+        if found:
+            try:
+                sdoc= Header2StreamDoc(header, dbname)
+                yield sdoc
+            except FileNotFoundError:
+                continue
+            except StopIteration:
+                yield StopIteration
+
 
 def safe_parse_databroker(val, nested=False):
-    ''' Parse an arg, make sure it's safe for databroker.'''
+    ''' Parse an arg, make sure it's safe for databroker.
+        Also, if it's a huge numpy array, it'll be truncated.
+            Big arrays shouldn't be here.
+    '''
     if isinstance(val, dict):
         for key, subval in val.items():
             val[key] = safe_parse_databroker(subval, nested=True)
@@ -128,8 +240,8 @@ def safe_parse_databroker(val, nested=False):
         newval = list([safe_parse_databroker(v,nested=True) for v in val])
         val = newval
     elif isinstance(val, np.ndarray):
-        # do nothing
-        pass
+        # don't print the full np array to databroker
+        val = repr(val)
     elif np.isscalar(val):
         # convenient to check if it's a number
         pass
@@ -166,32 +278,18 @@ def make_descriptor(val):
     return dict(dtype=dtype, shape=shape)
 
 # a decorator
-def store_results(dbname, external_writers={}):
-    def decorator(f):
-        def newf(*args, **kwargs):
-            import SciAnalysis.interfaces.databroker.databroker as source_databroker
-            results = f(*args, **kwargs)
-            # TODO : fill in (after working on xml storage)
-            attributes = {}
-            print(dbname)
-            source_databroker.store_results_databroker(results, dbname, external_writers=external_writers)
-            return results
-        return newf
-    return decorator
 
-def store_results_databroker(scires, dbname, external_writers={}):
+def store_results_databroker(sdoc, dbname=None, external_writers={}):
     ''' Save results to a databroker instance.
-        Takes a sciresult instance.
+        Takes a streamdoc instance.
     '''
-    import SciAnalysis.interfaces.databroker.databases as dblib
-    # TODO : remove this when in mongodb
-    databases = dblib.initialize()
-    # TODO : check for time out on database access, return an erorr tha tmakes sense
-    if ":" in dbname:
-        dbname, dbsubname = dbname.split(":")
-    else:
-        dbsubname = 'analysis'
-    db = databases[dbname][dbsubname]
+    if dbname is None:
+        raise ValueError("No database selected. Cancelling.")
+    # TODO : change this when in mongodb
+    from SciAnalysis.interfaces.databroker.databases import databases
+    # TODO : check for time out on database access, return an erorr that makes sense
+    db = databases[dbname]
+
     # saving to databroker
     mds = db.mds # metadatastore
 
@@ -200,22 +298,14 @@ def store_results_databroker(scires, dbname, external_writers={}):
 
     #start_doc.update(attributes)
 
-    start_doc.update(**scires['attributes'])
+    start_doc.update(**sdoc['attributes'])
     start_doc['time'] = time.time()
     start_doc['uid'] = str(uuid4())
     start_doc['plan_name'] = 'analysis'
-    #start_doc['start_timestamp'] = scires['run_stats']['start_timestamp']
-    #start_doc['end_timestamp'] = scires['run_stats']['end_timestamp']
-    start_doc['run_stats'] = scires['run_stats']
-    #start_doc['runtime'] = start_doc['start_timestamp'] - start_doc['end_timestamp']
+    start_doc['run_stats'] = sdoc['statistics']
     start_doc['save_timestamp'] = time.time()
-    start_doc['output_names'] = scires['output_names']
     # TODO : replace with version lookup in database
     start_doc['analysis_store_version'] = _ANALYSIS_STORE_VERSION
-
-    #if '_run_args' in scires:
-        #results['_run_args'] = safe_parse_databroker(results['_run_args'])
-        #start_doc['run_args'] = results['_run_args']
 
     # just make one descriptor and event document for now
     # initialize both event and descriptor
@@ -233,7 +323,7 @@ def store_results_databroker(scires, dbname, external_writers={}):
     event_doc['seq_num'] = 1
 
     # then parse remaining data
-    for key, val in scires['outputs'].items():
+    for key, val in sdoc['kwargs'].items():
         if key[0] == '_':
             continue # ignore hidden keys
         # guess descriptor from data
@@ -241,6 +331,10 @@ def store_results_databroker(scires, dbname, external_writers={}):
         # save to filestore
         if key in external_writers:
             writer_key = external_writers[key]
+            if writer_key not in _writers_dict:
+                print("Databroker writer : Error, key {} not present in writers dict."
+                      " Allowed keys : {}".format(_writers_dict.keys()))
+                event_doc['data'][key] = 'Error'
             writer = _writers_dict[writer_key](db.fs)
             # TODO : Move this assumption of file path elsewhere?
             time_now = time.localtime()
@@ -252,19 +346,6 @@ def store_results_databroker(scires, dbname, external_writers={}):
             event_doc['data'][key] = safe_parse_databroker(val)
         event_doc['timestamps'][key] = time.time()
 
-    # TODO : decide if we do need a feature to give filenames
-    # NOTE : This is an alternative option. User can write
-    # files themselves and specify that the file was written
-    # then parse files, val is a dict
-    # if files were saved, store info in filestore
-    if '_files' in scires:
-        for key, val in scires['_files'].items():
-            datum, desc = parse_file_event(val, db)
-            descriptor_doc['data_keys'][key] = desc
-            event_doc['data'][key] = datum
-            event_doc['timestamps'][key] = time.time()
-
-
     stop_doc = dict()
     stop_doc['time'] = time.time()
     stop_doc['uid'] = str(uuid4())
@@ -275,54 +356,3 @@ def store_results_databroker(scires, dbname, external_writers={}):
     mds.insert('descriptor', descriptor_doc)
     mds.insert('event', event_doc)
     mds.insert('stop', stop_doc)
-
-    
-def parse_file_event(entry, db):
-    ''' Parse a file event descriptor (our custom descriptor),
-        and translate into a datum (could be uid, or actual data)
-        and a datum_dict (dictionary descriptor for the datum)
-
-        Returns
-        -------
-        datum : the result 
-        datum_dict : the dictionary describing the result
-    '''
-    dat_dict = dict()
-    if 'dtype' in entry:
-        dat_dict['dtype'] = entry['dtype']
-    if 'shape' in entry:
-        dat_dict['shape'] = entry['shape']
-    if 'source' in entry:
-        dat_dict['source'] = entry['source']
-    if 'external' in entry:
-        dat_dict['external'] = entry['external']
-    if 'filename' in entry:
-        dat_dict['filename'] = entry['filename']
-
-    # this is for filestore instance
-    if 'filename' in entry:
-        fs = db.fs # get filestore
-        # make sure it's absolute path
-        filename = os.path.abspath(os.path.expanduser(entry['filename']))
-        dat_uid = str(uuid4())
-        # try to guess some parameters here
-        if 'spec' in entry:
-            spec = entry['spec']
-        else:
-            extension = os.path.splitext(filename)[1]
-            if len(extension) > 1:
-                spec = extension[1:].upper()
-            else:
-                raise ValueError("Error could not figure out file type for {}".format(filename))
-        entry.setdefault('resource_kwargs', {})
-        entry.setdefault('datum_kwargs', {})
-        resource_kwargs = entry['resource_kwargs']
-        datum_kwargs = entry['datum_kwargs']
-        # could also add datum_kwargs
-        # databroker : two step process: 1. insert resource 2. Save data
-        resource_document = fs.insert_resource(spec, filename, resource_kwargs)
-        fs.insert_datum(resource_document, dat_uid, datum_kwargs)
-        # overwrite with correct argument
-        dat_dict['external'] = "FILESTORE:"
-
-    return dat_uid, dat_dict
