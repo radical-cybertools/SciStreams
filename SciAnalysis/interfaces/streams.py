@@ -401,8 +401,8 @@ class filter(Stream):
     def update(self, x, who=None):
         if self.predicate(x):
             return self.emit(x)
-        else:
-            return self.emit(NOOP())
+        #else:
+            #return self.emit(NOOP())
 
 
 class scan(Stream):

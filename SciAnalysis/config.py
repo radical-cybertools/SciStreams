@@ -33,7 +33,7 @@ _DEFAULTS = {
     'delayed' : True,
     'storagedir' : "../storage",
     'maskdir' : "masks",
-    'resultsroot' : os.path.expanduser("~/sqlite/results"),
+    'resultsroot' : os.path.expanduser("/GPFS/pipeline"),
     'filestoreroot' : os.path.expanduser("~/sqlite/filestore"),
     'delayed' : True,
     'client' : None,

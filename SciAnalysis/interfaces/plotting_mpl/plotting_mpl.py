@@ -35,8 +35,12 @@ def _make_fname_from_attrs(attrs):
         This will likely be copied among a few interfaces.
     '''
 
-    # remove the trailing slash
-    rootdir = attrs['experiment_alias_directory'].strip("/")
+    # remove the trailing slash, and index if a
+    # list of strs
+    rootdir = attrs['experiment_alias_directory']
+    if not isinstance(rootdir, str):
+        rootdir = rootdir[0]
+    rootdir = rootdir.strip("/")
 
     if _ROOTMAP is not None:
         rootdir = rootdir.replace(_ROOTMAP[0], _ROOTMAP[1])

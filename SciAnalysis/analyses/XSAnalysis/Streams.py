@@ -19,6 +19,7 @@
 # TODO:
 #  Search for "TODO" below.
 ################################################################################
+from ...tools import printvars
 
 from SciAnalysis.globals import cache, client
 cache.register()
@@ -562,11 +563,13 @@ def ImageStitchingStream():
     #s2.map(lambda x : print("in image stitch : {}".format(x)), raw=True)
     #s3 = s2.map(lambda x : compute(x)[0]).select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
     s3 = s2.select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
-    sout = s3.map(pack).accumulate(_xystitch_accumulate)
+    sout = s3.map(pack)
+    #sout.map(printvars)
+    sout = sout.accumulate(_xystitch_accumulate)
     #sout.map(lambda x : print("imagestitch sdoc before unpack : {}".format(x)),raw=True)
     sout = sout.map(unpack)
-    #sout.map(lambda x : print("imagestitch sdoc : {}".format(x)),raw=True)
-    sout = sout.map(_xystitch_result).map(todict)
+    sout = sout.map(_xystitch_result)
+    sout = sout.map(todict)
 
     # now window the results and only output if stitchback from previous is nonzero
     # save previous value, grab previous stitchback value
