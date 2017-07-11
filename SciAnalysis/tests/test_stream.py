@@ -17,6 +17,21 @@ def test_stream_map():
 
     assert L == [4, 5]
 
+    # test a function with multiple args
+    def incfunc(arg, addby):
+        return arg + addby
+
+    s = Stream()
+    # NOTE : this will err if the correct args are not given
+    sout = s.map(incfunc, 2)
+    L = list()
+    sout.sink(L.append)
+
+    s.emit(3)
+    s.emit(4)
+
+    assert L == [5, 6]
+
 
 def test_stream_map_wrapper():
     ''' Testing stream mapping with wrappers.

@@ -21,7 +21,8 @@ from SciAnalysis.interfaces.file import file as source_file
 from SciAnalysis.interfaces.xml import xml as source_xml
 from SciAnalysis.interfaces.detectors import detectors2D
 # Streams include stuff
-from SciAnalysis.interfaces.StreamDoc import StreamDoc, Stream, parse_streamdoc, Arguments
+from SciAnalysis.interfaces.StreamDoc import StreamDoc, parse_streamdoc, Arguments
+from SciAnalysis.interfaces.streams import Stream
 ## Analyses
 from SciAnalysis.analyses.XSAnalysis.Data import MasterMask, MaskGenerator, Obstruction
 from SciAnalysis.analyses.XSAnalysis.Streams import CalibrationStream,\

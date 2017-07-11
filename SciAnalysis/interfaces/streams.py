@@ -97,9 +97,9 @@ class Stream(object):
         self._loop = IOLoop.current()
         return self._loop
 
-    def map(self, func, **kwargs):
+    def map(self, func, *args, **kwargs):
         """ Apply a function to every element in the stream """
-        return map(func, self, **kwargs)
+        return map(func, self, *args, **kwargs)
 
     # TODO : Make Stream inherit all this (function registry?)
     def select(self, *elems, **kwargs):
@@ -376,18 +376,19 @@ class Sink(Stream):
 
 @singledispatch
 class map(Stream):
-    def __init__(self, func, child, raw=False, **kwargs):
+    def __init__(self, func, child, *args, raw=False, **kwargs):
         self.func = func
         self.kwargs = kwargs
         self.raw = raw
+        self.args = args
 
         Stream.__init__(self, child)
 
     def update(self, x, who=None):
         if self.raw:
-            return self.emit(self.func(x, **self.kwargs))
+            return self.emit(self.func(x, *self.args, **self.kwargs))
 
-        return self.emit(_stream_map(self.func, x, **self.kwargs))
+        return self.emit(_stream_map(self.func, x, *self.args, **self.kwargs))
 
 
 class filter(Stream):

@@ -67,7 +67,8 @@ def add_attributes(sdoc, **attr):
     newsdoc.add(attributes=attr)
     return newsdoc
 
-from SciAnalysis.interfaces.StreamDoc import Stream, StreamDoc
+from SciAnalysis.interfaces.StreamDoc import StreamDoc
+from SciAnalysis.interfaces.streams import Stream
 import SciAnalysis.interfaces.dask as dask_streams
 
 from collections import deque
@@ -587,7 +588,8 @@ def ImageStitchingStream():
     # now emit some dummy value to swin, before connecting more to stream
     swin.emit(dict(attributes=dict(stitchback=0)))
 
-    swinout = swin.filter(stitchbackcomplete)
+    swinout = swin
+    #swinout = swin.filter(stitchbackcomplete)
     def getprevstitch(x):
         x0 = x[0]
         return x0
