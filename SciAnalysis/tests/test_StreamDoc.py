@@ -1,5 +1,5 @@
-from ..interfaces.streams import Stream
-from ..interfaces.StreamDoc import StreamDoc
+from SciAnalysis.interfaces.streams import Stream
+from SciAnalysis.interfaces.StreamDoc import StreamDoc
 
 
 def test_stream_map():
@@ -25,3 +25,23 @@ def test_stream_map():
                      attributes=dict(name="john")))
 
     assert L == [2, 5]
+
+def test_stream_accumulate():
+    ''' This tests that the dispatching on the streamdoc's accumulate routine
+    is working properly.'''
+
+
+    def myacc(prevstate, newstate):
+        return prevstate + newstate
+
+    s = Stream()
+    sout = s.accumulate(myacc)
+
+    L = list()
+    sout.map(L.append)
+
+    sout.emit(StreamDoc(args=[1]))
+    sout.emit(StreamDoc(args=[2]))
+    sout.emit(StreamDoc(args=[3]))
+
+    print(L)

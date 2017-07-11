@@ -418,10 +418,9 @@ class scan(Stream):
             result = _stream_accumulate(self.state, x, func=self.func)
         self.state = result
 
-        if result is not no_default:
-            return self.emit(result)
-        else:
-            return []
+        # should return even on first element
+        # (previous library waited before returning)
+        return self.emit(result)
 
 
 class partition(Stream):
@@ -700,17 +699,18 @@ def _stream_accumulate(prevobj, nextobj, func=None, **kwargs):
 
         Dispatch is done on prevobj
     '''
-    if prevobj is no_default:
-        prevobj = nextobj
 
     sm = stream_accumulate.dispatch(type(prevobj))
 
-    if sm is base_stream_accumulate:
-        return func(prevobj, nextobj, **kwargs)
+    if prevobj is no_default:
+        return nextobj
     else:
-        return sm(prevobj, nextobj, wraps(func)(partial(_stream_accumulate,
-                                                        func=func,
-                                                        **kwargs)))
+        if sm is base_stream_accumulate:
+            return func(prevobj, nextobj, **kwargs)
+        else:
+            return sm(prevobj, nextobj, wraps(func)(partial(_stream_accumulate,
+                                                            func=func,
+                                                            **kwargs)))
 
 
 @singledispatch

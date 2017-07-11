@@ -1,5 +1,6 @@
 # tests the stream library
-from SciAnalysis.interfaces.streams import Stream, stream_map
+from SciAnalysis.interfaces.streams import Stream, stream_map,\
+    stream_accumulate
 
 
 def test_stream_map():
@@ -53,7 +54,8 @@ def test_stream_map_wrapper():
 
 
 def test_stream_accumulate():
-    ''' test the accumulate function and what it expects as input.'''
+    ''' test the accumulate function and what it expects as input.
+    '''
     # define an acc
     def myacc(prevstate, newstate):
         ''' Accumulate on a state and return a next state.
@@ -74,4 +76,47 @@ def test_stream_accumulate():
     s.emit(1)
     s.emit(4)
 
-    assert L == [2, 3, 7]
+    # should not emit on first
+    assert L == [1, 2, 6]
+
+
+def test_stream_accumulate_wrapper():
+    ''' test the accumulate function and what it expects as input, for a
+    wrapped function
+
+        NOTE : stream_accumulate will just return whatever was given to it upon
+        first try
+    '''
+    class MyClass:
+        def __init__(self, num):
+            self.num = num
+
+    # register the wrapper for the class
+    @stream_accumulate.register(MyClass)
+    def stream_accumulate_myclass(prevobj, nextobj, func):
+        # unwrap and re-wrap
+        return MyClass(func(prevobj.num, nextobj.num))
+
+    def myacc(prevstate, newstate):
+        ''' Accumulate on a state and return a next state.
+
+            Note that accumulator could have returned a newstate, nextout pair.
+            Howevever, in that case, an initializer needs to be defined.  This
+            may be unnecessary overhead.
+        '''
+        nextstate = newstate + prevstate
+        return nextstate
+
+    s = Stream()
+    sout = s.accumulate(myacc)
+    sout = sout.map(lambda x: x.num)
+
+    L = list()
+    sout.map(L.append)
+
+    s.emit(MyClass(1))
+    s.emit(MyClass(1))
+    s.emit(MyClass(4))
+
+    # should not emit on first
+    assert L == [1, 2, 6]
