@@ -282,7 +282,7 @@ def check_sdoc(sdoc):
 
 
 @stream_map.register(StreamDoc)
-def stream_map_streamdoc(obj, func, **kwargs):
+def stream_map_streamdoc(func, obj, **kwargs):
     # print("in stream map for StreamDoc, obj : {}".format(obj))
     return parse_streamdoc("map")(func)(obj, **kwargs)
 

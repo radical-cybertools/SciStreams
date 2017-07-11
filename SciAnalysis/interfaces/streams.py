@@ -97,9 +97,9 @@ class Stream(object):
         self._loop = IOLoop.current()
         return self._loop
 
-    def map(self, func, *args, **kwargs):
+    def map(self, func, **kwargs):
         """ Apply a function to every element in the stream """
-        return map(func, self, *args, **kwargs)
+        return map(func, self, **kwargs)
 
     # TODO : Make Stream inherit all this (function registry?)
     def select(self, *elems, **kwargs):
@@ -376,20 +376,18 @@ class Sink(Stream):
 
 @singledispatch
 class map(Stream):
-    def __init__(self, func, child, *args, raw=False, **kwargs):
+    def __init__(self, func, child, raw=False, **kwargs):
         self.func = func
         self.kwargs = kwargs
-        self.args = args
         self.raw = raw
 
         Stream.__init__(self, child)
 
     def update(self, x, who=None):
         if self.raw:
-            return self.emit(self.func(x, *self.args, **self.kwargs))
+            return self.emit(self.func(x, **self.kwargs))
 
-        return self.emit(_stream_map(x, *self.args, func=self.func,
-                                     **self.kwargs))
+        return self.emit(_stream_map(self.func, x, **self.kwargs))
 
 
 class filter(Stream):
@@ -420,10 +418,9 @@ class scan(Stream):
             result = _stream_accumulate(self.state, x, func=self.func)
         self.state = result
 
-        if result is not no_default:
-            return self.emit(result)
-        else:
-            return []
+        # should return even on first element
+        # (previous library waited before returning)
+        return self.emit(result)
 
 
 class partition(Stream):
@@ -663,15 +660,17 @@ class collect(Stream):
 
 # dispatch on first arg
 # another option is to supply a wrapper function
-def _stream_map(*args, func=None, **kwargs):
+def _stream_map(func, *args, **kwargs):
     '''
-    dispatch is performed on first argument
+    dispatch is performed on first argument (args[0])
+
     if no arugments, make a placeholder object
     (which will default computation to be run to base)
 
     The issue with this is that we do want to allow one object to eventually
-    spread into args/kwargs... There doesn't seem to be a clean way around
-    this...  User could also add their own wrapper functions, but we add this
+    spread into args/kwargs...
+    There doesn't seem to be a clean way around this...
+    User could also add their own wrapper functions, but we add this
     convenience to allow for shorter code. (since it happens quite often)
     '''
     if len(args) > 0:
@@ -679,22 +678,15 @@ def _stream_map(*args, func=None, **kwargs):
     else:
         obj = object()
 
-    if hasattr(obj, '__stream_map__'):
-        # assume map is done on first arg only
-        return obj.__stream_map__(wraps(func)(partial(_stream_map,
-                                                      *args[1:], func=func,
-                                                      **kwargs)))
+    # assume map is done on first arg only
+    sm = stream_map.dispatch(type(obj))
+    if sm is base_stream_map:
+        # run on args instead
+        # print("in base stream map, obj : {}".format(obj))
+        return func(*args, **kwargs)
     else:
         # assume map is done on first arg only
-        sm = stream_map.dispatch(type(obj))
-        if sm is base_stream_map:
-            # run on args instead
-            # print("in base stream map, obj : {}".format(obj))
-            return func(*args, **kwargs)
-        else:
-            # assume map is done on first arg only
-            return sm(obj, wraps(func)(partial(_stream_map, *args[1:],
-                                               func=func, **kwargs)))
+        return sm(wraps(func)(partial(_stream_map, func)), *args, **kwargs)
 
 
 def _stream_accumulate(prevobj, nextobj, func=None, **kwargs):
@@ -702,22 +694,18 @@ def _stream_accumulate(prevobj, nextobj, func=None, **kwargs):
         Stream accumulate is simpler. We enforce the requirement that a
         function must behave as f(prev, next). User has to write their own
         wrapper functions.
-    '''
-    # if first time, return next
-    if prevobj is no_default:
-        # print("No defaults, passing nexobj : {}".format(nextobj))
-        return nextobj
 
-    if hasattr(prevobj, '__stream_accumulate__'):
-        return prevobj.\
-                __stream_accumulate__(wraps(func)(
-                    partial(_stream_accumulate, nextobj, func=func, **kwargs)))
+        Needs to handle an initialization case when first object is None.
+
+        Dispatch is done on prevobj
+    '''
+
+    sm = stream_accumulate.dispatch(type(prevobj))
+
+    if prevobj is no_default:
+        return nextobj
     else:
-        sm = stream_accumulate.dispatch(type(prevobj))
         if sm is base_stream_accumulate:
-            # print("stream_accumulate, previous object: {}".format(prevobj))
-            # print("stream_accumulate, next object: {}".format(nextobj))
-            # print("stream_accumulate, no defaults : {}".format(no_default))
             return func(prevobj, nextobj, **kwargs)
         else:
             return sm(prevobj, nextobj, wraps(func)(partial(_stream_accumulate,
@@ -726,8 +714,8 @@ def _stream_accumulate(prevobj, nextobj, func=None, **kwargs):
 
 
 @singledispatch
-def stream_map(obj, func, **kwargs):
-    return func(obj, **kwargs)
+def stream_map(func, *args, **kwargs):
+    return func(*args, **kwargs)
 
 base_stream_map = stream_map.dispatch(object)
 
