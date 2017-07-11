@@ -1,4 +1,4 @@
-#testing accumulate
+# testing accumulate
 from SciAnalysis.interfaces.StreamDoc import StreamDoc
 from SciAnalysis.interfaces.streams import Stream, stream_accumulate
 

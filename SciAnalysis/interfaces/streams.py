@@ -97,9 +97,9 @@ class Stream(object):
         self._loop = IOLoop.current()
         return self._loop
 
-    def map(self, func, *args, **kwargs):
+    def map(self, func, **kwargs):
         """ Apply a function to every element in the stream """
-        return map(func, self, *args, **kwargs)
+        return map(func, self, **kwargs)
 
     # TODO : Make Stream inherit all this (function registry?)
     def select(self, *elems, **kwargs):
@@ -376,20 +376,18 @@ class Sink(Stream):
 
 @singledispatch
 class map(Stream):
-    def __init__(self, func, child, *args, raw=False, **kwargs):
+    def __init__(self, func, child, raw=False, **kwargs):
         self.func = func
         self.kwargs = kwargs
-        self.args = args
         self.raw = raw
 
         Stream.__init__(self, child)
 
     def update(self, x, who=None):
         if self.raw:
-            return self.emit(self.func(x, *self.args, **self.kwargs))
+            return self.emit(self.func(x, **self.kwargs))
 
-        return self.emit(_stream_map(x, *self.args, func=self.func,
-                                     **self.kwargs))
+        return self.emit(_stream_map(self.func, x, **self.kwargs))
 
 
 class filter(Stream):
@@ -663,15 +661,17 @@ class collect(Stream):
 
 # dispatch on first arg
 # another option is to supply a wrapper function
-def _stream_map(*args, func=None, **kwargs):
+def _stream_map(func, *args, **kwargs):
     '''
-    dispatch is performed on first argument
+    dispatch is performed on first argument (args[0])
+
     if no arugments, make a placeholder object
     (which will default computation to be run to base)
 
     The issue with this is that we do want to allow one object to eventually
-    spread into args/kwargs... There doesn't seem to be a clean way around
-    this...  User could also add their own wrapper functions, but we add this
+    spread into args/kwargs...
+    There doesn't seem to be a clean way around this...
+    User could also add their own wrapper functions, but we add this
     convenience to allow for shorter code. (since it happens quite often)
     '''
     if len(args) > 0:
@@ -679,22 +679,15 @@ def _stream_map(*args, func=None, **kwargs):
     else:
         obj = object()
 
-    if hasattr(obj, '__stream_map__'):
-        # assume map is done on first arg only
-        return obj.__stream_map__(wraps(func)(partial(_stream_map,
-                                                      *args[1:], func=func,
-                                                      **kwargs)))
+    # assume map is done on first arg only
+    sm = stream_map.dispatch(type(obj))
+    if sm is base_stream_map:
+        # run on args instead
+        # print("in base stream map, obj : {}".format(obj))
+        return func(*args, **kwargs)
     else:
         # assume map is done on first arg only
-        sm = stream_map.dispatch(type(obj))
-        if sm is base_stream_map:
-            # run on args instead
-            # print("in base stream map, obj : {}".format(obj))
-            return func(*args, **kwargs)
-        else:
-            # assume map is done on first arg only
-            return sm(obj, wraps(func)(partial(_stream_map, *args[1:],
-                                               func=func, **kwargs)))
+        return sm(wraps(func)(partial(_stream_map, func)), *args, **kwargs)
 
 
 def _stream_accumulate(prevobj, nextobj, func=None, **kwargs):
@@ -726,8 +719,8 @@ def _stream_accumulate(prevobj, nextobj, func=None, **kwargs):
 
 
 @singledispatch
-def stream_map(obj, func, **kwargs):
-    return func(obj, **kwargs)
+def stream_map(func, *args, **kwargs):
+    return func(*args, **kwargs)
 
 base_stream_map = stream_map.dispatch(object)
 
