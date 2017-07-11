@@ -577,7 +577,7 @@ def ImageStitchingStream():
     swin = sout.sliding_window(2)
 
     def stitchbackcomplete(xtuple):
-        next = xtuple[1]['attributes']['stitchback']
+        next = xtuple[1]['kwargs']['stitchback']
         return next == 0
 
     #swin.map(lambda x : print("result : {}".format(x)), raw=True)
@@ -586,10 +586,10 @@ def ImageStitchingStream():
     # NOTE : need to compute before filtering here
 
     # now emit some dummy value to swin, before connecting more to stream
-    swin.emit(dict(attributes=dict(stitchback=0)))
+    # swin.emit(dict(attributes=dict(stitchback=0)))
 
-    swinout = swin
-    #swinout = swin.filter(stitchbackcomplete)
+    # swinout = swin
+    swinout = swin.filter(stitchbackcomplete)
     def getprevstitch(x):
         x0 = x[0]
         return x0
