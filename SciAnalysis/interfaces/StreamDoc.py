@@ -6,40 +6,44 @@
 from functools import wraps, singledispatch
 import time
 import sys
-import linecache
 from uuid import uuid4
-from .streams import Stream
 from ..globals import debugcache
 
 # convenience routine to return a hash of the streamdoc
-from dask.delayed import tokenize, delayed, Delayed
+# from dask.delayed import tokenize, delayed, Delayed
+from dask.delayed import delayed
+from dask.base import normalize_token
+
+from .streams import stream_map, stream_accumulate
 
 # this class is used to wrap outputs to inputs
 # for ex, if a function returns Arguments(12,34, g=23,h=20)
 # will assume the output will serve as input f(12,34, g=23, h=20)
 # to some function (unless another streamdoc is merged etc)
+
+
 class Arguments:
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
 
 
+# @stream_map.register(Delayed)
+# def stream_map_delayed(obj, func, **kwargs):
+    # return delayed(func)(obj)
 
-from .streams import stream_map, stream_accumulate
-#@stream_map.register(Delayed)
-#def stream_map_delayed(obj, func, **kwargs):
-    #return delayed(func)(obj)
-
-#@stream_accumulate.register(Delayed)
-#def stream_accumulate_delayed(obj, func, accumulator, **kwargs):
-    #return delayed(func)(accumulator, obj)
+# @stream_accumulate.register(Delayed)
+# def stream_accumulate_delayed(obj, func, accumulator, **kwargs):
+    # return delayed(func)(accumulator, obj)
 
 
 # general idea : use single dispatch to act differently on different function
-# inputs. This allows one to change behaviour of how output args and kwargs are sent
+# inputs. This allows one to change behaviour of how output args and kwargs are
+# sent
 @singledispatch
 def parse_args(res):
     return Arguments(res)
+
 
 @parse_args.register(Arguments)
 def parse_args_Arguments(res):
@@ -47,7 +51,8 @@ def parse_args_Arguments(res):
 
 
 class StreamDoc(dict):
-    def __init__(self, streamdoc=None, args=(), kwargs={}, attributes={}, wrapper=None):
+    def __init__(self, streamdoc=None, args=(), kwargs={}, attributes={},
+                 wrapper=None):
         ''' A generalized document meant to be parsed by Streams.
 
             Components:
@@ -82,7 +87,7 @@ class StreamDoc(dict):
         self.add(args=args, kwargs=kwargs, attributes=attributes)
 
     def updatedoc(self, streamdoc):
-        #print("in StreamDoc : {}".format(streamdoc))
+        # print("in StreamDoc : {}".format(streamdoc))
         self.add(args=streamdoc['args'], kwargs=streamdoc['kwargs'],
                  attributes=streamdoc['attributes'],
                  statistics=streamdoc['statistics'])
@@ -101,14 +106,14 @@ class StreamDoc(dict):
 
         return self
 
-    #def __stream_map__(self, func, **kwargs):
-        #return parse_streamdoc("map")(func)(self, **kwargs)
+    # def __stream_map__(self, func, **kwargs):
+        # return parse_streamdoc("map")(func)(self, **kwargs)
 
-    #def __stream_reduce__(self, func, accumulator):
-        #return parse_streamdoc("reduce")(func)(accumulator, self)
+    # def __stream_reduce__(self, func, accumulator):
+        # return parse_streamdoc("reduce")(func)(accumulator, self)
 
-    #def __stream_merge__(self, *others):
-        #return self.merge(*others)
+    # def __stream_merge__(self, *others):
+        # return self.merge(*others)
 
     @property
     def args(self):
@@ -163,7 +168,7 @@ class StreamDoc(dict):
         return mystr
 
     def add_attributes(self, **attrs):
-        #print("adding attributes : {}".format(attrs))
+        # print("adding attributes : {}".format(attrs))
         self.add(attributes=attrs)
         return self
 
@@ -175,7 +180,7 @@ class StreamDoc(dict):
             The new streamdoc's attributes/kwargs will override this one upon
             collison.
         '''
-        #print("in merge : {}".format(newstreamdocs[0]))
+        # print("in merge : {}".format(newstreamdocs[0]))
         streamdoc = StreamDoc(self)
         for newstreamdoc in newstreamdocs:
             streamdoc.updatedoc(newstreamdoc)
@@ -204,10 +209,10 @@ class StreamDoc(dict):
             These *must* be tuples, and the list a list kwarg elems must be
                 strs and arg elems must be ints to accomplish this instead
         '''
-        #print("IN STREAMDOC -> SELECT")
+        # print("IN STREAMDOC -> SELECT")
         # TODO : take args instead
-        #if not isinstance(mapping, list):
-            #mapping = [mapping]
+        # if not isinstance(mapping, list):
+        # mapping = [mapping]
         streamdoc = StreamDoc(self)
         streamdoc._wrapper = self._wrapper
         newargs = list()
@@ -240,16 +245,25 @@ class StreamDoc(dict):
                 newparentkey = 'kwargs'
             elif isinstance(newkey, int):
                 errorstr = "Integer tuple pairs not accepted."
-                errorstr = errorstr + " This usually comes from trying a (1,1) or ('foo',1) mapping."
-                errorstr = errorstr + "Please try (1,None) or ('foo', None) instead"
+                errorstr += " This usually comes from trying a (1,1)"
+                errorstr += " or ('foo',1) mapping."
+                errorstr += "Please try (1,None) or ('foo', None) instead"
                 raise ValueError(errorstr)
 
-            if oldparentkey == 'kwargs' and oldkey not in streamdoc[oldparentkey] \
-               or oldparentkey == 'args' and len(streamdoc[oldparentkey]) < oldkey:
-                errorstr = "streamdoc.select() : Error {} not in the {} of the current streamdoc.\n".format(oldkey, oldparentkey)
-                errorstr = errorstr + "Details : Tried to map key {} from {} to {}\n.".format(oldkey, oldparentkey, newparentkey)
-                errorstr = errorstr + "This usually occurs from selecting a streamdoc with missing information\n"
-                errorstr = errorstr + "(But could also come from missing data)\n"
+            if oldparentkey == 'kwargs' and \
+               oldkey not in streamdoc[oldparentkey] \
+               or oldparentkey == 'args' and \
+               len(streamdoc[oldparentkey]) < oldkey:
+                errorstr = "streamdoc.select() : Error {} not ".format(oldkey)
+                errorstr += "in the {} of ".format(oldparentkey)
+                errorstr += "the current streamdoc.\n"
+
+                errorstr += "Details : Tried to map key {}".format(oldkey)
+                errorstr += " from {} ".format(oldparentkey)
+                errorstr += " to {}\n.".format(newparentkey)
+                errorstr += "This usually occurs from selecting "
+                errorstr += "a streamdoc with missing information\n"
+                errorstr += "(But could also come from missing data)\n"
                 raise KeyError(errorstr)
 
             if newparentkey == 'args':
@@ -262,20 +276,24 @@ class StreamDoc(dict):
 
         return streamdoc
 
+
 def check_sdoc(sdoc):
     return isinstance(sdoc, StreamDoc)
 
+
 @stream_map.register(StreamDoc)
 def stream_map_streamdoc(obj, func, **kwargs):
-    #print("in stream map for StreamDoc, obj : {}".format(obj))
+    # print("in stream map for StreamDoc, obj : {}".format(obj))
     return parse_streamdoc("map")(func)(obj, **kwargs)
+
 
 @stream_accumulate.register(StreamDoc)
 def stream_accumulate_streamdoc(prevobj, nextobj, func=None, **kwargs):
-    #print("accumulating a streamdoc")
+    # print("accumulating a streamdoc")
     return parse_streamdoc("accumulate")(func)(prevobj, nextobj, **kwargs)
-    #def __stream_reduce__(self, func, accumulator):
-        #return parse_streamdoc("reduce")(func)(accumulator, self)
+    # def __stream_reduce__(self, func, accumulator):
+    # return parse_streamdoc("reduce")(func)(accumulator, self)
+
 
 def _is_streamdoc(doc):
     if isinstance(doc, dict) and '_StreamDoc' in doc:
@@ -300,13 +318,13 @@ def parse_streamdoc(name):
 
         output:
             if a dict, makes a StreamDoc of args where keys are dict elements
-            if a tuple, makes a StreamDoc with only arguments
-            else, makes a StreamDoc of just one element
+            if a tuple, makes a StreamDoc with only arguments else, makes a
+            StreamDoc of just one element
     '''
     def streamdoc_dec(f):
         @wraps(f)
         def f_new(x, x2=None, **kwargs_additional):
-            #print("Running in {}".format(f.__name__))
+            # print("Running in {}".format(f.__name__))
             if x2 is None:
                 if _is_streamdoc(x):
                     # extract the args and kwargs
@@ -328,16 +346,17 @@ def parse_streamdoc(name):
                     raise ValueError("Two normal arguments not accepted")
 
             kwargs.update(kwargs_additional)
-            #print("args : {}, kwargs : {}".format(args, kwargs))
-            debugcache.append(dict(args=args, kwargs=kwargs, attributes=attributes, funcname=f.__name__))
+            # print("args : {}, kwargs : {}".format(args, kwargs))
+            debugcache.append(dict(args=args, kwargs=kwargs,
+                                   attributes=attributes, funcname=f.__name__))
 
             statistics = dict()
             t1 = time.time()
             try:
                 # now run the function
                 result = f(*args, **kwargs)
-                #print("args : {}".format(args))
-                #print("kwargs : {}".format(kwargs))
+                # print("args : {}".format(args))
+                # print("kwargs : {}".format(kwargs))
                 statistics['status'] = "Success"
             except TypeError:
                 print("Error, inputs do not match function type")
@@ -345,7 +364,7 @@ def parse_streamdoc(name):
                 sig = inspect.signature(f)
                 ba = sig.bind_partial(*args, **kwargs)
                 print("Error : Input mismatch on function")
-                print("This means there is an issue with "\
+                print("This means there is an issue with "
                       "The stream architecture")
                 print("Got {} arguments".format(len(ba.args)))
                 print("Got kwargs : {}".format(list(ba.kwargs.keys())))
@@ -357,7 +376,6 @@ def parse_streamdoc(name):
                 result = {}
                 _cleanexit(f, statistics)
 
-
             t2 = time.time()
             statistics['runtime'] = t1 - t2
             statistics['runstart'] = t1
@@ -365,16 +383,19 @@ def parse_streamdoc(name):
             if 'function_list' not in attributes:
                 attributes['function_list'] = list()
             else:
-                attributes['function_list'] = attributes['function_list'].copy()
-            #print("updated function list: {}".format(attributes['function_list']))
+                attributes['function_list'] = \
+                    attributes['function_list'].copy()
+            # print("updated function list:
+            # {}".format(attributes['function_list']))
             attributes['function_list'].append(f.__name__)
-            #print("Running function {}".format(f.__name__))
+            # print("Running function {}".format(f.__name__))
             # instantiate new stream doc
             streamdoc = StreamDoc(attributes=attributes)
             # load in attributes
             # Save outputs to StreamDoc
             arguments_obj = parse_args(result)
-            #print("StreamDoc, parse_streamdoc : parsed args : {}".format(arguments_obj.args))
+            # print("StreamDoc, parse_streamdoc : parsed args :
+            # {}".format(arguments_obj.args))
             streamdoc.add(args=arguments_obj.args, kwargs=arguments_obj.kwargs)
 
             return streamdoc
@@ -382,6 +403,7 @@ def parse_streamdoc(name):
         return f_new
 
     return streamdoc_dec
+
 
 def _cleanexit(f, statistics):
     ''' convenience routine
@@ -397,19 +419,20 @@ def _cleanexit(f, statistics):
     print("time : {}".format(time.ctime(time.time())))
     print("caught exception {}".format(value))
     print("func name : {}".format(f.__name__))
-    #print("args : {}".format(args))
-    #print("kwargs : {}".format(kwargs))
+    # print("args : {}".format(args))
+    # print("kwargs : {}".format(kwargs))
     print("line number {}".format(err_lineno))
     print("in file {}".format(err_filename))
-    #print("traceback:  {}".format(traceback.__dir__()))
+    # print("traceback:  {}".format(traceback.__dir__()))
+
 
 # for delayed objects, to ensure caching
 # uses dispatch in dask delayed to define hash function
 # for the StreamDoc object
-from dask.base import normalize_token
 @normalize_token.register(StreamDoc)
 def tokenize_sdoc(sdoc):
     return normalize_token((sdoc['args'], sdoc['kwargs']))
+
 
 def delayed_wrapper(name):
     def decorator(f):
