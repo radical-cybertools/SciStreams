@@ -50,3 +50,11 @@ def test_stream_map_wrapper():
     s.emit(myClass(5))
 
     assert L == [3, 6]
+
+
+def test_stream_accumulate():
+    ''' test the accumulate function and what it expects as input.'''
+    # define an acc
+    def myacc(prevstate, newstate):
+        
+
