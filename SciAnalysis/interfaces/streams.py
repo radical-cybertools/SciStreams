@@ -695,27 +695,22 @@ def _stream_accumulate(prevobj, nextobj, func=None, **kwargs):
         Stream accumulate is simpler. We enforce the requirement that a
         function must behave as f(prev, next). User has to write their own
         wrapper functions.
-    '''
-    # if first time, return next
-    if prevobj is no_default:
-        # print("No defaults, passing nexobj : {}".format(nextobj))
-        return nextobj
 
-    if hasattr(prevobj, '__stream_accumulate__'):
-        return prevobj.\
-                __stream_accumulate__(wraps(func)(
-                    partial(_stream_accumulate, nextobj, func=func, **kwargs)))
+        Needs to handle an initialization case when first object is None.
+
+        Dispatch is done on prevobj
+    '''
+    if prevobj is no_default:
+        prevobj = nextobj
+
+    sm = stream_accumulate.dispatch(type(prevobj))
+
+    if sm is base_stream_accumulate:
+        return func(prevobj, nextobj, **kwargs)
     else:
-        sm = stream_accumulate.dispatch(type(prevobj))
-        if sm is base_stream_accumulate:
-            # print("stream_accumulate, previous object: {}".format(prevobj))
-            # print("stream_accumulate, next object: {}".format(nextobj))
-            # print("stream_accumulate, no defaults : {}".format(no_default))
-            return func(prevobj, nextobj, **kwargs)
-        else:
-            return sm(prevobj, nextobj, wraps(func)(partial(_stream_accumulate,
-                                                            func=func,
-                                                            **kwargs)))
+        return sm(prevobj, nextobj, wraps(func)(partial(_stream_accumulate,
+                                                        func=func,
+                                                        **kwargs)))
 
 
 @singledispatch

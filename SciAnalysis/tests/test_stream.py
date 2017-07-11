@@ -1,5 +1,5 @@
 # tests the stream library
-from ..interfaces.streams import Stream, stream_map
+from SciAnalysis.interfaces.streams import Stream, stream_map
 
 
 def test_stream_map():
@@ -56,5 +56,22 @@ def test_stream_accumulate():
     ''' test the accumulate function and what it expects as input.'''
     # define an acc
     def myacc(prevstate, newstate):
-        
+        ''' Accumulate on a state and return a next state.
 
+            Note that accumulator could have returned a newstate, nextout pair.
+            Howevever, in that case, an initializer needs to be defined.  This
+            may be unnecessary overhead.
+        '''
+        nextstate = newstate + prevstate
+        return nextstate
+
+    s = Stream()
+    sout = s.accumulate(myacc)
+    L = list()
+    sout.map(L.append)
+
+    s.emit(1)
+    s.emit(1)
+    s.emit(4)
+
+    assert L == [2, 3, 7]
