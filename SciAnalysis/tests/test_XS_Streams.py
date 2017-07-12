@@ -121,23 +121,23 @@ def test_ImageStitch():
 
     # first image, stitchback can be anything
     sdoc1 = StreamDoc(kwargs=dict(mask=mask, image=img1, origin=origin1,
-                                  stitchback=0))
+                                  stitchback=False))
     sin.emit(sdoc1)
 
     sdoc2 = StreamDoc(kwargs=dict(mask=mask, image=img2, origin=origin2,
-                                  stitchback=1))
+                                  stitchback=True))
     sin.emit(sdoc2)
 
     sdoc3 = StreamDoc(kwargs=dict(mask=mask, image=img3, origin=origin3,
-                                  stitchback=1))
+                                  stitchback=True))
     sin.emit(sdoc3)
 
     sdoc4 = StreamDoc(kwargs=dict(mask=mask, image=img4, origin=origin4,
-                                  stitchback=1))
+                                  stitchback=True))
     sin.emit(sdoc4)
 
     sdoc5 = StreamDoc(kwargs=dict(mask=mask, image=img5, origin=origin5,
-                                  stitchback=0))
+                                  stitchback=False))
     sin.emit(sdoc5)
 
     # this scenario should only yield one image

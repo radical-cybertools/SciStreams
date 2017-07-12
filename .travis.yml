@@ -25,7 +25,9 @@ install:
   - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION numpy=$NUMPY coverage cython flake8 scipy
   - source activate testenv
   - python setup.py install build_ext -i
-  - pip install codecov cachey pillow matplotlib distributed dask
+  - pip install codecov cachey pillow matplotlib distributed dask pyyaml
+# optional when manually debugging
+# pip install ipython
 
 script:
   - coverage run run_tests.py

@@ -177,7 +177,7 @@ sin = Stream()
 # TODO : run asynchronously?
 
 s_event = sin\
-        .map(source_databroker.pullfromuid, dbname='cms:data',raw=True):w
+        .map(source_databroker.pullfromuid, dbname='cms:data',raw=True)
 
 s_event = s_event.map((check_stitchback),raw=True)
 
@@ -344,7 +344,7 @@ for sdoc in sdoc_gen:
 #init_start_time = "2017-06-22"
 #init_start_time = "2017-07-10"
 #init_start_time = "2017-07-11 11:00"
-init_start_time = "2017-07-11 11:27"
+init_start_time = "2017-07-11 14:12"
 
 
 from SciAnalysis.interfaces.databroker.databases import databases
@@ -385,7 +385,8 @@ while True:
             print("Attribute Error (probably the metadata is slightly different)")
 
     # now update the latest time
-    last_time = hdr['start']['time']
-    t1 = time.gmtime(time.ctime(last_time))
-    start_time = time.strftime("%Y-%m-%d %H:%M", t1)
+    # remove 1 second to avoid missing an image
+    last_time = hdr['start']['time']-1
+    t1 = time.gmtime(last_time)
+    start_time = time.strftime("%Y-%m-%d %H:%M:%S", t1)
     # at the end, update time stamp for latest time
