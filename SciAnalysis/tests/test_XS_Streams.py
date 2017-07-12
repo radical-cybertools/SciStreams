@@ -9,7 +9,17 @@ from numpy.testing import assert_array_almost_equal
 
 def test_CalibrationStream():
     ''' Test the calibration stream.'''
-    pass
+    sin, sout = CalibrationStream()
+
+    data = dict(
+        calibration_wavelength_A=1.0,
+        detector_SAXS_x0_pix=10.0,
+        detector_SAXS_y0_pix=10.0,
+        detector_SAXS_distance_m=5.0,
+    )
+    sdoc = StreamDoc(kwargs=data)
+    sin.emit(sdoc)
+
 
 def test_ImageStitch():
     ''' test the image stitching.'''

@@ -416,14 +416,14 @@ def _cleanexit(f, statistics):
     err_lineno = tb.tb_lineno
     err_filename = err_frame.f_code.co_filename
     statistics['error_message'] = value
-    print("time : {}".format(time.ctime(time.time())))
-    print("caught exception {}".format(value))
-    print("func name : {}".format(f.__name__))
-    # print("args : {}".format(args))
-    # print("kwargs : {}".format(kwargs))
-    print("line number {}".format(err_lineno))
-    print("in file {}".format(err_filename))
-    # print("traceback:  {}".format(traceback.__dir__()))
+    errorstr = "####################\n"
+    errorstr += "time : {}\n".format(time.ctime(time.time()))
+    errorstr += "caught exception {}".format(value)
+    errorstr += "func name : {}".format(f.__name__)
+    errorstr += "line number {}".format(err_lineno)
+    errorstr += "in file {}".format(err_filename)
+    errorstr += "####################"
+    print(errorstr)
 
 
 # for delayed objects, to ensure caching

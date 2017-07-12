@@ -80,8 +80,18 @@ class Stream(object):
         """
         result = []
         for parent in self.parents:
-            if not self.validate_output(x):
-                raise ValueError("Output mismatch from validation")
+            validation = self.validate_output(x)
+            if isinstance(validation, bool):
+                validation_state = validation
+            else:
+                # assumed to be a dict
+                validation_state = validation['state']
+            if not validation_state:
+                errorstr = "Output mismatch from validation\n"
+                if 'message' in validationand and validation['message'] is not None:
+                    errorstr += validation['message']
+                raise ValueError(errorstr)
+
             r = parent.update(x, who=self)
             if type(r) is list:
                 result.extend(r)

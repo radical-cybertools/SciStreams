@@ -115,17 +115,25 @@ def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
 
     # getting some hard-coded defaults
     keymap, defaults = _get_keymap_defaults(keymap_name)
-    def validate_calibration(input_data):
-        return True
-        kwargs = input_data['kwargs']
-        if 'sample_savename' not in kwargs:
-            return False
+    def validate(input_data):
+        if 'args' not in input_data:
+            return dict(state=False, message="args not in StreamDoc")
+        args = input_data['args']
+        if len(args) != 1:
+            return dict(state=False, message="args not length 1")
+        data = args[0]
+        #if 'sample_savename' not in kwargs:
+            #return False
+        for key, value in keymap.items():
+            if value not in data:
+                message = "{} not in {}".format(value, data)
+                return dict(state=False, message=message)
         return True
 
     # the pipeline flow defined here
-    sin = Stream()
+    sin = Stream(validator=validate)
     #s2 = dask_streams.scatter(sin)
-    s2 = sin.map((add_attributes), stream_name="Calibration", raw=True)
+    s2 = sin.map(add_attributes, stream_name="Calibration", raw=True)
     #s2 = dask_streams.gather(s2)
     #s2.map(compute, raw=True).map(print, raw=True)
     calib = s2.map(load_calib_dict, keymap=keymap, defaults=defaults)
@@ -513,6 +521,7 @@ def AngularCorrelatorStream():
 
 def prepare_correlation(shape, origin, mask, rbins=800, phibins=360, method='bgest'):
     rdphicorr = rdpc.RDeltaPhiCorrelator(image.shape,  origin=origin, mask=mask, rbins=rbins,phibins=phibins)
+    # print("kwargs : {}".format(kwargs))
     return rdphicorr
 
 def angularcorrelation(rdphicorr, image):
@@ -575,6 +584,7 @@ def ImageStitchingStream():
         if 'image' not in kwargs:
             return False
         return True
+
     # TODO : remove the add_attributes part and just keep stream_name
     sin = Stream(stream_name="ImageStitch", validator=validator)
     #sin.map(lambda x : print("Beginning of stream data\n\n\n"))
