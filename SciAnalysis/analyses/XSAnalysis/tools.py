@@ -1,29 +1,33 @@
 # image stitching
 import numpy as np
 
+
 def roundbydigits(n, digits=3):
     ''' round by the number of digits.
         n can be an array
 
-        treat 0 and nans
+        0, nan or inf are just passed through
     '''
     if n is None:
         return None
-    power = np.round(np.log10(n), decimals=0)
-    if isinstance(power, np.ndarray):
-        w = np.where(~np.isinf(power)*~np.isnan(power))
-        n_new = np.zeros_like(n)
+
+    if isinstance(n, np.ndarray):
+        w = np.where(~np.isinf(n)*~np.isnan(n)*(n != 0))
+        n_new = np.copy(n)
         if len(w[0]) > 0:
-            power[w] = power[w].astype(int)
-            n_new[w] = np.round(n[w]/10**power[w], decimals=digits-1)
-            n_new[w]= n_new[w]*(10**power[w])
+            sign = (n[w] > 0)*2 - 1
+            power = np.round(np.log10(n[w]*sign), decimals=0).astype(int)
+            n_new[w] = np.round(n[w]/10**power, decimals=digits-1)
+            n_new[w] = n_new[w]*(10**power)
     else:
-        if ~np.isnan(power)*~np.isinf(power):
+        if n == 0 or np.isinf(n) or np.isnan(n):
+            n_new = n
+        else:
+            sign = (n > 0)*2 - 1
+            power = np.round(np.log10(n*sign), decimals=0)
             power = int(power)
             n_new = np.round(n/10**power, decimals=digits-1)
-            n_new= n_new*(10**power)
-        else:
-            n_new = 0
+            n_new = n_new*(10**power)
 
     return n_new
 
