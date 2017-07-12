@@ -574,7 +574,7 @@ def _xystitch_accumulate(prevstate, newstate):
     return xystitch_accumulate(prevstate, newstate)
 
 ### Image stitching Stream
-def ImageStitchingStream():
+def ImageStitchingStream(return_intermediate=False):
     '''
         Image stitching
         Inputs:
@@ -585,6 +585,9 @@ def ImageStitchingStream():
         Outputs:
             sin : source of stream
             sout
+
+        return_intermediate : decide whether to return intermediate results or
+        not
 
         NOTE : you should normalize images by exposure time before giving to
         this stream
@@ -646,11 +649,13 @@ def ImageStitchingStream():
     # now emit some dummy value to swin, before connecting more to stream
     # swin.emit(dict(attributes=dict(stitchback=0)))
 
-    # swinout = swin
-    swinout = swin.filter(stitchbackcomplete)
-    def getprevstitch(x):
-        x0 = x[0]
-        return x0
+    if not return_intermdiate:
+        swinout = swin.filter(stitchbackcomplete)
+        def getprevstitch(x):
+            x0 = x[0]
+            return x0
+    else:
+        swinout = swin
 
     swinout = swinout.map(getprevstitch, raw=True)
     #swinout.map(lambda x : print("End of stream data\n\n\n"))

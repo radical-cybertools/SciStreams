@@ -174,8 +174,11 @@ globaldict = dict()
 from functools import partial
 # Stream setup, datbroker data comes here (a string uid)
 sin = Stream()
-# TODO : run asynchronously 
-s_event = sin.map(source_databroker.pullfromuid, dbname='cms:data',raw=True)#.filter(isSAXS)
+# TODO : run asynchronously?
+
+s_event = sin\
+        .map(source_databroker.pullfromuid, dbname='cms:data',raw=True):w
+
 s_event = s_event.map((check_stitchback),raw=True)
 
 # next start working on result
