@@ -27,7 +27,6 @@ cache.register()
 
 from dask import compute
 
-# import the analysis databroker
 from uuid import uuid4
 from dask import set_options
 set_options(delayed_pure=True)
@@ -46,10 +45,6 @@ from collections import ChainMap
 from SciAnalysis.data.Singlet import Singlet
 
 # Sources
-from SciAnalysis.interfaces.databroker import databroker as source_databroker
-from SciAnalysis.interfaces.file import file as source_file
-from SciAnalysis.interfaces.xml import xml as source_xml
-
 from SciAnalysis.interfaces.detectors import detectors2D
 
 from SciAnalysis.interfaces.StreamDoc import Arguments
