@@ -1,7 +1,7 @@
 # test the XSAnalysis Streams, make sure they're working properly
 from SciAnalysis.interfaces.StreamDoc import StreamDoc
 from SciAnalysis.analyses.XSAnalysis.Streams import ImageStitchingStream,\
-    CalibrationStream
+    CalibrationStream, CircularAverageStream
 
 from SciAnalysis.analyses.XSAnalysis.tools import roundbydigits
 
@@ -17,6 +17,7 @@ def test_CalibrationStream_pilatus():
         for cms data.
         # TODO : Should generalize this
             so it's beam line independent
+        # TODO : test other qmaps (not just qmap)
     '''
     keymap_name = 'cms'
     detector = 'pilatus300'
@@ -54,6 +55,35 @@ def test_CalibrationStream_pilatus():
                                                            0.07751812]))
 
 
+def test_CircularAverageStream():
+    ''' Test the circular average stream'''
+    pass
+    sin, sout = CircularAverageStream()
+
+    L = list()
+    sout.map(L.append)
+
+    mask = None
+    bins = 3
+    img = np.random.random((10,10))
+    x = np.linspace(-5, 5, 10)
+    X,Y = np.meshgrid(x,x)
+    r_map = np.sqrt(X**2 + Y**2)
+    q_map = r_map*.12
+
+    class Calib:
+        def __init__(self, qmap, rmap):
+            self.q_map = qmap
+            self.r_map = rmap
+
+    calibration = Calib(q_map, r_map)
+
+    sdoc = StreamDoc(args=[img, calibration], kwargs=dict(mask=mask,bins=bins))
+
+    sin.emit(sdoc)
+
+
+    return L
 
 def test_ImageStitch():
     ''' test the image stitching.'''

@@ -409,6 +409,8 @@ def _cleanexit(f, statistics):
     ''' convenience routine
         to log errors from exception for
         function f into statistics dict
+
+        print an error and return the string as well
     '''
     statistics['status'] = "Failure"
     type, value, tb = sys.exc_info()
@@ -416,14 +418,19 @@ def _cleanexit(f, statistics):
     err_lineno = tb.tb_lineno
     err_filename = err_frame.f_code.co_filename
     statistics['error_message'] = value
-    errorstr = "####################\n"
+    errorstr = "####################"
+    errorstr += "StreamDoc Error Report"
+    errorstr += "##################\n"
     errorstr += "time : {}\n".format(time.ctime(time.time()))
-    errorstr += "caught exception {}".format(value)
-    errorstr += "func name : {}".format(f.__name__)
-    errorstr += "line number {}".format(err_lineno)
-    errorstr += "in file {}".format(err_filename)
+    errorstr += "caught exception {}\n".format(value)
+    errorstr += "func name : {}\n".format(f.__name__)
+    errorstr += "line number {}\n".format(err_lineno)
+    errorstr += "in file {}\n".format(err_filename)
     errorstr += "####################"
+    errorstr += "####################"
+    errorstr += "####################\n"
     print(errorstr)
+    return errorstr
 
 
 # for delayed objects, to ensure caching
