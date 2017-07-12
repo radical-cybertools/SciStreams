@@ -230,7 +230,7 @@ sin_imgstitch, sout_imgstitch = ImageStitchingStream()
 sout_imgstitch_log = sout_imgstitch.select(('image', None))\
         .map(safelog10).select((0, 'image'))
 sout_imgstitch_log = sout_imgstitch_log\
-        .map(delayed(add_attributes), stream_name="ImgStitchLog", raw=True)
+        .map((add_attributes), stream_name="ImgStitchLog", raw=True)
 
 img_masked = image.merge(mask_stream.select(('mask',None))).map(lambda a,b : a*b)
 img_mask_origin = img_masked.select((0,'image'))\
@@ -259,6 +259,7 @@ sout_circavg.map((source_plotting.store_results), lines=[('sqx', 'sqy')],\
                    scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$",
                    ylabel="I(q)", raw=True).map(client.compute, raw=True).map(resultsqueue.append, raw=True)
 sout_imgstitch.map((source_plotting.store_results), images=['image'], hideaxes=True, raw=True).map(client.compute, raw=True).map(resultsqueue.append, raw=True)
+sout_imgstitch_log.map((source_plotting.store_results), images=['image'], hideaxes=True, raw=True).map(client.compute, raw=True).map(resultsqueue.append, raw=True)
 sout_thumb.map((source_plotting.store_results), images=['thumb'], hideaxes=True, raw=True).map(client.compute, raw=True).map(resultsqueue.append, raw=True)
 sout_thumb.select(('thumb', None)).map(safelog10).select((0,'thumb'))\
         .map((add_attributes), stream_name="ThumbLog", raw=True)\
@@ -339,7 +340,8 @@ for sdoc in sdoc_gen:
 
 #init_start_time = "2017-06-22"
 #init_start_time = "2017-07-10"
-init_start_time = "2017-07-11"
+#init_start_time = "2017-07-11 11:00"
+init_start_time = "2017-07-11 11:27"
 
 
 from SciAnalysis.interfaces.databroker.databases import databases
@@ -347,6 +349,8 @@ cddb = databases['cms:data']
 start_time = init_start_time
 skipfirst = True
 while True:
+    print("Waiting 1 sec for more data")
+    sleep(1)
     hdrs = cddb(start_time=start_time)
     hdrs = list(hdrs)
     hdrs.reverse()

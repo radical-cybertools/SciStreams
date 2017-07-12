@@ -625,8 +625,18 @@ def ImageStitchingStream():
     swin = sout.sliding_window(2)
 
     def stitchbackcomplete(xtuple):
+        ''' only plot images whose stitch is complete, and only involved more
+        than one image
+        NOTE : *Only* the bool "True" will activate a stitch. "1" does not
+        count. This is handled by checking 'is True' and 'is not True'
+        '''
+        # previous must have been true for stitch to have involved more than
+        # one image
+        prev = xtuple[0]['kwargs']['stitchback']
+        # next must be False (or just not True) to be complete
         next = xtuple[1]['kwargs']['stitchback']
-        return not next
+
+        return next is not True and prev is True
 
     #swin.map(lambda x : print("result : {}".format(x)), raw=True)
 
