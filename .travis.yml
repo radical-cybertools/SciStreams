@@ -22,7 +22,7 @@ before_install:
   - export CONDARC=ci/condarc
 
 install:
-  - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION numpy=$NUMPY coverage cython flake8 scipy
+  - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION numpy=$NUMPY coverage cython flake8 scipy dask
   - source activate testenv
   - python setup.py install build_ext -i
   - pip install codecov
