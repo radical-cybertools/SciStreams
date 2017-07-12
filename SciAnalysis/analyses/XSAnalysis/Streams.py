@@ -649,7 +649,7 @@ def ImageStitchingStream(return_intermediate=False):
     # now emit some dummy value to swin, before connecting more to stream
     # swin.emit(dict(attributes=dict(stitchback=0)))
 
-    if not return_intermdiate:
+    if not return_intermediate:
         swinout = swin.filter(stitchbackcomplete)
         def getprevstitch(x):
             x0 = x[0]
