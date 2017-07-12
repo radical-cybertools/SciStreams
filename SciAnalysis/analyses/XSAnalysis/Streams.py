@@ -116,6 +116,7 @@ def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
     # getting some hard-coded defaults
     keymap, defaults = _get_keymap_defaults(keymap_name)
     def validate_calibration(input_data):
+        return True
         kwargs = input_data['kwargs']
         if 'sample_savename' not in kwargs:
             return False
@@ -123,7 +124,6 @@ def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
 
     # the pipeline flow defined here
     sin = Stream()
-    sin.validate_input = validate_calibration
     #s2 = dask_streams.scatter(sin)
     s2 = sin.map((add_attributes), stream_name="Calibration", raw=True)
     #s2 = dask_streams.gather(s2)
@@ -560,7 +560,23 @@ def ImageStitchingStream():
         NOTE : you should normalize images by exposure time before giving to
         this stream
     '''
-    sin = Stream()
+    # TODO : add state. When False returned, need a reason why
+    def validator(x):
+        if not hasattr(x, 'kwargs'):
+            return False
+        kwargs = x['kwargs']
+        print(kwargs)
+        if 'mask' not in kwargs:
+            return False
+        if 'origin' not in kwargs:
+            return False
+        if 'stitchback' not in kwargs:
+            return False
+        if 'image' not in kwargs:
+            return False
+        return True
+    # TODO : remove the add_attributes part and just keep stream_name
+    sin = Stream(stream_name="ImageStitch", validator=validator)
     #sin.map(lambda x : print("Beginning of stream data\n\n\n"))
     from dask import compute
     # TODO : remove compute requirement

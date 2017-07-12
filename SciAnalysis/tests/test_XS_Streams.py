@@ -9,6 +9,7 @@ from numpy.testing import assert_array_almost_equal
 
 def test_CalibrationStream():
     ''' Test the calibration stream.'''
+    pass
 
 def test_ImageStitch():
     ''' test the image stitching.'''

@@ -68,9 +68,9 @@ class Stream(object):
         self.stream_name = stream_name
 
         if validator is not None:
-            def new_validator(obj, x):
-                return validator(x)
-            self.validate_output = new_validator
+            #def new_validator(obj, x):
+            #return validator(x)
+            self.validate_output = validator
 
     def emit(self, x):
         """ Push data into the stream at this point
