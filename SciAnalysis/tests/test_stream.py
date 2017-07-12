@@ -153,3 +153,20 @@ def test_stream_validate():
     s.emit(dict(a=1))
 
     assert L[0]['a'] == 1
+
+    # now try the dict version
+    def validate_data(x):
+        if isinstance(x, dict):
+            return dict(state=True, message="True")
+        return dict(state=False, message="False")
+
+    L = list()
+
+    s = Stream()
+    s.validate_output = validate_data
+    s.map(L.append)
+
+    assert_raises(ValueError, s.emit, 1)
+    s.emit(dict(a=1))
+
+    assert L[0]['a'] == 1

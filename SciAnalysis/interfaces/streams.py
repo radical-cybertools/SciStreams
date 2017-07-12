@@ -88,7 +88,8 @@ class Stream(object):
                 validation_state = validation['state']
             if not validation_state:
                 errorstr = "Output mismatch from validation\n"
-                if 'message' in validationand and validation['message'] is not None:
+                if isinstance(validation, dict) and 'message' in validation\
+                    and validation['message'] is not None:
                     errorstr += validation['message']
                 raise ValueError(errorstr)
 
