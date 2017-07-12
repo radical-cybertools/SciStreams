@@ -26,6 +26,10 @@ class Stream(object):
     Stream graph to get a full view of the data coming off of that point to do
     with as they will.
 
+
+    stream_name : the stream name (optional but useful for debugging)
+    validator : an output validator (takes a data as input and returns True/False)
+
     Examples
     --------
     >>> def inc(x):
@@ -48,7 +52,7 @@ class Stream(object):
     >>> L  # and the actions happen at the sinks
     ['1', '2', '3', '4', '5']
     """
-    def __init__(self, child=None, children=None, **kwargs):
+    def __init__(self, child=None, children=None, stream_name=None, validator=None, **kwargs):
         self.parents = []
         if children is not None:
             self.children = children
@@ -59,6 +63,14 @@ class Stream(object):
         for child in self.children:
             if child:
                 child.parents.append(self)
+        if stream_name is None:
+            stream_name = "N/A"
+        self.stream_name = stream_name
+
+        if validator is not None:
+            def new_validator(obj, x):
+                return validator(x)
+            self.validate_output = new_validator
 
     def emit(self, x):
         """ Push data into the stream at this point
@@ -68,6 +80,8 @@ class Stream(object):
         """
         result = []
         for parent in self.parents:
+            if not self.validate_output(x):
+                raise ValueError("Output mismatch from validation")
             r = parent.update(x, who=self)
             if type(r) is list:
                 result.extend(r)
@@ -96,6 +110,11 @@ class Stream(object):
                     return loop
         self._loop = IOLoop.current()
         return self._loop
+
+    # Override this if input or output validation are needed
+    # no need for validate_input, just override for correct element in stream
+    def validate_output(self, x):
+        return True
 
     def map(self, func, *args, **kwargs):
         """ Apply a function to every element in the stream """

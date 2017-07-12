@@ -1,4 +1,5 @@
 # tests the stream library
+from nose.tools import assert_raises
 from SciAnalysis.interfaces.streams import Stream, stream_map,\
     stream_accumulate
 
@@ -135,3 +136,20 @@ def test_stream_accumulate_wrapper():
 
     # should not emit on first
     assert L == [1, 2, 6]
+
+def test_stream_validate():
+    def validate_data(x):
+        if isinstance(x, dict):
+            return True
+        return False
+
+    L = list()
+
+    s = Stream()
+    s.validate_output = validate_data
+    s.map(L.append)
+
+    assert_raises(ValueError, s.emit, 1)
+    s.emit(dict(a=1))
+
+    assert L[0]['a'] == 1

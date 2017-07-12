@@ -1,11 +1,14 @@
 # test the XSAnalysis Streams, make sure they're working properly
 from SciAnalysis.interfaces.StreamDoc import StreamDoc
-from SciAnalysis.analyses.XSAnalysis.Streams import ImageStitchingStream
+from SciAnalysis.analyses.XSAnalysis.Streams import ImageStitchingStream,\
+    CalibrationStream
 
 import numpy as np
 
 from numpy.testing import assert_array_almost_equal
 
+def test_CalibrationStream():
+    ''' Test the calibration stream.'''
 
 def test_ImageStitch():
     ''' test the image stitching.'''
