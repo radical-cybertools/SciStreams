@@ -651,11 +651,12 @@ def ImageStitchingStream(return_intermediate=False):
 
     if not return_intermediate:
         swinout = swin.filter(stitchbackcomplete)
-        def getprevstitch(x):
-            x0 = x[0]
-            return x0
     else:
         swinout = swin
+
+    def getprevstitch(x):
+        x0 = x[0]
+        return x0
 
     swinout = swinout.map(getprevstitch, raw=True)
     #swinout.map(lambda x : print("End of stream data\n\n\n"))
