@@ -28,7 +28,7 @@ install:
   - pip install codecov cachey pillow matplotlib distributed dask pyyaml
   - pushd ..
   - git clone http://www.github.com/scikit-beam/scikit-beam.git
-  - cd scikit-beam.git
+  - cd scikit-beam
   - python setup.py develop
   - popd
 # optional when manually debugging
