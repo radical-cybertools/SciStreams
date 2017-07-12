@@ -126,7 +126,8 @@ def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
             #return False
         for key, value in keymap.items():
             if value not in data:
-                message = "{} not in {}".format(value, data)
+                message = "{} not in dict with keys {}"\
+                    .format(value, list(data.keys()))
                 return dict(state=False, message=message)
         return True
 
@@ -574,15 +575,11 @@ def ImageStitchingStream():
         if not hasattr(x, 'kwargs'):
             return False
         kwargs = x['kwargs']
-        print(kwargs)
-        if 'mask' not in kwargs:
-            return False
-        if 'origin' not in kwargs:
-            return False
-        if 'stitchback' not in kwargs:
-            return False
-        if 'image' not in kwargs:
-            return False
+        expected = ['mask', 'origin', 'stitchback', 'image']
+        for key in expected:
+            if key not in kwargs:
+                message = "{} not in kwargs".format(key)
+                return dict(state=False, message=message)
         return True
 
     # TODO : remove the add_attributes part and just keep stream_name
@@ -590,7 +587,7 @@ def ImageStitchingStream():
     #sin.map(lambda x : print("Beginning of stream data\n\n\n"))
     from dask import compute
     # TODO : remove compute requirement
-    s2 = sin.map((add_attributes), stream_name="ImageStitch", raw=True)
+    s2 = sin.map(add_attributes, stream_name="ImageStitch", raw=True)
     #s2.map(print,raw=True)
     # make the image, mask origin as the first three args
     #s2.map(lambda x : print("in image stitch : {}".format(x)), raw=True)
@@ -610,7 +607,7 @@ def ImageStitchingStream():
 
     def stitchbackcomplete(xtuple):
         next = xtuple[1]['kwargs']['stitchback']
-        return next == 0
+        return not next
 
     #swin.map(lambda x : print("result : {}".format(x)), raw=True)
 
@@ -628,34 +625,6 @@ def ImageStitchingStream():
 
     swinout = swinout.map(getprevstitch, raw=True)
     #swinout.map(lambda x : print("End of stream data\n\n\n"))
-
-
-    # debugging
-    #sout = sout.select([(0, 'image'), (1, 'mask'), (2, 'origin'), (3, 'stitch')])
-
-
-    #    Testing a way to control flow based on stitch param, still working on
-    #            it...
-    #    NOTE : stitch also expected in attribute
-    #    def predicate(sdocs):
-    #        # make sure it's already filled
-    #        if len(sdocs) != 2:
-    #            return False
-    #        # look at latest doc
-    #        if sdocs[1]['attributes']['stitch'] == 0:
-    #            return True
-    #        else:
-    #            return False
-    #
-    #    def get_first(sdocs):
-    #        print("Great! got a stitch!")
-    #        # get earlier doc
-    #        return sdocs[0]
-    #
-    #    # only output when stitch complete, something like:
-    #    sout = sout.sliding_window(2)
-    #    sout = sout.filter(predicate).apply(get_first)
-    #    
 
     return sin, swinout
 

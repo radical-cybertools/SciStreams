@@ -13,8 +13,8 @@ def test_CalibrationStream():
 
     data = dict(
         calibration_wavelength_A=1.0,
-        detector_SAXS_x0_pix=10.0,
-        detector_SAXS_y0_pix=10.0,
+        detector_SAXS_x0_pix=5.0,
+        detector_SAXS_y0_pix=5.0,
         detector_SAXS_distance_m=5.0,
     )
     sdoc = StreamDoc(kwargs=data)

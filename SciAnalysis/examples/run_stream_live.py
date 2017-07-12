@@ -213,18 +213,28 @@ sin_image_qmap.select(0, 1, 'mask').map(sin_circavg.emit, raw=True)
 
 ## image stitching
 stitch = attributes.map(lambda x : x['stitchback']).select((0, 'stitchback'))
-exposure_time = attributes.map(lambda x : x['sample_exposure_time']).select((0, 'exposure_time'))
-exposure_mask = mask_stream.select(('mask', None))
-exposure_mask = exposure_mask.merge(exposure_time.select(('exposure_time', None))).map(lambda a,b: a*b)
+exposure_time = attributes\
+        .map(lambda x : x['sample_exposure_time'])\
+        .select((0, 'exposure_time'))
+
+exposure_mask = mask_stream\
+        .select(('mask', None))
+exposure_mask = exposure_mask\
+        .merge(exposure_time.select(('exposure_time', None)))\
+        .map(lambda a,b: a*b)
+
 exposure_mask = exposure_mask.select((0, 'mask'))
 
 sin_imgstitch, sout_imgstitch = ImageStitchingStream()
 
-sout_imgstitch_log = sout_imgstitch.select(('image', None)).map(safelog10).select((0, 'image'))
-sout_imgstitch_log = sout_imgstitch_log.map(delayed(add_attributes), stream_name="ImgStitchLog", raw=True)
+sout_imgstitch_log = sout_imgstitch.select(('image', None))\
+        .map(safelog10).select((0, 'image'))
+sout_imgstitch_log = sout_imgstitch_log\
+        .map(delayed(add_attributes), stream_name="ImgStitchLog", raw=True)
 
 img_masked = image.merge(mask_stream.select(('mask',None))).map(lambda a,b : a*b)
-img_mask_origin = img_masked.select((0,'image')).merge(exposure_mask.select(('mask','mask')), origin.select((0, 'origin')), stitch)
+img_mask_origin = img_masked.select((0,'image'))\
+        .merge(exposure_mask.select(('mask','mask')), origin.select((0, 'origin')), stitch)
 img_mask_origin.map(sin_imgstitch.emit, raw=True)
 
 sin_thumb, sout_thumb = ThumbStream(blur=1, resize=2)

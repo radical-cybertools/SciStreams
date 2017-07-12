@@ -77,7 +77,8 @@ def xystitch_accumulate(prevstate, newstate):
     # logic for making new state
     # initialization:
     # make backwards compatible
-    if stitchback_next == 0 or stitchback_next is False:
+    # works with 0 or 1
+    if not stitchback_next:
         # re-initialize
         img_acc = img_next.copy()
         shape_acc = img_acc.shape
