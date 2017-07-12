@@ -26,6 +26,7 @@ install:
   - source activate testenv
   - python setup.py install build_ext -i
   - pip install codecov cachey pillow matplotlib distributed dask pyyaml
+  - conda install -c scikit-beam scikit-beam
 # optional when manually debugging
 # pip install ipython
 
