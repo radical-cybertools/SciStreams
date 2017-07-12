@@ -10,23 +10,9 @@ except FileNotFoundError:
 
 detector_names = dict(pilatus300='saxs', psccd='waxs')
 
-#for data
-cmsdb_data=dict(
-host = "localhost",
-port=27017,
-mdsname='metadatastore-production-v1',
-fsname = "filestore-production-v1",
-)
 
-# for analysis
-cmsdb_analysis = dict(
-host = "localhost",
-port=27025,
-mdsname = "analysis-metadatastore-v1",
-fsname = "analysis-filestore-v1",
-)
-
-default_databases = dict(cms=dict(analysis=cmsdb_analysis, data=cmsdb_data))
+# no databases present, only add if config file gives some
+default_databases = {}
 
 
 _DEFAULTS = {
