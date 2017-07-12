@@ -145,8 +145,8 @@ def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
 
     #q_maps = calib.map(_generate_qxyz_maps)
     calib_obj = calib_obj.map(delayed, raw=True, pure=True).map(_generate_qxyz_maps)
-    #calib_obj = calib_obj.map(_generate_qxyz_maps)
-    calib_obj.map(print, raw=True)
+    # calib_obj = calib_obj.map(_generate_qxyz_maps)
+    # calib_obj.map(print, raw=True)
     def printcache(obj):
         from SciAnalysis.globals import cache
         print("cache is {}".format(cache.cache.data))
