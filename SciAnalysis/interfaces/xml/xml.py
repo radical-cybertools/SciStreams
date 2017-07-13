@@ -9,7 +9,8 @@ _ROOTMAP = config.resultsrootmap
 def make_dir(directory):
     ''' Creates directory if doesn't exist.'''
     if not os.path.isdir(directory):
-        os.makedirs( directory )
+        os.makedirs(directory)
+
 
 def access_dir(base, extra=''):
     '''Returns a string which is the desired output directory.
@@ -19,6 +20,7 @@ def access_dir(base, extra=''):
     make_dir(output_dir)
 
     return output_dir
+
 
 def get_filebase(name):
     basename = os.path.basename(name)
@@ -37,6 +39,7 @@ def parse_attrs_xml(attrs):
             new_attrs[key] = str(val)
     return new_attrs
 
+
 def _cleanup_str(string):
     string = string.replace(" ", "_")
     string = string.replace("/", "_")
@@ -45,12 +48,14 @@ def _cleanup_str(string):
     string = string.replace(":", "_")
     return string
 
+
 def _make_fname_from_attrs(attrs):
     ''' make filename from attributes.
         This will likely be copied among a few interfaces.
     '''
     if 'experiment_alias_directory' not in attrs:
-        raise ValueError("Error cannot find experiment_alias_directory in attributes. Not saving.")
+        raise ValueError("Error cannot find experiment_alias_directory" +
+                         " in attributes. Not saving.")
 
     # remove the trailing slash
     rootdir = attrs['experiment_alias_directory'].strip("/")
@@ -73,7 +78,7 @@ def _make_fname_from_attrs(attrs):
         sample_savename = _cleanup_str(attrs['sample_savename'])
 
     if 'stream_name' not in attrs:
-        #raise ValueError("Error cannot find stream_name in attributes")
+        # raise ValueError("Error cannot find stream_name in attributes")
         stream_name = 'unnamed_analysis'
     else:
         stream_name = _cleanup_str(attrs['stream_name'])
@@ -88,6 +93,7 @@ def _make_fname_from_attrs(attrs):
     outfile = outdir + "/" + sample_savename + "_" + scan_id + ".xml"
 
     return outfile
+
 
 def store_results_xml(results, outputs=None):
     '''
@@ -105,10 +111,12 @@ def store_results_xml(results, outputs=None):
     # TODO : maybe add date folder too?
     # TODO : add detector as well?
     if 'kwargs' not in results:
-        raise ValueError("kwargs not in the sciresults. (Is this a valid SciResult object?)")
+        raise ValueError("kwargs not in the sciresults. " +
+                         "(Is this a valid SciResult object?)")
     results_dict = results['kwargs']
     if 'attributes' not in results:
-        raise ValueError("attributes not in the sciresults. (Is this a valid SciResult object?)")
+        raise ValueError("attributes not in the sciresults. " +
+                         "(Is this a valid SciResult object?)")
 
     attrs = results['attributes']
     outfile = _make_fname_from_attrs(attrs)
@@ -130,7 +138,8 @@ def store_results_xml(results, outputs=None):
             sample_savename = "No sample savename"
         root = etree.Element('DataFile', name=sample_savename)
 
-    # TODO : instead of parsing (changing to str), walk through all elements in tree of dicts
+    # TODO : instead of parsing (changing to str), walk through all elements in
+    # tree of dicts
     attrs_parsed = parse_attrs_xml(attrs)
     prot = etree.SubElement(root, 'protocol', **attrs_parsed)
 
@@ -151,13 +160,15 @@ def store_results_xml(results, outputs=None):
 
                 res = etree.SubElement(prot, 'result', name=name, type='list')
                 for i, element in enumerate(content):
-                    etree.SubElement(res, 'element', index=str(i), value=str(element))
+                    etree.SubElement(res, 'element', index=str(i),
+                                     value=str(element))
 
             else:
                 etree.SubElement(prot, 'result', name=name, value=str(content))
 
     tree = etree.ElementTree(root)
     tree.write(outfile, pretty_print=True)
+
 
 def get_result(infile, protocol):
     '''Extracts a list of results for the given protocol, from the specified
@@ -171,38 +182,45 @@ def get_result(infile, protocol):
 
     # Get the latest protocol
     element = root
-    children = [child for child in element if child.tag=='protocol' and child.get('name')==protocol]
-    children_v = [float(child.get('end_timestamp')) for child in element if child.tag=='protocol' and child.get('name')==protocol]
+    children = [child for child in element
+                if child.tag == 'protocol' and child.get('name') == protocol]
+    children_v = [float(child.get('end_timestamp'))
+                  for child in element
+                  if child.tag == 'protocol' and child.get('name') == protocol]
 
     idx = np.argmax(children_v)
     protocol = children[idx]
 
     # In this protocol, get all the results (in order)
     element = protocol
-    children = [child for child in element if child.tag=='result']
-    children_v = [child.get('name') for child in element if child.tag=='result']
+    children = [child for child in element if child.tag == 'result']
+    children_v = [child.get('name')
+                  for child in element if child.tag == 'result']
 
     idx = np.argsort(children_v)
-    #result_elements = np.asarray(children)[idx]
+    # result_elements = np.asarray(children)[idx]
     result_elements = [children[i] for i in idx]
 
     results = {}
     for element in result_elements:
 
-        #print( element.get('name') )
+        # print( element.get('name') )
 
         if element.get('value') is not None:
             results[element.get('name')] = float(element.get('value'))
 
             if element.get('error') is not None:
-                results[element.get('name')+'_error'] = float(element.get('error'))
+                results[element.get('name')+'_error'] = \
+                    float(element.get('error'))
 
-        elif element.get('type') is not None and element.get('type')=='list':
+        elif element.get('type') is not None and element.get('type') == 'list':
 
             # Elements of the list
-            children = [child for child in element if child.tag=='element']
-            children_v = [int(child.get('index')) for child in element if child.tag=='element']
-            #print(children_v)
+            children = [child for child in element
+                        if child.tag == 'element']
+            children_v = [int(child.get('index'))
+                          for child in element if child.tag == 'element']
+            # print(children_v)
 
             # Sorted
             idx = np.argsort(children_v)
@@ -210,13 +228,11 @@ def get_result(infile, protocol):
 
             # Append values
             for child in children:
-                #print( child.get('index') )
+                # print( child.get('index') )
                 name = '{}_{}'.format(element.get('name'), child.get('index'))
                 results[name] = float(child.get('value'))
 
-
         else:
             print('    Errror: result has no usable data ({})'.format(element))
-
 
     return results
