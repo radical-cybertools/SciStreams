@@ -1,25 +1,26 @@
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use("Agg")  # noqa
 import SciAnalysis.config as config
 import os.path
-import time
 
 import numpy as np
+
+from collections import deque
 
 _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
 
-from collections import deque
 fig_buffer = deque()
 
 # store results decorator for plotting library
 # as of now function that returns decorator takes no arguments
 
+
 # TODO move to general tools
 def make_dir(directory):
     ''' Creates directory if doesn't exist.'''
     if not os.path.isdir(directory):
-        os.makedirs( directory )
+        os.makedirs(directory)
 
 
 def _cleanup_str(string):
@@ -29,6 +30,7 @@ def _cleanup_str(string):
     string = string.replace(")", "_")
     string = string.replace(":", "_")
     return string
+
 
 def _make_fname_from_attrs(attrs):
     ''' make filename from attributes.
@@ -60,7 +62,7 @@ def _make_fname_from_attrs(attrs):
         sample_savename = _cleanup_str(attrs['sample_savename'])
 
     if 'stream_name' not in attrs:
-        #raise ValueError("Error cannot find stream_name in attributes")
+        # raise ValueError("Error cannot find stream_name in attributes")
         stream_name = 'unnamed_analysis'
     else:
         stream_name = _cleanup_str(attrs['stream_name'])
@@ -83,13 +85,14 @@ def store_results(results, **plot_opts):
         May raise an error if it doesn't understand data.
         Expects a StreamDoc
 
-        For images, you'll need to use a plotting/image interface (not implemented yet).
+        For images, you'll need to use a plotting/image interface (not
+        implemented yet).
 
         plot_opts : plot options forwarded to matplotlib
-            file_format : the file format
             images : keys of images
             lines : keys of lines to plot (on top of images)
-                if element is a tuple, assume (x,y) format, else assume it's just y
+                if element is a tuple, assume (x,y) format, else assume it's
+                just y
             labelsize
             xlabel
             ylabel
@@ -97,18 +100,15 @@ def store_results(results, **plot_opts):
     '''
     import matplotlib.pyplot as plt
     # TODO : move some of the plotting into a general object
-    if 'file_format' in plot_opts:
-        file_format = plot_opts['file_format']
-    else:
-        file_format = "jpg"
 
     if 'plot_kws' in plot_opts:
-        plot_kws = plot_kws
+        plot_kws = plot_opts
 
     data = results['kwargs']
 
     if 'attributes' not in results:
-        raise ValueError("attributes not in the sciresults. (Is this a valid SciResult object?)")
+        raise ValueError("attributes not in the sciresults. " +
+                         "(Is this a valid SciResult object?)")
     attrs = results['attributes']
 
     outfile = _make_fname_from_attrs(attrs) + ".png"
@@ -125,19 +125,20 @@ def store_results(results, **plot_opts):
 
     xlims = None
     ylims = None
-    #plt.ioff()
+    # plt.ioff()
     '''
     timeout = 100# in seconds
     t_start = time.time()
     while(len(fig_queue) == 0):
         if time.time() - t_start > timeout:
-            raise Exception("Timed out when waiting for a figure to be released")
+            raise Exception("Timed out when waiting for a figure to be
+                released")
         time.sleep(1)
     '''
 
     # grab fig from queue. do some cleanup (if a fig
     # has not been released for some time, release it)
-    fig = plt.figure(0);#int(np.random.random()*MAXFIGNUM))
+    fig = plt.figure(0)  # int(np.random.random()*MAXFIGNUM))
     fig.clf()
     ax = fig.gca()
     for key in images:
@@ -151,18 +152,19 @@ def store_results(results, **plot_opts):
                 vmax = plot_opts['vmax']
             if image.ndim == 2:
                 if isinstance(image, np.ndarray):
-                    plt.imshow(image,vmin=vmin, vmax=vmax)
+                    plt.imshow(image, vmin=vmin, vmax=vmax, **plot_kws)
                     plt.colorbar()
             elif image.ndim == 3:
                 nimgs = image.shape[0]
                 dim = int(np.ceil(np.sqrt(nimgs)))
-                fig, axes = plt.subplots(dim,dim)
+                fig, axes = plt.subplots(dim, dim)
                 axes = np.array(axes).ravel()
                 for j in range(len(image)):
                     if isinstance(image, np.ndarray):
-                        axes[j].imshow(image[j])
+                        axes[j].imshow(image[j], **plot_kws)
         else:
-            print("Warning : key {} not found in data for plotting(mpl)".format(key))
+            print("Warning : key {} not found ".format(key) +
+                  "in data for plotting(mpl)")
 
     for line in lines:
         if isinstance(line, tuple) and len(line) == 2:
@@ -178,7 +180,7 @@ def store_results(results, **plot_opts):
             else:
                 x, y = None, None
         if x is not None and y is not None:
-            plt.plot(x,y)
+            plt.plot(x, y, **plot_kws)
             if xlims is None:
                 xlims = [np.min(x), np.max(x)]
             else:
@@ -197,9 +199,9 @@ def store_results(results, **plot_opts):
 
     # plotting the extra options
     if 'labelsize' in plot_opts:
-        labelsize=plot_opts['labelsize']
+        labelsize = plot_opts['labelsize']
     else:
-        labelsize=20
+        labelsize = 20
 
     if 'hideaxes' in plot_opts:
         hideaxes = plot_opts['hideaxes']
@@ -233,7 +235,8 @@ def store_results(results, **plot_opts):
                 correct_ylimits(ax)
             # else ignore
         except Exception:
-            print("plotting_mpl : Error in setting scales (array is likely zeros)")
+            print("plotting_mpl : Error in setting " +
+                  "scales (array is likely zeros)")
 
     if hideaxes:
         ax.get_xaxis().set_visible(False)
@@ -262,6 +265,7 @@ def correct_ylimits(ax):
             vmin = np.minimum(vmin, vmintmp)
     ax.set_ylim(vmin, None)
 
+
 def findLowHigh(img, maxcts=None):
     ''' Find the reasonable low and high values of an image
             based on its histogram.
@@ -270,13 +274,13 @@ def findLowHigh(img, maxcts=None):
     if maxcts is None:
         maxcts = 65536
     w = np.where((~np.isnan(img.ravel()))*(~np.isinf(img.ravel())))
-    hh,bb = np.histogram(img.ravel()[w], bins=maxcts, range=(1,maxcts))
+    hh, bb = np.histogram(img.ravel()[w], bins=maxcts, range=(1, maxcts))
     hhs = np.cumsum(hh)
     hhsum = np.sum(hh)
     if hhsum > 0:
         hhs = hhs/np.sum(hh)
-        wlow = np.where(hhs > .01)[0] #5%
-        whigh = np.where(hhs < .99)[0] #95%
+        wlow = np.where(hhs > .01)[0]  # 5%
+        whigh = np.where(hhs < .99)[0]  # 95%
     else:
         # some arbitrary values
         wlow = np.array([1])
@@ -293,5 +297,5 @@ def findLowHigh(img, maxcts=None):
     if high <= low:
         high = low + 1
     # debugging
-    #print("low: {}, high : {}".format(low, high))
+    # print("low: {}, high : {}".format(low, high))
     return low, high
