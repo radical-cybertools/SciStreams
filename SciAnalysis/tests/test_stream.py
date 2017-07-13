@@ -84,16 +84,21 @@ def test_stream_accumulate():
         return nextstate
 
     s = Stream()
-    sout = s.accumulate(myacc)
+    sacc = s.accumulate(myacc)
     L = list()
-    sout.map(L.append)
+    sacc.map(L.append)
 
     s.emit(1)
     s.emit(1)
     s.emit(4)
 
+    # flush must be called on the accumulator reference
+    sacc.flush()
+    s.emit(1)
+    s.emit(3)
+
     # should not emit on first
-    assert L == [1, 2, 6]
+    assert L == [1, 2, 6, 1, 4]
 
 
 def test_stream_accumulate_wrapper():
@@ -124,8 +129,8 @@ def test_stream_accumulate_wrapper():
         return nextstate
 
     s = Stream()
-    sout = s.accumulate(myacc)
-    sout = sout.map(lambda x: x.num)
+    sacc = s.accumulate(myacc)
+    sout = sacc.map(lambda x: x.num)
 
     L = list()
     sout.map(L.append)
@@ -133,9 +138,13 @@ def test_stream_accumulate_wrapper():
     s.emit(MyClass(1))
     s.emit(MyClass(1))
     s.emit(MyClass(4))
+    sacc.flush()
+    s.emit(MyClass(4))
+    s.emit(MyClass(4))
 
     # should not emit on first
-    assert L == [1, 2, 6]
+    assert L == [1, 2, 6, 4, 8]
+
 
 def test_stream_validate():
     def validate_data(x):
