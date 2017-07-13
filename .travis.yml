@@ -38,7 +38,7 @@ script:
   - coverage run run_tests.py
 
 # don't run flake8 yet...
-#- flake8 --exclude=old,extras,tests,examples --ignore E402,E226,W503 $TRAVIS_BUILD_DIR/ScatterSim 
+#- flake8 --exclude=old,extras,tests,examples $TRAVIS_BUILD_DIR/SciAnalysis
 
 after_success:
 #  - codecov
