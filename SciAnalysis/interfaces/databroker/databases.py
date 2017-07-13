@@ -8,10 +8,11 @@ from SciAnalysis.interfaces.databroker.database_initializers import init_db
 # this contains dbinfo, which may be read from a scianalysis.yml file
 import SciAnalysis.config as config
 
-#some handlers
+# some handlers
 from filestore.handlers import DATHandler, NpyHandler
 from .handlers_custom import PNGHandler
-from SciAnalysis.interfaces.databroker.handlers_custom import AreaDetectorTiffHandler
+from SciAnalysis.interfaces.databroker.handlers_custom \
+        import AreaDetectorTiffHandler
 
 '''
     # register some handlers
@@ -25,10 +26,10 @@ from SciAnalysis.interfaces.databroker.handlers_custom import AreaDetectorTiffHa
 # special handlers for analysis to be setup
 # this is hard coded to but should eventually be moved somewhere else
 analysis_handlers = {
-    'PNG' : PNGHandler,
-    'JPG' : PNGHandler,
-    'DAT' : DATHandler,
-    'npy' : NpyHandler,
+    'PNG': PNGHandler,
+    'JPG': PNGHandler,
+    'DAT': DATHandler,
+    'npy': NpyHandler,
 }
 
 data_handlers = {
@@ -36,12 +37,10 @@ data_handlers = {
 }
 
 
-
-
 # specify as a function to allow re-initialization if needed
 # (for sqlite, this can help)
 # databases are something like:
-# 'chx' : {'data' : {'host' : ..., 'port' : ..., 'fsname' : ..., 
+# 'chx' : {'data' : {'host' : ..., 'port' : ..., 'fsname' : ...,
 #       'mdsname' : ..., ...}, 'analysis' : {...}}
 # 'cms' : ...
 def initialize(dbname=None):
