@@ -36,9 +36,9 @@ install:
 
 script:
   - coverage run run_tests.py
+  - flake8 --exclude=old,extras,tests,examples,scripts,analyses .
 
 # don't run flake8 yet...
-#- flake8 --exclude=old,extras,tests,examples $TRAVIS_BUILD_DIR/SciAnalysis
 
 after_success:
 #  - codecov
