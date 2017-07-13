@@ -13,6 +13,7 @@ from databroker.broker import Broker
 
 '''
 
+
 def init_db(host, port, mdsname, fsname, handlers=None):
     ''' Initialize a database.
         This is the general function used in SciAnalysis to handle this
@@ -41,10 +42,10 @@ def init_db(host, port, mdsname, fsname, handlers=None):
         computing.
     '''
     mds_conf = {
-            'host': host,
-                 'port': port,
-                 'database': mdsname,
-                 'timezone': 'US/Eastern',
+                'host': host,
+                'port': port,
+                'database': mdsname,
+                'timezone': 'US/Eastern',
                  }
     mds = MDS(mds_conf, auth=False)
 
@@ -54,7 +55,7 @@ def init_db(host, port, mdsname, fsname, handlers=None):
             'database': fsname
     }
 
-    fs = FileStore(fs_conf)#, root_map=ROOTMAP)
+    fs = FileStore(fs_conf)  # , root_map=ROOTMAP)
 
     if handlers is not None:
         for handler_key, handler_function in handlers.items():
