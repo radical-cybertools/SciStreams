@@ -436,6 +436,8 @@ class filter(Stream):
 
 class scan(Stream):
     def __init__(self, func, child, raw=False, start=no_default):
+        # keep track of start for the `flush` method
+        self.start = start
         self.func = func
         self.raw = raw
         self.state = start
@@ -452,6 +454,10 @@ class scan(Stream):
         # should return even on first element
         # (previous library waited before returning)
         return self.emit(result)
+
+    def flush(self):
+        '''Flush the accumulator.'''
+        self.state = self.start
 
 
 class partition(Stream):
