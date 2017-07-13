@@ -85,8 +85,14 @@ def test_stream_accumulate():
 
     s = Stream()
     sacc = s.accumulate(myacc)
+
+    # check the start keyword
+    sacc2 = sacc.accumulate(myacc, start=1)
     L = list()
     sacc.map(L.append)
+
+    L2 = list()
+    sacc2.map(L2.append)
 
     s.emit(1)
     s.emit(1)
@@ -94,11 +100,17 @@ def test_stream_accumulate():
 
     # flush must be called on the accumulator reference
     sacc.flush()
+    sacc2.flush()
     s.emit(1)
     s.emit(3)
 
+    print(L)
+    print(L2)
+
     # should not emit on first
     assert L == [1, 2, 6, 1, 4]
+    # L2 is sum of accumulator + initial state
+    assert L2 == [2, 4, 10, 2, 6]
 
 
 def test_stream_accumulate_wrapper():
