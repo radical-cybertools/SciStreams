@@ -1,20 +1,19 @@
 from collections import OrderedDict
-from SciAnalysis.interfaces.file.reading import FileDesc
 from SciAnalysis.interfaces.file.core import writers_dict
 import os
 import SciAnalysis.config as config
 
-import numpy as np
-
 _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
+
 
 def make_dir(directory):
     ''' Creates directory if doesn't exist.'''
     if not os.path.isdir(directory):
-        os.makedirs( directory )
+        os.makedirs(directory)
 
 # store results decorator
+
 
 # store results decorator for file
 # as of now function that returns decorator takes no arguments
@@ -27,6 +26,7 @@ def store_results(**options):
         return f_new
     return store_results_decorator
 
+
 def _cleanup_str(string):
     string = string.replace(" ", "_")
     string = string.replace("/", "_")
@@ -35,12 +35,14 @@ def _cleanup_str(string):
     string = string.replace(":", "_")
     return string
 
+
 def _make_fname_from_attrs(attrs):
     ''' make filename from attributes.
         This will likely be copied among a few interfaces.
     '''
     if 'experiment_alias_directory' not in attrs:
-        raise ValueError("Error cannot find experiment_alias_directory in attributes. Not saving.")
+        raise ValueError("Error cannot find experiment_alias_directory" +
+                         " in attributes. Not saving.")
 
     # remove the trailing slash
     rootdir = attrs['experiment_alias_directory'].strip("/")
@@ -63,7 +65,7 @@ def _make_fname_from_attrs(attrs):
         sample_savename = _cleanup_str(attrs['sample_savename'])
 
     if 'stream_name' not in attrs:
-        #raise ValueError("Error cannot find stream_name in attributes")
+        # raise ValueError("Error cannot find stream_name in attributes")
         stream_name = 'unnamed_analysis'
     else:
         stream_name = _cleanup_str(attrs['stream_name'])
@@ -85,15 +87,17 @@ def store_results_file(results, writers={}):
         This saves to numpy format by default.
         May raise an error if it doesn't understand data.
 
-        For images, you'll need to use a plotting/image interface (not implemented yet).
+        For images, you'll need to use a plotting/image interface (not
+        implemented yet).
     '''
     if 'kwargs' not in results:
-        raise ValueError("kwargs not in the sciresults. (Is this a valid SciResult object?)")
+        raise ValueError("kwargs not in the sciresults. " +
+                         "(Is this a valid SciResult object?)")
     results_dict = results['kwargs']
     if 'attributes' not in results:
-        raise ValueError("attributes not in the sciresults. (Is this a valid SciResult object?)")
+        raise ValueError("attributes not in the sciresults. " +
+                         "(Is this a valid SciResult object?)")
     attrs = results['attributes']
-
 
     # prepare directory
     outfile = _make_fname_from_attrs(attrs)
@@ -113,5 +117,5 @@ def store_results_file(results, writers={}):
         if not isinstance(keys, list):
             keys = [keys]
         for key in keys:
-            data.update({key : results_dict[key]})
+            data.update({key: results_dict[key]})
         writer(filename=outfile, data=data)
