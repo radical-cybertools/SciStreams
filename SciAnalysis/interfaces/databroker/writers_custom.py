@@ -1,10 +1,12 @@
 # TODO : change this to some global analysis directory
 # and make sure it works in a GLOBAL filesystem for distributed environment
-_ROOTDIR = "/home/lhermitte/sqlite/fs-tmp-data"
 import os
 import uuid
 import numpy as np
 from PIL import Image
+
+_ROOTDIR = "/home/lhermitte/sqlite/fs-tmp-data"
+
 
 class NpyWriter:
     """
@@ -48,6 +50,7 @@ class NpyWriter:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+
 class PILWriter:
     """
     Each call to the ``write`` method saves a file and creates a new filestore
@@ -88,15 +91,18 @@ class PILWriter:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+
 class JPGWriter(PILWriter):
     """
     Each call to the ``write`` method saves a file and creates a new filestore
     resource and datum record.
     """
     SPEC = 'jpg'
+
     def __init__(self, fs, root=_ROOTDIR):
         super(JPGWriter, self).__init__(fs, root=_ROOTDIR)
         self.ext = 'jpg'
+
 
 class PNGWriter(PILWriter):
     """
@@ -104,6 +110,7 @@ class PNGWriter(PILWriter):
     resource and datum record.
     """
     SPEC = 'png'
+
     def __init__(self, fs, root=_ROOTDIR):
         super(JPGWriter, self).__init__(fs, root=_ROOTDIR)
         self.ext = 'png'
@@ -112,4 +119,4 @@ class PNGWriter(PILWriter):
 # TODO : Add a BlankWriter, basically takes a filename but outputs nothing.
 #   It also writes in the correct file handler (which should be an input)
 
-writers_dict = {'npy' : NpyWriter, 'jpg' : JPGWriter, 'png' : PNGWriter}
+writers_dict = {'npy': NpyWriter, 'jpg': JPGWriter, 'png': PNGWriter}
