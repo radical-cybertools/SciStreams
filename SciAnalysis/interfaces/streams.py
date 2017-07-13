@@ -436,6 +436,7 @@ class filter(Stream):
 
 class scan(Stream):
     def __init__(self, func, child, raw=False, start=no_default):
+        # keep track of start for the `flush` method
         self.start = start
         self.func = func
         self.raw = raw
