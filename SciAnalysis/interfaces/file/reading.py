@@ -1,6 +1,5 @@
 from .core import jpegloader, pngloader, hdf5loader, npyloader
 from .core import jpegwriter, pngwriter
-import numpy as np
 
 from SciAnalysis.interfaces.StreamDoc import StreamDoc
 
@@ -25,16 +24,16 @@ class FileDesc(dict):
     _KEYINFO = {
             'jpg': {'required': ['filename'],
                     'loader': jpegloader,
-                    'writer' : jpegwriter,
+                    'writer': jpegwriter,
                     },
             'png': {'required': ['filename'],
                     'loader': pngloader,
-                    'writer' : pngwriter,
+                    'writer': pngwriter,
                     },
             'hdf5': {'required': ['filename', 'hdf5key'],
                      'loader': hdf5loader},
             'npy': {'required': ['filename'],
-                     'loader': npyloader},
+                    'loader': npyloader},
     }
 
     def __init__(self, filename, format=None, **kwargs):
