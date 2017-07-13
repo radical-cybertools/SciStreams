@@ -12,12 +12,13 @@ def npywriter(data=None, filename=None):
     if isinstance(data, dict):
         filename = filename + ".npz"
         np.savez(filename, **data)
-    elif isisntance(data, np.ndarray):
+    elif isinstance(data, np.ndarray):
         filename = filename + ".npy"
         np.save(filename, data)
     else:
         filename = filename + ".npz"
         np.savez(filename, data=data)
+
 
 def datwriter(data=None, filename=None):
     if data is None:
@@ -31,10 +32,11 @@ def datwriter(data=None, filename=None):
         header = ""
         for i, key in enumerate(data_keys):
             header = header + key + "\t"
-            res[:,i] = data[key]
+            res[:, i] = data[key]
         np.savetxt(filename, res, delimiter=" ", header=header)
     else:
         raise ValueError("Should be a dictionary")
+
 
 def pngwriter(data=None, filename=None):
     filename = filename + ".png"
@@ -44,11 +46,13 @@ def pngwriter(data=None, filename=None):
     if isinstance(data, dict):
         keys = list(data.keys())
         if len(keys) > 1:
-            raise ValueError("can't write a png with more than one elem in dict")
+            raise ValueError("can't write a png with more " +
+                             "than one elem in dict")
         data = data[keys[0]]
     data = Image.fromarray(data.astype(np.uint8))
     print(filename)
     data.save(filename)
+
 
 def jpegwriter(data=None, filename=None):
     filename = filename + ".jpg"
@@ -58,11 +62,13 @@ def jpegwriter(data=None, filename=None):
     if isinstance(data, dict):
         keys = list(data.keys())
         if len(keys) > 1:
-            raise ValueError("can't write a png with more than one elem in dict")
+            raise ValueError("can't write a png with more " +
+                             "than one elem in dict")
         data = data[keys[0]]
     data = Image.fromarray(data.astype(np.uint8))
     print(filename)
     data.save(filename)
+
 
 def jpegloader(filename=None):
     if filename is None:
@@ -72,8 +78,10 @@ def jpegloader(filename=None):
     data = np.asarray(data)
     return data
 
+
 def pngloader(filename=None):
     return jpegloader(filename=filename)
+
 
 def hdf5loader(filename=None, entryname=None):
     if filename is None:
@@ -84,8 +92,10 @@ def hdf5loader(filename=None, entryname=None):
         data = np.asarray(f[entryname])
     return data
 
+
 def npyloader(filename=None):
     res = np.load(filename)
     return dict(res)
 
-writers_dict = {'npy' : npywriter, 'jpg' : jpegwriter, 'png' : pngwriter, 'dat' : datwriter}
+writers_dict = {'npy': npywriter, 'jpg': jpegwriter, 'png': pngwriter,
+                'dat': datwriter}
