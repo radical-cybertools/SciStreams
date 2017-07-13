@@ -97,5 +97,6 @@ def npyloader(filename=None):
     res = np.load(filename)
     return dict(res)
 
+
 writers_dict = {'npy': npywriter, 'jpg': jpegwriter, 'png': pngwriter,
                 'dat': datwriter}

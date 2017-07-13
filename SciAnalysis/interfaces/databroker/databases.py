@@ -63,5 +63,6 @@ def initialize(dbname=None):
                                                           handlers=handlers)
     return databases
 
+
 # TODO : move initialization elsewhere
 databases = initialize()

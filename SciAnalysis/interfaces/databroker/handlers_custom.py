@@ -26,6 +26,7 @@ class DICTHandler:
 
 # EIGER Image reader
 
+
 """
 #ref - taken from Yugang chxtools
 https://github.com/yugangzhang/chxtools/blob/master/chxtools/pims_readers/eiger.py
@@ -166,6 +167,7 @@ class EigerImages2(FramesSequence):
     @property
     def pixel_type(self):
         return self[0].dtype
+
 
 # Another Eiger Image reader
 """

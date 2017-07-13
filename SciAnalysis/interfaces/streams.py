@@ -754,6 +754,7 @@ def _stream_accumulate(prevobj, nextobj, func=None, **kwargs):
 def stream_map(func, *args, **kwargs):
     return func(*args, **kwargs)
 
+
 base_stream_map = stream_map.dispatch(object)
 
 
@@ -762,6 +763,7 @@ base_stream_map = stream_map.dispatch(object)
 def stream_accumulate(prevobj, nextobj, func):
     result = func(prevobj, nextobj)
     return result
+
 
 base_stream_accumulate = stream_accumulate.dispatch(object)
 
