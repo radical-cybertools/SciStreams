@@ -6,30 +6,33 @@ import time
 from uuid import uuid4
 import numpy as np
 import matplotlib
-matplotlib.use("Agg")
 
 from databroker.broker import Header
 import json
 
-from SciAnalysis.interfaces.databroker.writers_custom import writers_dict as _writers_dict
+from SciAnalysis.interfaces.databroker.writers_custom \
+        import writers_dict as _writers_dict
 from SciAnalysis.interfaces.StreamDoc import StreamDoc
 from metadatastore.core import NoEventDescriptors
 
+matplotlib.use("Agg")
+
 
 _ANALYSIS_STORE_VERSION = 'beta-v2'
-# TODO : Ask Dan if databroker is smart enough to know if connection was already made?
-# for ex: running Broker(config) multiple times, should not recreate connection
-# I am thinking of in distributed regime where multiple nodes will be running
-# some of them may have already started a db conection, others not
+# TODO : Ask Dan if databroker is smart enough to know if connection was
+# already made?  for ex: running Broker(config) multiple times, should not
+# recreate connection I am thinking of in distributed regime where multiple
+# nodes will be running some of them may have already started a db conection,
+# others not
 
 
-def Header2StreamDoc(header, dbname="cms:data",fill=True):
+def Header2StreamDoc(header, dbname="cms:data", fill=True):
     ''' Convert a header to a StreamDoc.
 
         Note: This assumes header contains only one event.
             Need to add to function if dealing with multiple events.
     '''
-    sdoc =  StreamDoc()
+    sdoc = StreamDoc()
     attributes = header['start'].copy()
     attributes['data_uid'] = attributes['uid']
     sdoc.add(attributes=attributes)
@@ -58,6 +61,8 @@ def Header2StreamDoc(header, dbname="cms:data",fill=True):
 '''
     Useful routines for searching of databroker items.
 '''
+
+
 def pullrecent(dbname, protocol_name=None, **kwargs):
     ''' Pull from a databroker database
 
@@ -92,6 +97,7 @@ def pullrecent(dbname, protocol_name=None, **kwargs):
     sdoc = Header2StreamDoc(header, dbname=dbname)
 
     return sdoc
+
 
 def pullfromuid(uid, dbname=None):
     ''' Pull from a databroker database from a uid
@@ -133,9 +139,11 @@ def pullfromuid(uid, dbname=None):
 
     return scires
 
+
 def pullfromuids(dbname, uids):
     for uid in uids:
         yield pullfromuid(dbname, uid)
+
 
 def pull(dbname, protocol_name=None, **kwargs):
     ''' Pull from a databroker database
@@ -173,7 +181,7 @@ def pull(dbname, protocol_name=None, **kwargs):
     for header in headers:
         try:
             sdoc = Header2StreamDoc(header, dbname=dbname)
-            #print('got item')
+            # print('got item')
         except FileNotFoundError:
             print('Warning (databroker) : File not found')
             continue
@@ -185,6 +193,7 @@ def pull(dbname, protocol_name=None, **kwargs):
             continue
 
         yield sdoc
+
 
 def search(dbname, start_time=None, stop_time=None, **kwargs):
     ''' search database for a substring in one of the fields.
@@ -201,23 +210,20 @@ def search(dbname, start_time=None, stop_time=None, **kwargs):
 
     if start_time is None or stop_time is None:
         print("Warning, please select a start or stop time (or else this"
-                " would just take forever")
+              " would just take forever")
 
     headers = db(start_time=start_time, stop_time=stop_time)
-    results = list()
-
-
     for header in headers:
         start_doc = header['start']
         found = True
-        for  key, val in kwargs.items():
+        for key, val in kwargs.items():
             if key not in start_doc:
                 found = False
             elif val not in start_doc[key]:
                 found = False
         if found:
             try:
-                sdoc= Header2StreamDoc(header, dbname)
+                sdoc = Header2StreamDoc(header, dbname)
                 yield sdoc
             except FileNotFoundError:
                 continue
@@ -234,10 +240,10 @@ def safe_parse_databroker(val, nested=False):
         for key, subval in val.items():
             val[key] = safe_parse_databroker(subval, nested=True)
     elif isinstance(val, tuple):
-        newval = tuple([safe_parse_databroker(v,nested=True) for v in val])
+        newval = tuple([safe_parse_databroker(v, nested=True) for v in val])
         val = newval
     elif isinstance(val, list):
-        newval = list([safe_parse_databroker(v,nested=True) for v in val])
+        newval = list([safe_parse_databroker(v, nested=True) for v in val])
         val = newval
     elif isinstance(val, np.ndarray):
         # don't print the full np array to databroker
@@ -279,6 +285,7 @@ def make_descriptor(val):
 
 # a decorator
 
+
 def store_results_databroker(sdoc, dbname=None, external_writers={}):
     ''' Save results to a databroker instance.
         Takes a streamdoc instance.
@@ -287,16 +294,17 @@ def store_results_databroker(sdoc, dbname=None, external_writers={}):
         raise ValueError("No database selected. Cancelling.")
     # TODO : change this when in mongodb
     from SciAnalysis.interfaces.databroker.databases import databases
-    # TODO : check for time out on database access, return an erorr that makes sense
+    # TODO : check for time out on database access, return an erorr that makes
+    # sense
     db = databases[dbname]
 
     # saving to databroker
-    mds = db.mds # metadatastore
+    mds = db.mds  # metadatastore
 
     # Store in databroker, make the documents
     start_doc = dict()
 
-    #start_doc.update(attributes)
+    # start_doc.update(attributes)
 
     start_doc.update(**sdoc['attributes'])
     start_doc['time'] = time.time()
@@ -325,20 +333,24 @@ def store_results_databroker(sdoc, dbname=None, external_writers={}):
     # then parse remaining data
     for key, val in sdoc['kwargs'].items():
         if key[0] == '_':
-            continue # ignore hidden keys
+            continue  # ignore hidden keys
         # guess descriptor from data
         descriptor_doc['data_keys'][key] = make_descriptor(val)
         # save to filestore
         if key in external_writers:
             writer_key = external_writers[key]
             if writer_key not in _writers_dict:
-                print("Databroker writer : Error, key {} not present in writers dict."
+                print("Databroker writer : Error, " +
+                      "key {} ".format(writer_key) +
+                      "not present in writers dict." +
                       " Allowed keys : {}".format(_writers_dict.keys()))
                 event_doc['data'][key] = 'Error'
             writer = _writers_dict[writer_key](db.fs)
             # TODO : Move this assumption of file path elsewhere?
             time_now = time.localtime()
-            subpath = "/{:04}/{:02}/{:02}".format(time_now.tm_year, time_now.tm_mon, time_now.tm_mday)
+            subpath = "/{:04}/{:02}/{:02}".format(time_now.tm_year,
+                                                  time_now.tm_mon,
+                                                  time_now.tm_mday)
             new_id = writer.write(val, subpath=subpath)
             event_doc['data'][key] = new_id
             descriptor_doc['data_keys'][key].update(external="FILESTORE:")

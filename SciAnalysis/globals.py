@@ -1,17 +1,19 @@
 from dask import set_options
 
 from collections import deque
-debugcache = deque(maxlen=1)
 
 # client information
 # TODO : remove this client information
 import SciAnalysis.config as config
+
+debugcache = deque(maxlen=1)
 if config.client is not None:
     from distributed import Client
     client = Client(config.client)
-#no client, compute should compute and return nothing
+# no client, compute should compute and return nothing
 else:
     import dask
+
     class client:
         # make unbound method
         def compute(*args, **kwargs):

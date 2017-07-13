@@ -16,14 +16,14 @@ default_databases = {}
 
 
 _DEFAULTS = {
-    'delayed' : True,
-    'storagedir' : "../storage",
-    'maskdir' : "masks",
-    'resultsroot' : os.path.expanduser("/GPFS/pipeline"),
-    'filestoreroot' : os.path.expanduser("~/sqlite/filestore"),
-    'delayed' : True,
-    'client' : None,
-    'databases' : default_databases
+    'delayed': True,
+    'storagedir': "../storage",
+    'maskdir': "masks",
+    'resultsroot': os.path.expanduser("/GPFS/pipeline"),
+    'filestoreroot': os.path.expanduser("~/sqlite/filestore"),
+    'delayed': True,
+    'client': None,
+    'databases': default_databases
 }
 
 

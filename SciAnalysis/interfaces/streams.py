@@ -28,7 +28,8 @@ class Stream(object):
 
 
     stream_name : the stream name (optional but useful for debugging)
-    validator : an output validator (takes a data as input and returns True/False)
+    validator : an output validator (takes a data as input and returns
+    True/False)
 
     Examples
     --------
@@ -52,7 +53,8 @@ class Stream(object):
     >>> L  # and the actions happen at the sinks
     ['1', '2', '3', '4', '5']
     """
-    def __init__(self, child=None, children=None, stream_name=None, validator=None, **kwargs):
+    def __init__(self, child=None, children=None, stream_name=None,
+                 validator=None, **kwargs):
         self.parents = []
         if children is not None:
             self.children = children
@@ -68,8 +70,6 @@ class Stream(object):
         self.stream_name = stream_name
 
         if validator is not None:
-            #def new_validator(obj, x):
-            #return validator(x)
             self.validate_output = validator
 
     def emit(self, x):
@@ -89,7 +89,7 @@ class Stream(object):
             if not validation_state:
                 errorstr = "Output mismatch from validation\n"
                 if isinstance(validation, dict) and 'message' in validation\
-                    and validation['message'] is not None:
+                        and validation['message'] is not None:
                     errorstr += validation['message']
                 raise ValueError(errorstr)
 

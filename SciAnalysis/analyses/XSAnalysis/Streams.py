@@ -19,7 +19,6 @@
 # TODO:
 #  Search for "TODO" below.
 ################################################################################
-from ...tools import printvars
 
 from SciAnalysis.globals import cache, client
 cache.register()
@@ -611,7 +610,6 @@ def ImageStitchingStream(return_intermediate=False):
     #s3 = s2.map(lambda x : compute(x)[0]).select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
     s3 = s2.select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
     sout = s3.map(pack)
-    #sout.map(printvars)
     sout = sout.accumulate(_xystitch_accumulate)
     #sout.map(lambda x : print("imagestitch sdoc before unpack : {}".format(x)),raw=True)
     sout = sout.map(unpack)

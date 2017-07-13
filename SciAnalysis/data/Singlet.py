@@ -4,4 +4,4 @@ class Singlet(dict):
         This just helps better enforce restrictions
     '''
     def __init__(self, name, value=None, unit=None):
-        super(Singlet, self).__init__({name : dict(value=value, unit=unit)})
+        super(Singlet, self).__init__({name: dict(value=value, unit=unit)})

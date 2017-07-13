@@ -202,7 +202,8 @@ attributes.map(sin_calib.emit, raw=True)
 
 
 # generate a mask
-mskstr = origin.map(mmg.generate)
+#mskstr = origin.map(mmg.generate)
+mskstr = origin.map(lambda x : np.ones((619,487)))
 
 mask_stream = mskstr.select((0, 'mask'))
 
@@ -355,7 +356,7 @@ skipfirst = False
 while True:
     print("Waiting 1 sec for more data")
     sleep(1)
-    hdrs = cddb(sample_name="Julien_beamstop_GISAXS")
+    hdrs = cddb(sample_name="Julien_beamstop_SAXS")
     #hdrs = cddb(start_time=start_time)
     hdrs = list(hdrs)
     hdrs.reverse()
