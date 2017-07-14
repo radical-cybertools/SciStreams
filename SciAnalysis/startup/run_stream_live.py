@@ -59,7 +59,10 @@ def search_mask(detector_key, date=None):
         matching_files.extend([mask_dir + "/" + filename for filename in filenames if searchstring in filename])
 
     if len(matching_files) == 0:
-        raise ValueError("Error, could not find a file matching {}".format(searchstring))
+        errormsg = "Error, could not find a "
+        errormsg += "file matching {}\n".format(searchstring)
+        errormsg += "mask dir : {}".format(mask_dir)
+        raise ValueError(errormsg)
 
     matching_file = matching_files[0]
 
