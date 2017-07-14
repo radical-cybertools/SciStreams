@@ -1,42 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 # vi: ts=4 sw=4
-'''
-:mod:`SciAnalysis.XSAnalysis.Protocols` - Data analysis protocols
-================================================
-.. module:: SciAnalysis.XSAnalysis.Protocols
-   :synopsis: Convenient protocols for data analysis.
-.. moduleauthor:: Dr. Kevin G. Yager <kyager@bnl.gov>
-                    Brookhaven National Laboratory
-'''
-
-################################################################################
-#  Data analysis protocols.
-################################################################################
-# Known Bugs:
-#  N/A
-################################################################################
-# TODO:
-#  Search for "TODO" below.
-################################################################################
 
 from SciAnalysis.globals import cache, client
-cache.register()
+cache.register()  # noqa
 
 
 from dask import compute
 
-from uuid import uuid4
 from dask import set_options
-set_options(delayed_pure=True)
+set_options(delayed_pure=True)  # noqa
 
-import hashlib
 import numpy as np
-from PIL import Image
-
-from functools import wraps
-
-from scipy import ndimage
 
 from dask.delayed import delayed
 
@@ -48,30 +23,35 @@ from SciAnalysis.interfaces.detectors import detectors2D
 
 from SciAnalysis.interfaces.StreamDoc import Arguments
 
+
 '''
     Notes : load should be a separate function
 '''
 
-#from SciAnalysis.analyses.XSAnalysis.Data import Calibration
+# from SciAnalysis.analyses.XSAnalysis.Data import Calibration
 # use RQConv now
-from SciAnalysis.analyses.XSAnalysis.DataRQconv import CalibrationRQconv as Calibration
+from SciAnalysis.analyses.XSAnalysis.DataRQconv \
+        import CalibrationRQconv as Calibration
+
+from SciAnalysis.interfaces.StreamDoc import StreamDoc
+from SciAnalysis.interfaces.streams import Stream
+
+from collections import deque
+
 
 def add_attributes(sdoc, **attr):
     newsdoc = StreamDoc(sdoc)
     newsdoc.add(attributes=attr)
     return newsdoc
 
-from SciAnalysis.interfaces.StreamDoc import StreamDoc
-from SciAnalysis.interfaces.streams import Stream
-import SciAnalysis.interfaces.dask as dask_streams
-
-from collections import deque
 # cache for qmaps
+# TODO : clean this up
 QMAP_CACHE = deque(maxlen=1000)
+
 
 # Calibration for SAXS data
 # NOTE : Makes the assumption that the wrapper provides 'select' functionality
-def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
+def CalibrationStream(keymap_name=None, detector=None):  # , wrapper=None):
     '''
         This returns a stream of calibration methods.
 
@@ -109,6 +89,7 @@ def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
 
     # getting some hard-coded defaults
     keymap, defaults = _get_keymap_defaults(keymap_name)
+
     def validate(input_data):
         if 'args' not in input_data:
             return dict(state=False, message="args not in StreamDoc")
@@ -116,8 +97,8 @@ def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
         if len(args) != 1:
             return dict(state=False, message="args not length 1")
         data = args[0]
-        #if 'sample_savename' not in kwargs:
-            #return False
+        # if 'sample_savename' not in kwargs:
+        # return False
         for key, value in keymap.items():
             if value not in data:
                 message = "{} not in dict with keys {}"\
@@ -127,58 +108,65 @@ def CalibrationStream(keymap_name=None, detector=None):#, wrapper=None):
 
     # the pipeline flow defined here
     sin = Stream(validator=validate)
-    #s2 = dask_streams.scatter(sin)
+    # s2 = dask_streams.scatter(sin)
     s2 = sin.map(add_attributes, stream_name="Calibration", raw=True)
-    #s2 = dask_streams.gather(s2)
-    #s2.map(compute, raw=True).map(print, raw=True)
+    # s2 = dask_streams.gather(s2)
+    # s2.map(compute, raw=True).map(print, raw=True)
     calib = s2.map(load_calib_dict, keymap=keymap, defaults=defaults)
-    #calib.map(compute, raw=True).map(print, raw=True)
-    #calib = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
-    calib_obj = calib.map(load_from_calib_dict, detector=detector, calib_defaults=defaults)
-    #calib_obj.apply(compute).apply(print)
+    # calib.map(compute, raw=True).map(print, raw=True)
+    # calib = calib.map(load_from_calib_dict, detector=detector,
+    # calib_defaults=defaults)
+    calib_obj = calib.map(load_from_calib_dict, detector=detector,
+                          calib_defaults=defaults)
+    # calib_obj.apply(compute).apply(print)
 
-    #q_maps = calib.map(_generate_qxyz_maps)
-    calib_obj = calib_obj.map(delayed, raw=True, pure=True).map(_generate_qxyz_maps)
+    # q_maps = calib.map(_generate_qxyz_maps)
+    calib_obj = calib_obj.map(delayed, raw=True, pure=True)\
+        .map(_generate_qxyz_maps)
     # calib_obj = calib_obj.map(_generate_qxyz_maps)
     # calib_obj.map(print, raw=True)
+
     def printcache(obj):
         from SciAnalysis.globals import cache
         print("cache is {}".format(cache.cache.data))
         return obj
-    #calib_obj.map(printcache, raw=True)
-    #calib_obj.apply(compute).apply(lambda x : print("in cliabraion: {}".format(x)))
+    # calib_obj.map(printcache, raw=True)
+    # calib_obj.apply(compute).apply(lambda x : print("in cliabraion:
+        # {}".format(x)))
     # for distributed regime, store intermediate values
     # sink the cache for the qmaps
-    #q_maps.apply(client.compute).sink(QMAP_CACHE.append)
+    # q_maps.apply(client.compute).sink(QMAP_CACHE.append)
     calib_obj.map(client.compute, raw=True).sink(QMAP_CACHE.append)
-    calib_obj = calib_obj.map(lambda x : compute(x)[0], raw=True)
-    #calib_obj.map(print, raw=True)
+    calib_obj = calib_obj.map(lambda x: compute(x)[0], raw=True)
+    # calib_obj.map(print, raw=True)
     # compute it so that it's cached on cluster
     # TODO : figure out best way to make this dask and non dask compatible
-    #q_maps.apply(print)
-    #q_maps.apply(compute, pure=True)
-    #qx_map, qy_map, qz_map, qr_map = q_maps.multiplex(4)
+    # q_maps.apply(print)
+    # q_maps.apply(compute, pure=True)
+    # qx_map, qy_map, qz_map, qr_map = q_maps.multiplex(4)
     # just select first 3 args
     # TODO : add to  FAQ "Integer tuple pairs not accepted" when giving (0,1,2)
     # for ex instaead of [0,1,2]
-    #q_map = q_maps.select(0,1,2).map(_generate_q_map)
-    #angle_map = calib.map(_generate_angle_map)
-    #r_map = calib.map(_generate_r_map).select((0, 'r_map'))
-    #origin = calib.map(get_beam_center)
+    # q_map = q_maps.select(0,1,2).map(_generate_q_map)
+    # angle_map = calib.map(_generate_angle_map)
+    # r_map = calib.map(_generate_r_map).select((0, 'r_map'))
+    # origin = calib.map(get_beam_center)
 
     # make final qmap stream
-    #q_maps = q_maps.select((0, 'qx_map'), (1, 'qy_map'), (2, 'qz_map'), (3, 'qr_map'))
-    #q_maps = q_maps.merge(q_map.select((0, 'q_map')), r_map)
-    #q_maps = q_maps.merge(angle_map.select((0, 'angle_map')))
+    # q_maps = q_maps.select((0, 'qx_map'), (1, 'qy_map'), (2, 'qz_map'), (3,
+    # 'qr_map'))
+    # q_maps = q_maps.merge(q_map.select((0, 'q_map')), r_map)
+    # q_maps = q_maps.merge(angle_map.select((0, 'angle_map')))
 
     # rename to kwargs (easier to inspect)
-    #calib = calib.select((0, 'calibration'))
+    # calib = calib.select((0, 'calibration'))
 
     # they're relative sinks
-    #sout = dict(calibration=calib, q_maps=q_maps, origin=origin)
+    # sout = dict(calibration=calib, q_maps=q_maps, origin=origin)
     sout = calib_obj
     # return sin and the endpoints
     return sin, sout
+
 
 def get_beam_center(obj):
     ''' Get beam center in row, col (y,x) format.'''
@@ -186,9 +174,10 @@ def get_beam_center(obj):
     y0 = obj['beamy0']['value']
     return (y0, x0),
 
+
 def _get_keymap_defaults(name):
     ''' Get the keymap for the calibration, along with default values.'''
-    #print("_get_keymap_defaults, name : {}".format(name))
+    # print("_get_keymap_defaults, name : {}".format(name))
     if name == "cms":
         keymap = {
                     'wavelength': 'calibration_wavelength_A',
@@ -245,9 +234,9 @@ def load_calib_dict(attributes, keymap=None, defaults=None):
                 beamy0 : y center of beam (cols) (pixels)
                 sample_det_distance : the sample detector distance (m)
     '''
-    #print("load_calib_dict, attributes: {}".format(attributes))
-    #print("load_calib_dict, keymap: {}".format(keymap))
-    #print("load_calib_dict, defaults: {}".format(defaults))
+    # print("load_calib_dict, attributes: {}".format(attributes))
+    # print("load_calib_dict, keymap: {}".format(keymap))
+    # print("load_calib_dict, defaults: {}".format(defaults))
     if keymap is None:
         keymap, defaults = _get_keymap_defaults("None")
     calib_keymap = keymap
@@ -256,8 +245,8 @@ def load_calib_dict(attributes, keymap=None, defaults=None):
     # TODO Allow for different units
     olddict = attributes
     newdict = dict()
-    #print("load_calib_dict, newdict : {}".format(newdict))
-    #print("load_calib_dict, calib_keymap: {}".format(calib_keymap))
+    # print("load_calib_dict, newdict : {}".format(newdict))
+    # print("load_calib_dict, calib_keymap: {}".format(calib_keymap))
     for key, newkey in calib_keymap.items():
         try:
             newdict.update(Singlet(key, olddict[newkey],
@@ -266,9 +255,10 @@ def load_calib_dict(attributes, keymap=None, defaults=None):
             raise KeyError("There is an entry missing" +
                            " in header : {}.".format(newkey) +
                            "Cannot proceed")
-    # TODO : mention dicts need to be returned as tuples or encapsulated in a dict
+    # TODO : mention dicts need to be returned as tuples or encapsulated in a
+    # dict
     # this is new syntax for putting arguments in dict
-    #print("load_calib_dict, newdict : {}".format(newdict))
+    # print("load_calib_dict, newdict : {}".format(newdict))
     return newdict
 
 
@@ -299,13 +289,13 @@ def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
     wavelength = calib_tmp['wavelength']['value']
     calib_tmp.update(Singlet('k', 2.0*np.pi/wavelength, '1/Angstrom'))
     # energy
-    h = 6.626068e-34  # m^2 kg / s
+    # h = 6.626068e-34  # m^2 kg / s
     c = 299792458  # m/s
-    wavelength = calib_tmp['wavelength']['value']# in Angs *1e-10  # m
-    #E = h*c/wavelength  # Joules
-    #E *= 6.24150974e18  # electron volts
-    #E /= 1000.0  # keV
-    #calib_tmp.update(Singlet('energy', E, 'keV'))
+    wavelength = calib_tmp['wavelength']['value']  # in Angs *1e-10  # m
+    # E = h*c/wavelength  # Joules
+    # E *= 6.24150974e18  # electron volts
+    # E /= 1000.0  # keV
+    # calib_tmp.update(Singlet('energy', E, 'keV'))
     # q per pixel (Small angle limit)
     '''Gets the delta-q associated with a single pixel. This is computed in
     the small-angle limit, so it should only be considered a approximate.
@@ -319,7 +309,7 @@ def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
                              "1/Angstrom"))
 
     # some post calculations
-    calibration = calib_tmp
+    # calibration = calib_tmp
 
     pixel_size_um = pixel_size_x_val
     distance_m = calib_tmp['sample_det_distance']['value']
@@ -330,19 +320,21 @@ def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
     # NOTE : width, height reversed in calibration
     height, width = calib_tmp['shape']['value']
     calib_object.set_image_size(width, height)
-    calib_object.set_beam_position(calib_dict['beamx0']['value'], calib_dict['beamy0']['value'])
-    #print("calibration object: {}".format(calib_object))
-    #print("calibration object members: {}".format(calib_object.__dict__))
+    calib_object.set_beam_position(calib_dict['beamx0']['value'],
+                                   calib_dict['beamy0']['value'])
+    # print("calibration object: {}".format(calib_object))
+    # print("calibration object members: {}".format(calib_object.__dict__))
 
-    #return calibration,
+    # return calibration,
     return calib_object
 
 
 def _generate_qxyz_maps(calib_obj):
-    #print("_generate_qxyz_maps calib_obj : {}".format(calib_obj))
+    # print("_generate_qxyz_maps calib_obj : {}".format(calib_obj))
     calib_obj.generate_maps()
-    #print("_generate_qxyz_maps calib object qxmap shape : {}".format(calib_obj.qx_map.shape))
-    #print(calib_obj.origin)
+    # print("_generate_qxyz_maps calib object qxmap shape :
+    # {}".format(calib_obj.qx_map.shape))
+    # print(calib_obj.origin)
     # MUST return the object if caching
     return calib_obj
 
@@ -384,7 +376,7 @@ def CircularAverageStream():
     TODO : Add options
 
     '''
-    #TODO : extend file to mltiple writers?
+    # TODO : extend file to mltiple writers?
     def validate(x):
         if 'args' not in x:
             return dict(state=False, message="args not in doc")
@@ -398,30 +390,31 @@ def CircularAverageStream():
         # kwargs are optional so don't validate them
         return True
 
-    sin  = Stream(validator=validate)
+    sin = Stream(validator=validate)
     s2 = sin.map((add_attributes), stream_name="CircularAverage", raw=True)
-    from dask import compute
-    #s2.map(compute,raw=True).map(lambda x : print("in CircAvgStream add_attributes output : {}".format(x)), raw=True)
-    #s2.map(lambda x : print("circavg res : {}".format(x)), raw=True)
+
     sout = s2.map(circavg_from_calibration)
     return sin, sout
+
 
 def circavg_from_calibration(image, calibration, mask=None, bins=None):
     # print("circavg : qmap : {} ".format(calibration.q_map))
     # print("circavg : rmap: {} ".format(calibration.r_map))
-    return circavg(image, q_map=calibration.q_map, r_map = calibration.r_map, mask=mask, bins=bins)
+    return circavg(image, q_map=calibration.q_map, r_map=calibration.r_map,
+                   mask=mask, bins=bins)
+
 
 def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
     ''' computes the circular average.'''
     from skbeam.core.accumulators.binned_statistic import BinnedStatistic1D
-
 
     # figure out bins if necessary
     if bins is None:
         # guess q pixel bins from r_map
         if r_map is not None:
             # choose 1 pixel bins (roughly, not true at very high angles)
-            #print("rmap not none, mask shape : {}, rmap shape : {}".format(mask.shape, r_map.shape))
+            # print("rmap not none, mask shape : {}, rmap shape :
+            # {}".format(mask.shape, r_map.shape))
             # TODO : could avoid creating a mask to save time
             if mask is None:
                 mask = np.ones_like(image)
@@ -436,22 +429,24 @@ def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
 
         # here we assume the rbins uniform
         bins = nobins
-        #rbinstat = RadialBinnedStatistic(image.shape, bins=nobins,
-                #rpix=r_map, statistic='mean', mask=mask)
-        rbinstat = BinnedStatistic1D(r_map.reshape(-1), statistic='mean', bins=nobins, mask=mask.ravel())
+        # rbinstat = RadialBinnedStatistic(image.shape, bins=nobins,
+        # rpix=r_map, statistic='mean', mask=mask)
+        rbinstat = BinnedStatistic1D(r_map.reshape(-1), statistic='mean',
+                                     bins=nobins, mask=mask.ravel())
         bin_centers = rbinstat(q_map.ravel())
         bins = center2edge(bin_centers)
 
-
     # now we use the real rbins, taking into account Ewald curvature
-    #rbinstat = RadialBinnedStatistic(image.shape, bins=bins, rpix=q_map,
-            #statistic='mean', mask=mask)
-    rbinstat = BinnedStatistic1D(q_map.reshape(-1), statistic='mean', bins=bins, mask=mask.ravel())
+    # rbinstat = RadialBinnedStatistic(image.shape, bins=bins, rpix=q_map,
+    # statistic='mean', mask=mask)
+    rbinstat = BinnedStatistic1D(q_map.reshape(-1), statistic='mean',
+                                 bins=bins, mask=mask.ravel())
     sqy = rbinstat(image.ravel())
     sqx = rbinstat.bin_centers
-    # get the error from the shot noise only 
-    # NOTE : variance along ring could also be interesting but you 
-    # need to know the correlation length of the peaks in the rings... (if there are peaks)
+    # get the error from the shot noise only
+    # NOTE : variance along ring could also be interesting but you
+    # need to know the correlation length of the peaks in the rings... (if
+    # there are peaks)
     rbinstat.statistic = "sum"
     noperbin = rbinstat(mask.ravel())
     sqyerr = np.sqrt(rbinstat(image.ravel()))
@@ -460,6 +455,7 @@ def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
     sqxerr = np.diff(rbinstat.bin_edges)/2.
 
     return Arguments(sqx=sqx, sqy=sqy, sqyerr=sqyerr, sqxerr=sqxerr)
+
 
 def center2edge(centers, positive=True):
     ''' Transform a set of bin centers to edges
@@ -490,7 +486,7 @@ def center2edge(centers, positive=True):
     return edges
 
 
-def QPHIMapStream(bins=(400,400)):
+def QPHIMapStream(bins=(400, 400)):
     '''
         Input :
                 image
@@ -501,11 +497,12 @@ def QPHIMapStream(bins=(400,400)):
     '''
     sin = Stream()
     sout = sin.select(0, 'mask', 'origin')\
-            .map((add_attributes), stream_name="QPHIMapStream", raw=True)
+        .map((add_attributes), stream_name="QPHIMapStream", raw=True)
     sout = sout.map(qphiavg, bins=bins)
-    #from dask import compute
-    #sout.apply(compute).apply(print)
+    # from dask import compute
+    # sout.apply(compute).apply(print)
     return sin, sout
+
 
 def qphiavg(img, mask=None, bins=None, origin=None):
     ''' quick qphi average calculator.
@@ -513,28 +510,33 @@ def qphiavg(img, mask=None, bins=None, origin=None):
     '''
     # TODO : replace with method that takes qphi maps
     # TODO : also return q and phi of this...
-    #print("In qphi average stream")
+    # print("In qphi average stream")
     from skbeam.core.accumulators.binned_statistic import RPhiBinnedStatistic
-    rphibinstat = RPhiBinnedStatistic(img.shape, mask=mask, origin=origin, bins=bins)
+    rphibinstat = RPhiBinnedStatistic(img.shape, mask=mask, origin=origin,
+                                      bins=bins)
     sqphi = rphibinstat(img)
     qs = rphibinstat.bin_centers[0]
     phis = rphibinstat.bin_centers[1]
     return Arguments(sqphi=sqphi, qs=qs, phis=phis)
 
+
 def AngularCorrelatorStream():
     ''' Stream to run angular correlations.
         inputs : shape, origin, mask
     '''
-    from SciAnalysis.analyses.XSAnalysis import rdpc
-    s = Stream()
-    #sout.
+    # from SciAnalysis.analyses.XSAnalysis import rdpc
+    # s = Stream()
+    # sout.
 
-    return s, sout
+    # return s, sout
+    return None
 
 
-
-def prepare_correlation(shape, origin, mask, rbins=800, phibins=360, method='bgest'):
-    rdphicorr = rdpc.RDeltaPhiCorrelator(image.shape,  origin=origin, mask=mask, rbins=rbins,phibins=phibins)
+def prepare_correlation(shape, origin, mask, rbins=800, phibins=360,
+                        method='bgest'):
+    rdphicorr = rdpc.RDeltaPhiCorrelator(image.shape,  origin=origin,
+                                         mask=mask, rbins=rbins,
+                                         phibins=phibins)
     # print("kwargs : {}".format(kwargs))
     return rdphicorr
 
@@ -544,14 +546,13 @@ def angularcorrelation(rdphicorr, image):
     return rdphicorr.rdeltaphiavg_n
 
 
-
 def pack(*args, **kwargs):
     ''' pack arguments into one set of arguments.'''
     return args
 
 def unpack(args):
     ''' assume input is a tuple, split into arguments.'''
-    #print("Arguments : {}".format(args))
+    # print("Arguments : {}".format(args))
     return Arguments(*args)
 
 def todict(kwargs):
@@ -560,12 +561,13 @@ def todict(kwargs):
 
 from SciAnalysis.analyses.XSAnalysis.tools import xystitch_accumulate, xystitch_result
 def _xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc):
-    #print("_xystitch_result, img_acc : {}".format(img_acc))
+    # print("_xystitch_result, img_acc : {}".format(img_acc))
     return xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc)
 
 def _xystitch_accumulate(prevstate, newstate):
-    #print("_xystitch_accumulate, prevstate: {}".format(prevstate))
+    # print("_xystitch_accumulate, prevstate: {}".format(prevstate))
     return xystitch_accumulate(prevstate, newstate)
+
 
 ### Image stitching Stream
 def ImageStitchingStream(return_intermediate=False):
@@ -600,18 +602,18 @@ def ImageStitchingStream(return_intermediate=False):
 
     # TODO : remove the add_attributes part and just keep stream_name
     sin = Stream(stream_name="ImageStitch", validator=validator)
-    #sin.map(lambda x : print("Beginning of stream data\n\n\n"))
+    # sin.map(lambda x : print("Beginning of stream data\n\n\n"))
     from dask import compute
     # TODO : remove compute requirement
     s2 = sin.map(add_attributes, stream_name="ImageStitch", raw=True)
-    #s2.map(print,raw=True)
+    # s2.map(print,raw=True)
     # make the image, mask origin as the first three args
-    #s2.map(lambda x : print("in image stitch : {}".format(x)), raw=True)
-    #s3 = s2.map(lambda x : compute(x)[0]).select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
+    # s2.map(lambda x : print("in image stitch : {}".format(x)), raw=True)
+    # s3 = s2.map(lambda x : compute(x)[0]).select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
     s3 = s2.select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
     sout = s3.map(pack)
     sout = sout.accumulate(_xystitch_accumulate)
-    #sout.map(lambda x : print("imagestitch sdoc before unpack : {}".format(x)),raw=True)
+    # sout.map(lambda x : print("imagestitch sdoc before unpack : {}".format(x)),raw=True)
     sout = sout.map(unpack)
     sout = sout.map(_xystitch_result)
     sout = sout.map(todict)
@@ -634,7 +636,7 @@ def ImageStitchingStream(return_intermediate=False):
 
         return next is not True and prev is True
 
-    #swin.map(lambda x : print("result : {}".format(x)), raw=True)
+    # swin.map(lambda x : print("result : {}".format(x)), raw=True)
 
     # only get results where stitch is stopped
     # NOTE : need to compute before filtering here
@@ -652,7 +654,7 @@ def ImageStitchingStream(return_intermediate=False):
         return x0
 
     swinout = swinout.map(getprevstitch, raw=True)
-    #swinout.map(lambda x : print("End of stream data\n\n\n"))
+    # swinout.map(lambda x : print("End of stream data\n\n\n"))
 
     return sin, swinout
 
@@ -670,7 +672,7 @@ def ThumbStream(blur=None, crop=None, resize=None):
     '''
     sin = Stream()
     s0 = sin.map((add_attributes), stream_name="Thumb", raw=True)
-    #s1 = sin.add_attributes(stream_name="ThumbStream")
+    # s1 = sin.add_attributes(stream_name="ThumbStream")
     s1 = s0.map(_blur)
     s1 = s1.map(_crop)
     sout = s1.map(_resize).select((0, 'thumb'))
