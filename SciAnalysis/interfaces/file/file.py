@@ -2,6 +2,7 @@ from collections import OrderedDict
 from SciAnalysis.interfaces.file.core import writers_dict
 import os
 import SciAnalysis.config as config
+from SciAnalysis.interfaces.file.reading import FileDesc
 
 _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
