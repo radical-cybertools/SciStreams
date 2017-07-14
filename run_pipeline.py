@@ -33,9 +33,9 @@ if __name__ == '__main__':
     print("CMS pipeline, version {}".format(VERSION))
 
     parser = argparse.ArgumentParser(description='Start the pipeline')
-    parser.add_argument('-t0', '--start_time', dest='start_time', type=str,
-                        help="The start time for the pipeline " +
-                        "(default is 24 hrs prior to now)")
+    parser.add_argument('-t0', '--start_time', dest='start_time', type=str)
+    # help="The start time for the pipeline " +
+    # "(default is 24 hrs prior to now)")
     args = parser.parse_args()
     if args.start_time is not None:
         # will raise a ValueError

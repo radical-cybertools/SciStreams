@@ -68,6 +68,7 @@ def search_mask(detector_key, date=None):
 
     return matching_file
 
+
 # Initialise Data objects
 # Blemish file
 # blemish_filename = config.maskdir + "/Pilatus300k_main_gaps-mask.png"
@@ -249,6 +250,7 @@ mask_stream = mskstr.select((0, 'mask'))
 
 def pack(*args):
     return args
+
 
 # circular average
 sin_image_qmap = image.merge(sout_calib, mask_stream)
