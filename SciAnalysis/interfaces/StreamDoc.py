@@ -238,6 +238,8 @@ class StreamDoc(dict):
                 oldparentkey = 'args'
             elif isinstance(oldkey, str):
                 oldparentkey = 'kwargs'
+            else:
+                raise ValueError("old key not understood : {}".format(oldkey))
 
             if newkey is None:
                 newparentkey = 'args'

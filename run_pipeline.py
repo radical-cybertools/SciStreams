@@ -40,4 +40,4 @@ if __name__ == '__main__':
 
     print("Searching for results from {} onwards...".format(time.ctime(start_time)))
     # run pipeline
-    run_stream_live.start_run(start_time=start_time)
+    run_stream_live.start_run(start_time)

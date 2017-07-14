@@ -101,8 +101,7 @@ def store_results(results, **plot_opts):
     import matplotlib.pyplot as plt
     # TODO : move some of the plotting into a general object
 
-    if 'plot_kws' in plot_opts:
-        plot_kws = plot_opts
+    plot_kws = plot_opts.pop('plot_kws', {})
 
     data = results['kwargs']
 

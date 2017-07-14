@@ -31,8 +31,7 @@ from SciAnalysis.analyses.XSAnalysis.CustomStreams import SqFitStream
 
 # get databases (not necessary)
 from SciAnalysis.interfaces.databroker.databases import databases
-cddb = databases['cms:data']
-
+detector_key = "pilatus300_image"
 
 
 
@@ -304,13 +303,11 @@ sout_circavg.map((source_xml.store_results_xml), outputs=None, raw=True)\
 # Emitting data
 
 from SciAnalysis.interfaces.databroker.databases import databases
-start_time = init_start_time
-
-last_uid = None
-def start_run(start_time=start_time, dbname="cms:data", detector_key="pilatus300_image",
+def start_run(start_time, dbname="cms:data",
               noqbins=None):
     ''' Start a live run of pipeline.'''
 
+    last_uid = None
     cddb = databases[dbname]
     dbname_data = "cms:data"
     while True:
