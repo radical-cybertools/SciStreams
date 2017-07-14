@@ -30,7 +30,6 @@ _DEFAULTS = {
 delayed = config.get('delayed', _DEFAULTS['delayed'])
 storagedir = config.get('storagedir', _DEFAULTS['storagedir'])
 maskdir = config.get('maskdir', _DEFAULTS['maskdir'])
-maskdir = storagedir + "/" + maskdir
 resultsroot = config.get('resultsroot', _DEFAULTS['resultsroot'])
 if isinstance(resultsroot, list):
     resultsrootmap = resultsroot
