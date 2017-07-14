@@ -34,10 +34,41 @@ from SciAnalysis.interfaces.databroker.databases import databases
 detector_key = "pilatus300_image"
 
 
+import os
+
+def search_mask(detector_key, date=None):
+    ''' search for a mask in the mask dir using the detectorkey
+        optionally use date to search for a mask for a specific date.
+
+        assumes detector_key is of form
+            detectorname_image
+            (underscore separating detector name and other attribute of it)
+
+    '''
+    # TODO : implement for specific date
+    mask_dir = config.maskdir + "/" + detector_key
+    # search using date NOT IMPLEMENTED
+    if date is not None:
+        raise NotImplementedError
+
+    # strip the last part i.e. "_image"
+    searchstring = detector_key[:detector_key.rfind("_")]
+
+    matching_files = list()
+    for dirpath, dirnames, filenames in os.walk(mask_dir):
+        matching_files.extend([mask_dir + "/" + filename for filename in filenames if searchstring in filename])
+
+    if len(matching_files) == 0:
+        raise ValueError("Error, could not find a file matching {}".format(searchstring))
+
+    matching_file = matching_files[0]
+
+    return matching_file
 
 # Initialise Data objects
 ## Blemish file
-blemish_filename = config.maskdir + "/Pilatus300k_main_gaps-mask.png"
+#blemish_filename = config.maskdir + "/Pilatus300k_main_gaps-mask.png"
+blemish_filename = search_mask(detector_key)
 blemish = source_file.FileDesc(blemish_filename).get_raw()[:,:,0] > 1
 blemish = blemish.astype(int)
 ## prepare master mask import
