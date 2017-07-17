@@ -79,8 +79,6 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32):
         else:
             arr = np.concatenate((arr, image), axis=0).astype(dtype)
 
-    print(arr.shape)
-
     arr.tofile(curfilename)
 
     # now save image as a batch into a file
