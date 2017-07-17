@@ -21,12 +21,12 @@ def test_store_result():
     store_result_tensorflow(result, dataset="test")
     store_result_tensorflow(result, dataset="test")
     store_result_tensorflow(result, dataset="test")
-    print("saved in {}".format(tmp_path))
+    # print("saved in {}".format(tmp_path))
 
     # test the read worked
     filename = tmp_path + "/test/master_file.txt".format(0)
     res = np.loadtxt(filename, delimiter=" ", dtype=np.uint32)
-    print(res)
+    # print(res)
     # test num batches is 1 (so on second batch)
     assert res[0] == 1
     # test that the num per batch is 3, as was set
