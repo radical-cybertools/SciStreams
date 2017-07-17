@@ -24,8 +24,8 @@ _DEFAULTS = {
     'delayed': True,
     'client': None,
     'databases': default_databases,
-    'TFLAGS' : {'out_dir' : '/GPFS/pipeline/ml-tmp',
-                'num_batches' : 16}
+    'TFLAGS': {'out_dir': '/GPFS/pipeline/ml-tmp',
+               'num_batches': 16}
 }
 
 
@@ -38,6 +38,7 @@ TFLAGS_tmp = dict()
 TFLAGS_tmpin = config.get("TFLAGS", _DEFAULTS['TFLAGS'])
 for key in _DEFAULTS['TFLAGS']:
     TFLAGS_tmp[key] = TFLAGS_tmpin.get(key, _DEFAULTS['TFLAGS'][key])
+
 
 class TFLAGS:
     pass

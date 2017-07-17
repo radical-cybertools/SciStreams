@@ -3,7 +3,7 @@ import tempfile
 from SciAnalysis.tools import make_dir
 
 from SciAnalysis.interfaces.tensorflow.tensorflow \
-        import store_result_tensorflow
+        import store_result_tensorflow, get_filenames
 from SciAnalysis.config import TFLAGS
 
 
@@ -37,3 +37,6 @@ def test_store_result():
     arr = arr.reshape((-1, res[2], res[3]))
 
     assert arr.shape[0] == 1
+
+    fnames = get_filenames(dataset="test", fpath=tmp_path)
+    assert fnames[1] == tmp_path + "/test/{:08d}.bin".format(0)

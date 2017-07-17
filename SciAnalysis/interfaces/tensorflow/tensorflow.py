@@ -90,7 +90,8 @@ def get_filenames(dataset=None, fpath=None):
 
     fpath = fpath + "/" + dataset
 
-    fnames = [fpath + "/" + dataset + "/" + fname
+    fnames = [fpath + "/" + fname
               for fname in os.listdir(fpath)
               if 'bin' in fname]
+
     return fnames
