@@ -82,3 +82,15 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32):
     arr.tofile(curfilename)
 
     # now save image as a batch into a file
+
+
+def get_filenames(dataset=None, fpath=None):
+    if fpath is None:
+        fpath = TFLAGS.data_dir
+
+    fpath = fpath + "/" + dataset
+
+    fnames = [fpath + "/" + dataset + "/" + fname
+              for fname in os.listdir(fpath)
+              if 'bin' in fname]
+    return fnames
