@@ -23,7 +23,9 @@ _DEFAULTS = {
     'filestoreroot': os.path.expanduser("~/sqlite/filestore"),
     'delayed': True,
     'client': None,
-    'databases': default_databases
+    'databases': default_databases,
+    'TFLAGS' : {'out_dir' : '/GPFS/pipeline/ml-tmp',
+                'num_batches' : 16}
 }
 
 
@@ -31,6 +33,18 @@ delayed = config.get('delayed', _DEFAULTS['delayed'])
 storagedir = config.get('storagedir', _DEFAULTS['storagedir'])
 maskdir = config.get('maskdir', _DEFAULTS['maskdir'])
 resultsroot = config.get('resultsroot', _DEFAULTS['resultsroot'])
+
+TFLAGS_tmp = dict()
+TFLAGS_tmpin = config.get("TFLAGS", _DEFAULTS['TFLAGS'])
+for key in _DEFAULTS['TFLAGS']:
+    TFLAGS_tmp[key] = TFLAGS_tmpin.get(key, _DEFAULTS['TFLAGS'][key])
+
+class TFLAGS:
+    pass
+
+for key, val in TFLAGS_tmp.items():
+    setattr(TFLAGS, key, val)
+
 if isinstance(resultsroot, list):
     resultsrootmap = resultsroot
     resultsroot = None
