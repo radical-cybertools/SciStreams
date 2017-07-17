@@ -43,6 +43,7 @@ for key in _DEFAULTS['TFLAGS']:
 class TFLAGS:
     pass
 
+
 for key, val in TFLAGS_tmp.items():
     setattr(TFLAGS, key, val)
 
