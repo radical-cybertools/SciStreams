@@ -365,7 +365,7 @@ def parse_streamdoc(name):
                 import inspect
                 sig = inspect.signature(f)
                 ba = sig.bind_partial(*args, **kwargs)
-                print("Error : Input mismatch on function")
+                print("(StreamDoc) Error : Input mismatch on function")
                 print("This means there is an issue with "
                       "The stream architecture")
                 print("Got {} arguments".format(len(ba.args)))
