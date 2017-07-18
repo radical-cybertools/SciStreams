@@ -4,7 +4,7 @@ import numpy as np
 # from distutils.core import setup
 import setuptools
 
-setuptools.setup(name='SciAnalysis',
+setuptools.setup(name='SciStreams',
                  version='1.0',
                  author='Kevin Yager',
                  description="CMS Analysis",
