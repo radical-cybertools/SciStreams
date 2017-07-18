@@ -1,14 +1,14 @@
 import numpy as np
 import tempfile
 
-from SciAnalysis.tools import make_dir
+from SciStreams.tools import make_dir
 
-from SciAnalysis.interfaces.tensorflow.tensorflow \
+from SciStreams.interfaces.tensorflow.tensorflow \
         import store_result_tensorflow, read_result_tensorflow,\
         get_filenames,\
         label2bin, bin2label, calc_labelbin_size
 
-from SciAnalysis.config import TFLAGS
+from SciStreams.config import TFLAGS
 
 
 def _test_store_result(image, labels=None):

@@ -1,6 +1,6 @@
 # stuff involving writing to data that will get sent to tensorflow
-from SciAnalysis.config import TFLAGS
-from SciAnalysis.tools import make_dir
+from ...config import TFLAGS
+from ...tools import make_dir
 import os
 
 import numpy as np
