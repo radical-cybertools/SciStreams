@@ -6,6 +6,29 @@ import os
 import numpy as np
 
 
+class MasterRecord:
+    ''' This is the object that defines a set of records.'''
+
+    allowed_kwargs = ['number_records', 'number_batches',
+                      'image_shape', 'number_labels']
+
+    def __init__(self, **kwargs):
+        for key in self.allowed_kwargs:
+            if key in kwargs:
+                setattr(self, key, kwargs[key])
+
+
+class Record:
+    ''' This is the object that defines a set of records.'''
+
+    allowed_kwargs = ['image', 'labels']
+
+    def __init__(self, **kwargs):
+        for key in self.allowed_kwargs:
+            if key in kwargs:
+                setattr(self, key, kwargs[key])
+
+
 def calc_labelbin_size(num_labels, nbytes):
     ''' Calculate the number of elements needed for the label binary.
 
@@ -219,17 +242,17 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32):
     if not os.path.isfile(master_filename):
         # num recs, num batches per rec, image shape 1, image shape 2,
         #      num labels
-        np.savetxt(master_filename,
-                   [[0, TFLAGS.num_per_batch, image.shape[0], image.shape[1],
-                     num_labels]],
-                   delimiter=" ", fmt=['%d', '%d', '%d', '%d', '%d'])
+        # TODO : add data type to master header
+        _save_master_file(master_filename, 0, TFLAGS.num_per_batch,
+                          image.shape, num_labels)
 
-    res = np.loadtxt(master_filename, delimiter=" ", dtype=dtype)
+    master_record = _read_master_file(master_filename)
+    # res = np.loadtxt(master_filename, delimiter=" ", dtype=dtype)
 
-    numrecs = res[0]
-    # numbatches = res[1]
-    # image_shape = res[2], res[3]
-    num_labels = res[4]
+    numrecs = master_record.number_records
+    # numbatches = master_record.records_per_batch
+    # image_shape = master_record.image_shape
+    num_labels = master_record.number_labels
 
     # elems_per_label = calc_labelbin_size(num_labels, dtype().nbytes)
 
@@ -251,7 +274,8 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32):
         arr = data
     else:
         # read curfile as raw array
-        arr = np.fromfile(curfilename, dtype=dtype)
+        # arr = np.fromfile(curfilename, dtype=dtype)
+        arr = _read_batch(numrecs, dataset=dataset, dtype=dtype)
         array_size = len(arr)
         if array_size % elems_per_data != 0:
             errormsg = "Data mismatch\n"
@@ -266,10 +290,8 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32):
         if num_elements == TFLAGS.num_per_batch:
             # update num recs and current file
             numrecs += 1
-            np.savetxt(master_filename,
-                       [[numrecs, TFLAGS.num_per_batch, image.shape[0],
-                         image.shape[1], num_labels]],
-                       delimiter=" ", fmt=['%d', '%d', '%d', '%d', '%d'])
+            _save_master_file(master_filename, numrecs, TFLAGS.num_per_batch,
+                              image.shape, num_labels)
             curfilename = fpath + "/{:08d}.bin".format(numrecs)
             # arr = np.fromfile(curfilename, dtype=dtype).reshape((-1,
             # image_shape[0], image_shape[1]))
@@ -280,6 +302,86 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32):
     arr.tofile(curfilename)
 
     # now save image as a batch into a file
+
+
+def read_result_tensorflow(recno, dataset=None, dtype=np.uint32):
+    record = _read_record(recno, dataset=dataset, dtype=dtype)
+    return record
+
+
+def _read_batch(batch_number, dataset=None, dtype=np.uint32):
+    ''' Read a batch result. This is raw data (with labels if present).'''
+    fpath = TFLAGS.data_dir + "/" + dataset
+
+    batch_filename = fpath + "/{:08d}.bin".format(batch_number)
+    arr = np.fromfile(batch_filename, dtype=dtype)
+
+    return arr
+
+
+def _read_record(record_number, dataset=None, dtype=np.uint32):
+    ''' read a record
+    Save the master file
+    '''
+    fpath = TFLAGS.data_dir
+    master_filename = fpath + "/" + dataset + "/master_file.txt"
+    # first read the master
+    master_record = _read_master_file(master_filename)
+
+    number_records = master_record.number_records
+    records_per_batch = master_record.records_per_batch
+    img_shape = master_record.image_shape
+    num_labels = master_record.number_labels
+
+    if record_number > number_records:
+        errormsg = "Error, only {} records available, ".format(number_records)
+        errormsg += "but asked for record # {}".format(record_number)
+        raise ValueError(errormsg)
+
+    batch_number = record_number//records_per_batch
+    batch_record = record_number % records_per_batch
+
+    arr = _read_batch(batch_number, dataset=dataset, dtype=dtype)
+
+    # size in elements not bytes
+    label_size = calc_labelbin_size(num_labels, dtype().nbytes)
+    image_size = img_shape[0]*img_shape[1]
+    record_size = image_size + label_size
+
+    record = arr[batch_record*record_size:(batch_record + 1)*record_size]
+    labels = bin2label(record[:label_size], num_labels)
+    image = record[label_size:].reshape(img_shape)
+    record = Record(labels=labels, image=image)
+
+    return record
+
+
+def _save_master_file(filename, num_recs, num_per_batch, image_shape,
+                      num_labels):
+    ''' Save the master file
+        overwrites previous
+
+        Format:
+        num recs, num batches per rec, image shape 1, image shape 2,
+            num labels
+    '''
+    np.savetxt(filename,
+               [[num_recs, num_per_batch, image_shape[0], image_shape[1],
+                 num_labels]],
+               delimiter=" ", fmt=['%d', '%d', '%d', '%d', '%d'])
+
+
+def _read_master_file(filename):
+
+    res = np.loadtxt(filename, delimiter=" ", dtype=int)
+
+    master_record = MasterRecord()
+    master_record.number_records = res[0]
+    master_record.records_per_batch = res[1]
+    master_record.image_shape = res[2], res[3]
+    master_record.number_labels = res[4]
+
+    return master_record
 
 
 def get_filenames(dataset=None, fpath=None):

@@ -4,7 +4,8 @@ import tempfile
 from SciAnalysis.tools import make_dir
 
 from SciAnalysis.interfaces.tensorflow.tensorflow \
-        import store_result_tensorflow, get_filenames,\
+        import store_result_tensorflow, read_result_tensorflow,\
+        get_filenames,\
         label2bin, bin2label, calc_labelbin_size
 
 from SciAnalysis.config import TFLAGS
@@ -37,17 +38,20 @@ def _test_store_result(image, labels=None):
     # test that the num per batch is 3, as was set
     assert res[1] == TFLAGS.num_per_batch
     filename = tmp_path + "/test/{:08d}.bin".format(1)
-    arr = np.fromfile(filename, dtype=np.uint32)
+    record = read_result_tensorflow(0, dataset="test")
 
     image_shape = res[2], res[3]
 
     # leaving it here to be sure this numpy assumption still holds
-    nbytes = np.uint32().nbytes
-    num_labels = res[4]
-    elems_per_label = calc_labelbin_size(num_labels, nbytes)
-    labels = arr[:elems_per_label]
-    image = arr[elems_per_label:]
-    assert image.shape == image_shape[0]*image_shape[1]
+    # nbytes = np.uint32().nbytes
+    # num_labels = res[4]
+    # elems_per_label = calc_labelbin_size(num_labels, nbytes)
+    # labels = arr[:elems_per_label]
+    # image = arr[elems_per_label:]
+    labels = record.labels
+    image = record.image
+    image_size = image.shape[0]*image.shape[1]
+    assert image_size == image_shape[0]*image_shape[1]
     # should reshape fine
     image = image.reshape(image_shape)
 
