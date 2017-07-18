@@ -1,5 +1,5 @@
-from SciAnalysis.interfaces.streams import Stream
-from SciAnalysis.interfaces.StreamDoc import StreamDoc
+from SciStreams.interfaces.streams import Stream
+from SciStreams.interfaces.StreamDoc import StreamDoc
 
 
 def test_stream_map():

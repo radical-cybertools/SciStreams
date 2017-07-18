@@ -1,9 +1,9 @@
 # test the XSAnalysis Streams, make sure they're working properly
-from SciAnalysis.interfaces.StreamDoc import StreamDoc
+from SciStreams.interfaces.StreamDoc import StreamDoc
 
-from SciAnalysis.analyses.XSAnalysis.Streams import circavg
+from SciStreams.analyses.XSAnalysis.Streams import circavg
 
-from SciAnalysis.interfaces.detectors import detectors2D
+from SciStreams.interfaces.detectors import detectors2D
 
 import numpy as np
 

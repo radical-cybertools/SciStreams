@@ -1,6 +1,6 @@
 # tests the stream library
 from nose.tools import assert_raises
-from SciAnalysis.interfaces.streams import Stream, stream_map,\
+from SciStreams.interfaces.streams import Stream, stream_map,\
     stream_accumulate
 
 
