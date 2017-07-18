@@ -8,29 +8,29 @@ matplotlib.use("Agg")  # noqa
 # from dask import delayed, compute
 from collections import deque
 
-# SciAnalysis imports
+# SciStreams imports
 # this one does a bit of setup upon import, necessary
-from SciAnalysis.globals import client
-import SciAnalysis.config as config
+from SciStreams.globals import client
+import SciStreams.config as config
 
 # interfaces
-from SciAnalysis.interfaces.plotting_mpl import plotting_mpl as source_plotting
-from SciAnalysis.interfaces.databroker import databroker as source_databroker
-from SciAnalysis.interfaces.file import file as source_file
-from SciAnalysis.interfaces.xml import xml as source_xml
-# from SciAnalysis.interfaces.detectors import detectors2D
+from SciStreams.interfaces.plotting_mpl import plotting_mpl as source_plotting
+from SciStreams.interfaces.databroker import databroker as source_databroker
+from SciStreams.interfaces.file import file as source_file
+from SciStreams.interfaces.xml import xml as source_xml
+# from SciStreams.interfaces.detectors import detectors2D
 # Streams include stuff
-from SciAnalysis.interfaces.StreamDoc import StreamDoc, Arguments
-from SciAnalysis.interfaces.streams import Stream
+from SciStreams.interfaces.StreamDoc import StreamDoc, Arguments
+from SciStreams.interfaces.streams import Stream
 # Analyses
-from SciAnalysis.analyses.XSAnalysis.Data import \
+from SciStreams.analyses.XSAnalysis.Data import \
         MasterMask, MaskGenerator, Obstruction
-from SciAnalysis.analyses.XSAnalysis.Streams import CalibrationStream,\
+from SciStreams.analyses.XSAnalysis.Streams import CalibrationStream,\
     CircularAverageStream, ImageStitchingStream, ThumbStream, QPHIMapStream
-# from SciAnalysis.analyses.XSAnalysis.CustomStreams import SqFitStream
+# from SciStreams.analyses.XSAnalysis.CustomStreams import SqFitStream
 
 # get databases (not necessary)
-from SciAnalysis.interfaces.databroker.databases import databases
+from SciStreams.interfaces.databroker.databases import databases
 detector_key = "pilatus300_image"
 
 
