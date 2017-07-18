@@ -6,7 +6,7 @@
 from .database_initializers import init_db
 
 # this contains dbinfo, which may be read from a scianalysis.yml file
-import ...config as config
+from ... import config
 
 # some handlers
 from filestore.handlers import DATHandler, NpyHandler
