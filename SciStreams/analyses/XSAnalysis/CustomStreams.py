@@ -1,7 +1,7 @@
 #try a partially filled lattice
 import numpy as np
-from SciAnalysis.interfaces.StreamDoc import StreamDoc, Arguments
-from SciAnalysis.interfaces.streams import Stream
+from ...interfaces.StreamDoc import StreamDoc, Arguments
+from ...interfaces.streams import Stream
 from dask import compute, delayed
 
 

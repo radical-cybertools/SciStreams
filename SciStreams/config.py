@@ -1,7 +1,7 @@
 import yaml
 import os.path
 # reads yaml file from user directory
-filename = os.path.expanduser("~/.config/scianalysis/scianalysis.yml")
+filename = os.path.expanduser("~/.config/scistreams/scistreams.yml")
 try:
     f = open(filename)
     config = yaml.load(f)

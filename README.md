@@ -1,9 +1,10 @@
-# SciAnalysis for CMS pipeline.
+# SciStreams for CMS pipeline.
 
 ## Author : Kevin G. Yager
 ## Ported to git by : Julien Lhermitte
 
-This is a work in progress. For various notes, see internal page:
+This is a work in progress and a streaming version of SciAnalysis. For various
+notes, see internal page:
 http://gisaxs.com/CS/index.php/Databroker
 
 INSTALL:

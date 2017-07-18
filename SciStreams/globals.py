@@ -4,7 +4,7 @@ from collections import deque
 
 # client information
 # TODO : remove this client information
-import SciAnalysis.config as config
+from . import config
 
 debugcache = deque(maxlen=1)
 if config.client is not None:
