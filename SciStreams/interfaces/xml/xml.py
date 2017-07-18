@@ -1,7 +1,7 @@
 # doesn't need to be an object
 import os.path
 
-import SciAnalysis.config as config
+from ... import config
 _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
 
