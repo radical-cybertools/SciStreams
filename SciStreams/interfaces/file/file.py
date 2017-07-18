@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from .core import writers_dict
 import os
-import ...config as config
+from ... import config
 from .reading import FileDesc  # noqa
 
 _ROOTDIR = config.resultsroot
