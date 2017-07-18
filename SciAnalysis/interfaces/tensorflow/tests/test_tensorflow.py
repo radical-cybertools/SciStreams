@@ -1,18 +1,23 @@
 import numpy as np
 import tempfile
+
 from SciAnalysis.tools import make_dir
 
 from SciAnalysis.interfaces.tensorflow.tensorflow \
-        import store_result_tensorflow, get_filenames
+        import store_result_tensorflow, get_filenames,\
+        label2bin, bin2label, calc_labelbin_size
+
 from SciAnalysis.config import TFLAGS
 
 
-def test_store_result():
+def _test_store_result(image, labels=None):
     result = dict()
-    result['kwargs'] = {'image': np.ones((100, 100))}
+    result['kwargs'] = {'image': image}
+    if labels is not None:
+        result['kwargs']['labels'] = labels
 
     # temp path
-    tmp_path = tempfile.mktemp()
+    tmp_path = tempfile.mktemp(prefix="mlpipeline")
     make_dir(tmp_path)
     TFLAGS.data_dir = tmp_path
     TFLAGS.num_per_batch = 3
@@ -34,9 +39,60 @@ def test_store_result():
     filename = tmp_path + "/test/{:08d}.bin".format(1)
     arr = np.fromfile(filename, dtype=np.uint32)
 
-    arr = arr.reshape((-1, res[2], res[3]))
+    image_shape = res[2], res[3]
 
-    assert arr.shape[0] == 1
+    # leaving it here to be sure this numpy assumption still holds
+    nbytes = np.uint32().nbytes
+    num_labels = res[4]
+    elems_per_label = calc_labelbin_size(num_labels, nbytes)
+    labels = arr[:elems_per_label]
+    image = arr[elems_per_label:]
+    assert image.shape == image_shape[0]*image_shape[1]
+    # should reshape fine
+    image = image.reshape(image_shape)
 
     fnames = get_filenames(dataset="test", fpath=tmp_path)
     assert fnames[1] == tmp_path + "/test/{:08d}.bin".format(0)
+
+
+def test_store_results():
+    image = np.ones((100, 100))
+    _test_store_result(image, labels=None)
+    labels = [True, True, False, False, True]
+    _test_store_result(image, labels=labels)
+
+
+def test_label2bin():
+    ''' test the labels to bin format.'''
+    # labels read left to right
+    labels = [True]*9
+    num_labels = len(labels)
+    res = label2bin(labels, dtype=np.uint8)
+    assert (res == np.array([255, 1])).all()
+
+    labels = [True, 0, True, True]
+    num_labels = len(labels)
+    res = label2bin(labels, dtype=np.uint8)
+    assert (res == np.array([13])).all()
+
+    # check transformation works
+    returned_labels = bin2label(res, num_labels)
+    assert all([label == returned_label
+                for label, returned_label
+                in zip(labels, returned_labels)])
+
+    # now check for integers
+    labels = [2, 0, 2, 1, 1]
+    num_labels = len(labels)
+    res = label2bin(labels, dtype=np.uint8)
+    assert (res == np.array([29])).all()
+
+
+def test_calc_labelbinsize():
+    assert calc_labelbin_size(0, 0) == 0
+    assert calc_labelbin_size(0, 1) == 0
+
+    # these should not gi
+    assert calc_labelbin_size(8, 1) == 1
+    assert calc_labelbin_size(9, 1) == 2
+    assert calc_labelbin_size(9, 2) == 1
