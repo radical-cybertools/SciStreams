@@ -6,12 +6,12 @@ from SciStreams.startup import run_stream_live
 VERSION = "0.1"
 
 re_time_pairs = [
-    (re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2}$"), "%Y-%d-%m"),
-    (re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}$"), "%Y-%d-%m %H"),
+    (re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2}$"), "%Y-%m-%d"),
+    (re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}$"), "%Y-%m-%d %H"),
     (re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2}" +
-                "[0-9]{2}:[0-9]{2}$"), "%Y-%d-%m %H:%M"),
+                "[0-9]{2}:[0-9]{2}$"), "%Y-%m-%d %H:%M"),
     (re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2}" +
-                "[0-9]{2}:[0-9]{2}:[0-9]{2}$"), "%Y-%d-%m %H:%M:%S"),
+                "[0-9]{2}:[0-9]{2}:[0-9]{2}$"), "%Y-%m-%d %H:%M:%S"),
 ]
 
 
@@ -21,7 +21,7 @@ def check_time(strtime):
             tstruct = time.strptime(strtime, strform)
             return time.mktime(tstruct)
     errormsg = "Error, time not understood\n"
-    errormsg += "Formats accepted: {}\n"
+    errormsg += "Formats accepted: \n"
 
     for r, t in re_time_pairs:
         errormsg += "{}\n".format(t)
