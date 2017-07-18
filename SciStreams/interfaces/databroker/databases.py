@@ -11,8 +11,7 @@ from ... import config
 # some handlers
 from filestore.handlers import DATHandler, NpyHandler
 from .handlers_custom import PNGHandler
-from .databroker.handlers_custom \
-        import AreaDetectorTiffHandler
+from .handlers_custom import AreaDetectorTiffHandler
 
 '''
     # register some handlers

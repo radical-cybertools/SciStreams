@@ -4,6 +4,8 @@ from .Data import Calibration, Mask, MasterMask, MaskGenerator,\
 from dask.base import normalize_token
 from .tools import roundbydigits
 
+import numpy as np
+
 
 # Calibration
 ################################################################################
@@ -272,7 +274,7 @@ def tokenize_calibrationrqconv(self):
     # inherit dispatch from Calibration object
     #calib_norm = normalize_token.dispatch(Calibration)
     #args = calib_norm(self)
-    from SciAnalysis.analyses.XSAnalysis.Data import tokenize_calibration
+    from .Data import tokenize_calibration
     args = tokenize_calibration(self)
     # finally now tokenize the rest
     newargs = list()
