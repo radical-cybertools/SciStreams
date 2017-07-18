@@ -1,6 +1,6 @@
 import matplotlib
 matplotlib.use("Agg")  # noqa
-import SciAnalysis.config as config
+from ... import config
 import os.path
 
 import numpy as np
