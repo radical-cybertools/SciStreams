@@ -3,15 +3,15 @@
     Eventually this should be in some connection file.
 
 '''
-from SciAnalysis.interfaces.databroker.database_initializers import init_db
+from .database_initializers import init_db
 
 # this contains dbinfo, which may be read from a scianalysis.yml file
-import SciAnalysis.config as config
+import ...config as config
 
 # some handlers
 from filestore.handlers import DATHandler, NpyHandler
 from .handlers_custom import PNGHandler
-from SciAnalysis.interfaces.databroker.handlers_custom \
+from .databroker.handlers_custom \
         import AreaDetectorTiffHandler
 
 '''

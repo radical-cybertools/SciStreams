@@ -9,28 +9,28 @@ matplotlib.use("Agg")
 from dask import delayed, compute
 from collections import deque
 
-# SciAnalysis imports
+# SciStreams imports
 # this one does a bit of setup upon import, necessary
-from SciAnalysis.globals import client, debugcache
-import SciAnalysis.config as config
+from SciStreams.globals import client, debugcache
+import SciStreams.config as config
 
 ## interfaces
-from SciAnalysis.interfaces.plotting_mpl import plotting_mpl as source_plotting
-from SciAnalysis.interfaces.databroker import databroker as source_databroker
-from SciAnalysis.interfaces.file import file as source_file
-from SciAnalysis.interfaces.xml import xml as source_xml
-from SciAnalysis.interfaces.detectors import detectors2D
+from SciStreams.interfaces.plotting_mpl import plotting_mpl as source_plotting
+from SciStreams.interfaces.databroker import databroker as source_databroker
+from SciStreams.interfaces.file import file as source_file
+from SciStreams.interfaces.xml import xml as source_xml
+from SciStreams.interfaces.detectors import detectors2D
 # Streams include stuff
-from SciAnalysis.interfaces.StreamDoc import StreamDoc, parse_streamdoc, Arguments
-from SciAnalysis.interfaces.streams import Stream
+from SciStreams.interfaces.StreamDoc import StreamDoc, parse_streamdoc, Arguments
+from SciStreams.interfaces.streams import Stream
 ## Analyses
-from SciAnalysis.analyses.XSAnalysis.Data import MasterMask, MaskGenerator, Obstruction
-from SciAnalysis.analyses.XSAnalysis.Streams import CalibrationStream,\
+from SciStreams.analyses.XSAnalysis.Data import MasterMask, MaskGenerator, Obstruction
+from SciStreams.analyses.XSAnalysis.Streams import CalibrationStream,\
     CircularAverageStream, ImageStitchingStream, ThumbStream, QPHIMapStream
-from SciAnalysis.analyses.XSAnalysis.CustomStreams import SqFitStream
+from SciStreams.analyses.XSAnalysis.CustomStreams import SqFitStream
 
 # get databases (not necessary)
-from SciAnalysis.interfaces.databroker.databases import databases
+from SciStreams.interfaces.databroker.databases import databases
 cddb = databases['cms:data']
 
 
@@ -319,7 +319,7 @@ noqbins = None # If none, circavg will find optimal number
 
 ###### Done data loading ########
 
-#filename = os.path.expanduser("~/SciAnalysis-data/storage/YT_uids.txt")
+#filename = os.path.expanduser("~/SciStreams-data/storage/YT_uids.txt")
 # TODO : remove relative path from here
 filename = os.path.expanduser("../storage/alldata-jan-april.txt")
 data_uids = list()
@@ -348,7 +348,7 @@ for sdoc in sdoc_gen:
 init_start_time = "2017-07-11 17:58"
 
 
-from SciAnalysis.interfaces.databroker.databases import databases
+from SciStreams.interfaces.databroker.databases import databases
 cddb = databases['cms:data']
 start_time = init_start_time
 skipfirst = False

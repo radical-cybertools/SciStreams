@@ -3,7 +3,7 @@
 # http://gisaxs.com/CS/index.php/CMS#Detectors
 
 # Singlet is a dict pretty much, but it enforces a value and unit
-from SciAnalysis.data.Singlet import Singlet
+from ..data.Singlet import Singlet
 from collections import ChainMap
 # TODO maybe have members accessed with obj.pixel_size_x.value etc
 # TODO : generalize and move out? (make independent of beamline?)

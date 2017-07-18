@@ -1,12 +1,12 @@
 from .core import jpegloader, pngloader, hdf5loader, npyloader
 from .core import jpegwriter, pngwriter
 
-from SciAnalysis.interfaces.StreamDoc import StreamDoc
+from ...interfaces.StreamDoc import StreamDoc
 
 # Simple cloass to normalize way files are read
 # Add to _FORMATSPECS and _REQUIREDKEYS to handle more files
 # need a 'get' and 'identify' set of routines to make compatible with
-# SciAnalysis
+# SciStreams
 
 
 class FileDesc(dict):

@@ -10,9 +10,9 @@ import matplotlib
 from databroker.broker import Header
 import json
 
-from SciAnalysis.interfaces.databroker.writers_custom \
+from .writers_custom \
         import writers_dict as _writers_dict
-from SciAnalysis.interfaces.StreamDoc import StreamDoc
+from ..StreamDoc import StreamDoc
 from metadatastore.core import NoEventDescriptors
 
 matplotlib.use("Agg")
@@ -37,7 +37,7 @@ def Header2StreamDoc(header, dbname="cms:data", fill=True):
     attributes['data_uid'] = attributes['uid']
     sdoc.add(attributes=attributes)
 
-    from SciAnalysis.interfaces.databroker.databases import databases
+    from .databases import databases
 
     db = databases[dbname]
 
@@ -82,7 +82,7 @@ def pullrecent(dbname, protocol_name=None, **kwargs):
         StreamDoc of data
 
     '''
-    from SciAnalysis.interfaces.databroker.databases import databases
+    from .databases import databases
     # TODO : Remove the initialization when moving from sqlite to other
     # (sqlite requires db to be initialized every time... but db it can
     # be a running instance in the imported library for that process)
@@ -120,7 +120,7 @@ def pullfromuid(uid, dbname=None):
     '''
     if dbname is None:
         raise ValueError("Error must supply a dbname")
-    from SciAnalysis.interfaces.databroker.databases import databases
+    from .databases import databases
     # TODO : Remove the initialization when moving from sqlite to other
     # (sqlite requires db to be initialized every time... but db it can
     # be a running instance in the imported library for that process)
@@ -169,7 +169,7 @@ def pull(dbname, protocol_name=None, **kwargs):
 
     '''
     # Returns a StreamDoc Basically the StreamDoc constructor for databroker
-    from SciAnalysis.interfaces.databroker.databases import databases
+    from .databases import databases
     # TODO : Remove the initialization when moving from sqlite to other
     dbs = databases
     db = dbs[dbname]
@@ -203,7 +203,7 @@ def search(dbname, start_time=None, stop_time=None, **kwargs):
 
     '''
     # Returns a StreamDoc Basically the StreamDoc constructor for databroker
-    from SciAnalysis.interfaces.databroker.databases import databases
+    from .databases import databases
     # TODO : Remove the initialization when moving from sqlite to other
 
     db = databases[dbname]
@@ -293,7 +293,7 @@ def store_results_databroker(sdoc, dbname=None, external_writers={}):
     if dbname is None:
         raise ValueError("No database selected. Cancelling.")
     # TODO : change this when in mongodb
-    from SciAnalysis.interfaces.databroker.databases import databases
+    from .databases import databases
     # TODO : check for time out on database access, return an erorr that makes
     # sense
     db = databases[dbname]

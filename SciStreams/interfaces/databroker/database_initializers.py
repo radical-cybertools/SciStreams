@@ -16,7 +16,7 @@ from databroker.broker import Broker
 
 def init_db(host, port, mdsname, fsname, handlers=None):
     ''' Initialize a database.
-        This is the general function used in SciAnalysis to handle this
+        This is the general function used in SciStreams to handle this
 
         Need to supply a host, port, mdsname and fsname
 

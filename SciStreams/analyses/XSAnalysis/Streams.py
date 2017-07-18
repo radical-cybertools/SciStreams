@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vi: ts=4 sw=4
 
-from SciAnalysis.globals import cache, client
+from ...globals import cache, client
 cache.register()  # noqa
 
 
@@ -16,12 +16,12 @@ import numpy as np
 from dask.delayed import delayed
 
 from collections import ChainMap
-from SciAnalysis.data.Singlet import Singlet
+from ...data.Singlet import Singlet
 
 # Sources
-from SciAnalysis.interfaces.detectors import detectors2D
+from ...interfaces.detectors import detectors2D
 
-from SciAnalysis.interfaces.StreamDoc import Arguments
+from ...interfaces.StreamDoc import Arguments
 
 
 '''
@@ -30,11 +30,11 @@ from SciAnalysis.interfaces.StreamDoc import Arguments
 
 # from SciAnalysis.analyses.XSAnalysis.Data import Calibration
 # use RQConv now
-from SciAnalysis.analyses.XSAnalysis.DataRQconv \
+from .DataRQconv \
         import CalibrationRQconv as Calibration
 
-from SciAnalysis.interfaces.StreamDoc import StreamDoc
-from SciAnalysis.interfaces.streams import Stream
+from ...interfaces.StreamDoc import StreamDoc
+from ...interfaces.streams import Stream
 
 from collections import deque
 
@@ -127,7 +127,7 @@ def CalibrationStream(keymap_name=None, detector=None):  # , wrapper=None):
     # calib_obj.map(print, raw=True)
 
     def printcache(obj):
-        from SciAnalysis.globals import cache
+        from ...globals import cache
         print("cache is {}".format(cache.cache.data))
         return obj
     # calib_obj.map(printcache, raw=True)
@@ -559,7 +559,7 @@ def todict(kwargs):
     ''' assume input is a dictionary, split into kwargs.'''
     return Arguments(**kwargs)
 
-from SciAnalysis.analyses.XSAnalysis.tools import xystitch_accumulate, xystitch_result
+from .tools import xystitch_accumulate, xystitch_result
 def _xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc):
     # print("_xystitch_result, img_acc : {}".format(img_acc))
     return xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc)

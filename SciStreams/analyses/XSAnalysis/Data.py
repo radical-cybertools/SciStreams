@@ -1,39 +1,14 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-# vi: ts=4 sw=4
-'''
-:mod:`SciAnalysis.XSAnalysis.Data` - Base objects for XSAnalysis
-================================================
-.. module:: SciAnalysis.XSAnalysis
-   :synopsis: Provides base classes for doing analysis of x-ray scattering data
-.. moduleauthor:: Dr. Kevin G. Yager <kyager@bnl.gov>
-                    Brookhaven National Laboratory
-
-
-    Stream version of data
-'''
-
-###############################################################################
-#  This code defines some baseline objects for x-ray analysis.
-###############################################################################
-# Known Bugs:
-#  N/A
-###############################################################################
-# TODO:
-#  Search for "TODO" below.
-###############################################################################
-
-from SciAnalysis.data.Singlet import Singlet
+from ...data.Singlet import Singlet
 from collections import ChainMap
 
 import numpy as np
 
-from SciAnalysis.interfaces.detectors import detectors2D
+from ...interfaces.detectors import detectors2D
 
 from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage.interpolation import rotate as scipy_rotate
 
-from SciAnalysis.analyses.XSAnalysis.tools import xystitch_accumulate, roundbydigits
+from .tools import xystitch_accumulate, roundbydigits
 
 from dask.delayed import tokenize
 '''

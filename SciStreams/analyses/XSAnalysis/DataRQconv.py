@@ -1,30 +1,8 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-# vi: ts=4 sw=4
-'''
-:mod:`SciAnalysis.XSAnalysis.DataWAXS` - Handling wide-angle area detectors
-================================================
-.. module:: SciAnalysis.XSAnalysis
-   :synopsis: Provides base classes for doing analysis of x-ray data with tilted detectors
-.. moduleauthor:: Dr. Kevin G. Yager <kyager@bnl.gov>
-                    Brookhaven National Laboratory
-'''
-
-################################################################################
-#  This code defines some baseline objects for analysis of detectors with
-# arbitrary tilts (e.g. for WAXS).
-################################################################################
-# Known Bugs:
-#  N/A
-################################################################################
-# TODO:
-#  Search for "TODO" below.
-################################################################################
-
-from .Data import *
+from .Data import Calibration, Mask, MasterMask, MaskGenerator,\
+        Obstruction, Calibration
 
 from dask.base import normalize_token
-from SciAnalysis.analyses.XSAnalysis.tools import roundbydigits
+from .tools import roundbydigits
 
 
 # Calibration
