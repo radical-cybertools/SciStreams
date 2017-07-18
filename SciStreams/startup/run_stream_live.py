@@ -401,8 +401,9 @@ def start_run(start_time, dbname="cms:data",
             try:
                 sin.emit(uid)
                 sleep(.1)
-            except KeyError:
-                print("Got a keyerror (no image likely), ignoring")
+            except KeyError as e:
+                errormsg = "Got a keyerror (no image likely), ignoring\n"
+                errormsg += "{}".format(e)
             except ValueError as e:
                 print("got ValueError: {}".format(e))
             except FileNotFoundError:

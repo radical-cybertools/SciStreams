@@ -371,7 +371,7 @@ def parse_streamdoc(name):
                 print("Got {} arguments".format(len(ba.args)))
                 print("Got kwargs : {}".format(list(ba.kwargs.keys())))
                 print("But expected : {}".format(sig))
-                print("Returning empty result")
+                print("Returning empty result, see error report below")
                 result = {}
                 _cleanexit(f, statistics)
             except Exception:
