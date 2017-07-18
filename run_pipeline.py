@@ -1,7 +1,7 @@
 import argparse
 import re
 import time
-from SciAnalysis.startup import run_stream_live
+from .startup import run_stream_live
 
 VERSION = "0.1"
 
