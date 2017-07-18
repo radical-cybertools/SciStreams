@@ -598,13 +598,13 @@ def ImageStitchingStream(return_intermediate=False):
             if key not in kwargs:
                 message = "{} not in kwargs".format(key)
                 return dict(state=False, message=message)
-        if not isinstance(np.ndarray(kwargs['mask'] )):
+        if not isinstance(kwargs['mask'], np.ndarray):
             return dict(state=False, message="mask is not array")
 
-        if not isinstance(np.ndarray(kwargs['image'] )):
+        if not isinstance(kwargs['image'], np.ndarray):
             return dict(state=False, message="image is not array")
 
-        if len(origin) != 2:
+        if len(kwargs['origin']) != 2:
             return dict(state=False, message="origin not length 2")
         return True
 
