@@ -29,8 +29,6 @@ class Stream(object):
 
 
     stream_name : the stream name (optional but useful for debugging)
-    validator : an output validator (takes a data as input and returns
-    True/False)
 
     Examples
     --------
@@ -69,9 +67,6 @@ class Stream(object):
         if stream_name is None:
             stream_name = "N/A"
         self.stream_name = stream_name
-
-        if validator is not None:
-            self.validate_output = validator
 
     def emit(self, x):
         """ Push data into the stream at this point

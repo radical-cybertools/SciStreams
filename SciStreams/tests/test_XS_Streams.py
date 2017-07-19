@@ -1,7 +1,7 @@
 # test the XSAnalysis Streams, make sure they're working properly
 from SciStreams.interfaces.StreamDoc import StreamDoc
 from SciStreams.analyses.XSAnalysis.Streams import ImageStitchingStream,\
-    CalibrationStream, CircularAverageStream
+    CalibrationStream, CircularAverageStream, QPHIMapStream
 
 from SciStreams.analyses.XSAnalysis.tools import roundbydigits
 
@@ -24,7 +24,7 @@ def test_CalibrationStream_pilatus():
 
     sin, sout = CalibrationStream(keymap_name=keymap_name, detector=detector)
     L = list()
-    sout.map(L.append, raw=True)
+    sout.map(L.append)
 
     data = dict(
         calibration_wavelength_A=1.0,
@@ -57,7 +57,6 @@ def test_CalibrationStream_pilatus():
 
 def test_CircularAverageStream():
     ''' Test the circular average stream'''
-    pass
     sin, sout = CircularAverageStream()
 
     L = list()
@@ -86,12 +85,37 @@ def test_CircularAverageStream():
     return L
 
 
-def test_ImageStitch():
+def test_QPHIMapStream():
+    ''' Test the qphimap stream'''
+    bins = (3,4)
+    sin, sout = QPHIMapStream(bins=bins)
+
+    L = list()
+    sout.map(L.append)
+
+    mask = None
+    img = np.random.random((10, 10))
+    x = np.linspace(-5, 5, 10)
+    X, Y = np.meshgrid(x, x)
+    r_map = np.sqrt(X**2 + Y**2)
+    q_map = r_map*.12
+
+    origin = (3,3)
+
+    sdoc = StreamDoc(args=[img],
+                     kwargs=dict(origin=origin, mask=mask))
+
+    sin.emit(sdoc)
+
+    assert(L[0]['kwargs']['sqphi'].shape == bins)
+
+
+def test_ImageStitchingStream():
     ''' test the image stitching.'''
     sin, sout = ImageStitchingStream()
 
     L = list()
-    sout.map(L.append, raw=True)
+    sout.map(L.append)
 
     mask = np.ones((10, 10), dtype=np.int64)
     img1 = np.ones_like(mask, dtype=float)
@@ -175,5 +199,8 @@ def test_roundbydigits():
     res = roundbydigits(np.array([123.421421, 1.1351,
                                   np.nan, np.inf, 0]), digits=6)
     assert_array_equal(res, np.array([123.421, 1.1351, np.nan, np.inf, 0]))
+
+def testThumbStream():
+    pass
 
 # rcParams['image.interpolation'] = None

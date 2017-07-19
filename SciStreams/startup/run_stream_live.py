@@ -21,6 +21,11 @@ from SciStreams.interfaces.xml import xml as source_xml
 # from SciStreams.interfaces.detectors import detectors2D
 # Streams include stuff
 from SciStreams.interfaces.StreamDoc import StreamDoc, Arguments
+
+# wrappers for parsing streamdocs
+from SciStreams.interfaces.StreamDoc import parse_streamdoc_map as psdm,\
+        parse_streamdoc_acc as psda
+
 from SciStreams.interfaces.streams import Stream
 # Analyses
 from SciStreams.analyses.XSAnalysis.Data import \
@@ -32,6 +37,7 @@ from SciStreams.analyses.XSAnalysis.Streams import CalibrationStream,\
 # get databases (not necessary)
 from SciStreams.interfaces.databroker.databases import databases
 detector_key = "pilatus300_image"
+
 
 
 def search_mask(detector_key, date=None):

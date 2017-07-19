@@ -14,7 +14,6 @@ from ..globals import debugcache
 from dask.delayed import delayed
 from dask.base import normalize_token
 
-from .streams import stream_map, stream_accumulate
 
 # this class is used to wrap outputs to inputs
 # for ex, if a function returns Arguments(12,34, g=23,h=20)
@@ -27,16 +26,6 @@ class Arguments:
         self.args = args
         self.kwargs = kwargs
 
-
-# @stream_map.register(Delayed)
-# def stream_map_delayed(obj, func, **kwargs):
-    # return delayed(func)(obj)
-
-# @stream_accumulate.register(Delayed)
-# def stream_accumulate_delayed(obj, func, accumulator, **kwargs):
-    # return delayed(func)(accumulator, obj)
-
-
 # general idea : use single dispatch to act differently on different function
 # inputs. This allows one to change behaviour of how output args and kwargs are
 # sent
@@ -48,6 +37,23 @@ def parse_args(res):
 @parse_args.register(Arguments)
 def parse_args_Arguments(res):
     return Arguments(*res.args, **res.kwargs)
+
+# routines that add on to stream doc functionality
+def select(sdoc, *mapping):
+    return sdoc.select(*mapping)
+
+def pack(*args, **kwargs):
+    ''' pack arguments into one set of arguments.'''
+    return args
+
+def unpack(args):
+    ''' assume input is a tuple, split into arguments.'''
+    # print("Arguments : {}".format(args))
+    return Arguments(*args)
+
+def todict(kwargs):
+    ''' assume input is a dictionary, split into kwargs.'''
+    return Arguments(**kwargs)
 
 
 class StreamDoc(dict):
@@ -105,15 +111,6 @@ class StreamDoc(dict):
         self['statistics'].update(statistics)
 
         return self
-
-    # def __stream_map__(self, func, **kwargs):
-        # return parse_streamdoc("map")(func)(self, **kwargs)
-
-    # def __stream_reduce__(self, func, accumulator):
-        # return parse_streamdoc("reduce")(func)(accumulator, self)
-
-    # def __stream_merge__(self, *others):
-        # return self.merge(*others)
 
     @property
     def args(self):
@@ -279,24 +276,6 @@ class StreamDoc(dict):
         return streamdoc
 
 
-def check_sdoc(sdoc):
-    return isinstance(sdoc, StreamDoc)
-
-
-@stream_map.register(StreamDoc)
-def stream_map_streamdoc(func, obj, **kwargs):
-    # print("in stream map for StreamDoc, obj : {}".format(obj))
-    return parse_streamdoc("map")(func)(obj, **kwargs)
-
-
-@stream_accumulate.register(StreamDoc)
-def stream_accumulate_streamdoc(prevobj, nextobj, func=None, **kwargs):
-    # print("accumulating a streamdoc")
-    return parse_streamdoc("accumulate")(func)(prevobj, nextobj, **kwargs)
-    # def __stream_reduce__(self, func, accumulator):
-    # return parse_streamdoc("reduce")(func)(accumulator, self)
-
-
 def _is_streamdoc(doc):
     if isinstance(doc, dict) and '_StreamDoc' in doc:
         return True
@@ -405,6 +384,9 @@ def parse_streamdoc(name):
         return f_new
 
     return streamdoc_dec
+
+parse_streamdoc_map = parse_streamdoc("map")
+parse_streamdoc_acc = parse_streamdoc("acc")
 
 
 def _cleanexit(f, statistics):
