@@ -23,9 +23,8 @@ from ...interfaces.detectors import detectors2D
 
 from ...interfaces.StreamDoc import Arguments
 # wrappers for parsing streamdocs
-from SciStreams.interfaces.StreamDoc import parse_streamdoc_map as psdm,\
-        parse_streamdoc_acc as psda
-from SciStreams.interfaces.StreamDoc import select, pack, unpack, todict
+from ...interfaces.StreamDoc import select, pack, unpack, todict,\
+        add_attributes, psdm, psda
 
 
 '''
@@ -42,12 +41,6 @@ from ...interfaces.streams import Stream
 
 from collections import deque
 
-
-def add_attributes(sdoc, **attr):
-    newsdoc = StreamDoc(sdoc)
-    newsdoc.add(attributes=attr)
-    return newsdoc
-
 # cache for qmaps
 # TODO : clean this up
 QMAP_CACHE = deque(maxlen=1000)
@@ -63,10 +56,6 @@ def CalibrationStream(keymap_name=None, detector=None):  # , wrapper=None):
             A calibration dictionary
 
         Optional parameters:
-            wrapper : specify a wrapper function
-                usually something like delayed
-                This is stream-specific
-
             keymap_name : the name of the keymap to use
                 for now, it's just 'cms' for cms data
 
@@ -642,6 +631,7 @@ def ThumbStream(blur=None, crop=None, resize=None):
             reduced image
 
     '''
+    # TODO add flags to actually process into thumbs
     sin = Stream()
     s0 = sin.map((add_attributes), stream_name="Thumb")
     # s1 = sin.add_attributes(stream_name="ThumbStream")

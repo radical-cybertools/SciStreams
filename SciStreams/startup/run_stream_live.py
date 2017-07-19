@@ -23,8 +23,7 @@ from SciStreams.interfaces.xml import xml as source_xml
 from SciStreams.interfaces.StreamDoc import StreamDoc, Arguments
 
 # wrappers for parsing streamdocs
-from SciStreams.interfaces.StreamDoc import parse_streamdoc_map as psdm,\
-        parse_streamdoc_acc as psda
+from SciStreams.interfaces.StreamDoc import psdm, psda, squash
 
 from SciStreams.interfaces.streams import Stream
 # Analyses
@@ -33,6 +32,10 @@ from SciStreams.analyses.XSAnalysis.Data import \
 from SciStreams.analyses.XSAnalysis.Streams import CalibrationStream,\
     CircularAverageStream, ImageStitchingStream, ThumbStream, QPHIMapStream
 # from SciStreams.analyses.XSAnalysis.CustomStreams import SqFitStream
+
+# wrappers for parsing streamdocs
+from SciStreams.interfaces.StreamDoc import select, pack, unpack, todict, toargs,\
+        add_attributes, psdm, psda, merge
 
 # get databases (not necessary)
 from SciStreams.interfaces.databroker.databases import databases
@@ -105,13 +108,6 @@ master_mask = MasterMask(master=obs_total.mask, origin=obs_total.origin)
 # Instantiate the master mask generator
 mmg = MaskGenerator(master_mask, blemish)
 
-
-def add_attributes(sdoc, **attr):
-    newsdoc = StreamDoc(sdoc)
-    newsdoc.add(attributes=attr)
-    return newsdoc
-
-
 # TODO merge check with get stitch
 def check_stitchback(sdoc):
     sdoc['attributes']['stitchback'] = True
@@ -132,14 +128,6 @@ def safelog10(img):
     return img_out
 
 
-def todict(arg):
-    return Arguments(**arg)
-
-
-def toargs(arg):
-    return Arguments(*arg)
-
-
 # sample custom written function
 def PCA_fit(data, n_components=10):
     ''' Run principle component analysis on data.
@@ -157,51 +145,6 @@ def PCA_fit(data, n_components=10):
     components = components.reshape((n_components, *datashape))
     return dict(components=components)
 
-
-# TODO :  need to fix this
-def squash(sdocs):
-    newsdoc = StreamDoc()
-    for sdoc in sdocs:
-        newsdoc.add(attributes=sdoc['attributes'])
-    N = len(sdocs)
-    cnt = 0
-    newargs = []
-    newkwargs = dict()
-    for sdoc in sdocs:
-        args, kwargs = sdoc['args'], sdoc['kwargs']
-        for i, arg in enumerate(args):
-            if cnt == 0:
-                if isinstance(arg, np.ndarray):
-                    newshape = []
-                    newshape.append(N)
-                    newshape.extend(arg.shape)
-                    newargs.append(np.zeros(newshape))
-                else:
-                    newargs.append([])
-            if isinstance(arg, np.ndarray):
-                newargs[i][cnt] = arg
-            else:
-                newargs[i].append[arg]
-
-        for key, val in kwargs.items():
-            if cnt == 0:
-                if isinstance(val, np.ndarray):
-                    newshape = []
-                    newshape.append(N)
-                    newshape.extend(val.shape)
-                    newkwargs[key] = np.zeros(newshape)
-                else:
-                    newkwargs[key] = []
-            if isinstance(val, np.ndarray):
-                newkwargs[key][cnt] = val
-            else:
-                newkwargs[key].append[val]
-
-        cnt = cnt + 1
-
-    newsdoc.add(args=newargs, kwargs=newkwargs)
-
-    return newsdoc
 
 
 def isSAXS(sdoc):
@@ -222,30 +165,30 @@ sin = Stream()
 # TODO : run asynchronously?
 
 s_event = sin\
-        .map(source_databroker.pullfromuid, dbname='cms:data', raw=True)
+        .map(source_databroker.pullfromuid, dbname='cms:data')
 
-s_event = s_event.map((check_stitchback), raw=True)
+s_event = s_event.map(check_stitchback)
 
 # next start working on result
 s_event = s_event\
-        .map((add_attributes), stream_name="InputStream", raw=True)
+        .map(add_attributes, stream_name="InputStream")
 s_event = s_event\
-        .map((set_detector_name), detector_name='pilatus300', raw=True)
+        .map(set_detector_name, detector_name='pilatus300')
 
 #  separate data from attributes
-attributes = s_event.map((lambda x: StreamDoc(args=x['attributes'])), raw=True)
+attributes = s_event.map((lambda x: StreamDoc(args=x['attributes'])))
 
 # get image from the input stream
-image = s_event.map(lambda x: (x.select)((detector_key, None)), raw=True)\
-        .map(lambda x: x.astype(float))
+image = s_event.map(lambda x: (x.select)((detector_key, None)))\
+        .map(psdm(lambda x: x.astype(float)))
 
 # calibration setup
 sin_calib, sout_calib = CalibrationStream()
 # grab the origin
-origin = sout_calib.map(lambda x: (x.origin[1], x.origin[0]))
+origin = sout_calib.map(psdm(lambda x: (x.origin[1], x.origin[0])))
 
 # connect attributes to sin_calib
-attributes.map(sin_calib.emit, raw=True)
+attributes.map(sin_calib.emit)
 
 
 # example on how to quickly blemish a pixel
@@ -255,71 +198,67 @@ def blemish_mask(mask):
     return mask
 
 # generate a mask
-mskstr = origin.map(mmg.generate)
-mskstr = mskstr.map(blemish_mask)
+mskstr = origin.map(psdm(mmg.generate))
+mskstr = mskstr.map(psdm(blemish_mask))
 
-mask_stream = mskstr.select((0, 'mask'))
-
-
-def pack(*args):
-    return args
+mask_stream = mskstr.map(select, (0, 'mask'))
 
 
 # circular average
-sin_image_qmap = image.merge(sout_calib, mask_stream)
+sin_image_qmap = image.map(merge, sout_calib, mask_stream)
 out_list = deque(maxlen=10)
 sin_circavg, sout_circavg = CircularAverageStream()
-sin_image_qmap.select(0, 1, 'mask').map(sin_circavg.emit, raw=True)
+sin_image_qmap.map(select, 0, 1, 'mask').map(sin_circavg.emit)
 
 # image stitching
 stitch = attributes\
-        .map(lambda x: x['stitchback']).select((0, 'stitchback'))
+        .map(psdm(lambda x: x['stitchback'])).map(select, (0, 'stitchback'))
 exposure_time = attributes\
-        .map(lambda x: x['sample_exposure_time'])\
-        .select((0, 'exposure_time'))
+        .map(psdm(lambda x: x['sample_exposure_time']))\
+        .map(select, (0, 'exposure_time'))
 
 exposure_mask = mask_stream\
-        .select(('mask', None))
+        .map(select, ('mask', None))
 exposure_mask = exposure_mask\
-        .merge(exposure_time.select(('exposure_time', None)))\
-        .map(lambda a, b: a*b)
+        .map(merge, exposure_time.map(select,('exposure_time', None)))\
+        .map(psdm(lambda a, b: a*b))
 
-exposure_mask = exposure_mask.select((0, 'mask'))
+exposure_mask = exposure_mask.map(select, (0, 'mask'))
 
 # set return_intermediate to True to get all stitches
 sin_imgstitch, sout_imgstitch = ImageStitchingStream(return_intermediate=False)
 
-sout_imgstitch_log = sout_imgstitch.select(('image', None))\
-        .map(safelog10).select((0, 'image'))
+sout_imgstitch_log = sout_imgstitch.map(select,('image', None))\
+        .map(psdm(safelog10)).map(select, (0, 'image'))
 sout_imgstitch_log = sout_imgstitch_log\
-        .map((add_attributes), stream_name="ImgStitchLog", raw=True)
+        .map(add_attributes, stream_name="ImgStitchLog")
 
 img_masked = image\
-        .merge(mask_stream.select(('mask', None))).map(lambda a, b: a*b)
-img_mask_origin = img_masked.select((0, 'image'))\
-        .merge(exposure_mask.select(('mask', 'mask')),
-               origin.select((0, 'origin')), stitch)
-img_mask_origin.map(sin_imgstitch.emit, raw=True)
+        .map(merge, mask_stream.map(select, ('mask', None))).map(psdm(lambda a, b: a*b))
+img_mask_origin = img_masked.map(select, (0, 'image'))\
+        .map(merge, exposure_mask.map(select, ('mask', 'mask')),
+             origin.map(select, (0, 'origin')), stitch)
+img_mask_origin.map(sin_imgstitch.emit)
 
 sin_thumb, sout_thumb = ThumbStream(blur=1, resize=2)
-image.map(sin_thumb.emit, raw=True)
+image.map(sin_thumb.emit)
 images = list()
 
-sout_img_partitioned = sout_thumb.select(('thumb', None))\
+sout_img_partitioned = sout_thumb.map(select, ('thumb', None))\
         .partition(100)\
-        .map(squash, raw=True)
+        .map(squash)
 
 sout_img_pca = sout_img_partitioned\
-        .map(PCA_fit, n_components=16)\
-        .map(add_attributes, stream_name="PCA", raw=True).map(todict)
+        .map(psdm(PCA_fit), n_components=16)\
+        .map(add_attributes, stream_name="PCA").map(psdm(todict))
 
 # fitting
 # sqfit_in, sqfit_out = SqFitStream()
 # sout_circavg.apply(sqfit_in.emit)
 
 sqphi_in, sqphi_out = QPHIMapStream()
-image.merge(mask_stream, origin.select((0, 'origin')))\
-        .map(sqphi_in.emit, raw=True)
+image.map(merge, mask_stream, origin.map(select, (0, 'origin')))\
+        .map(sqphi_in.emit)
 
 
 # save to plots
@@ -327,53 +266,52 @@ resultsqueue = deque(maxlen=1000)
 sout_circavg.map((source_plotting.store_results),
                  lines=[('sqx', 'sqy')],
                  scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$",
-                 ylabel="I(q)", raw=True)\
-        .map(client.compute, raw=True).map(resultsqueue.append, raw=True)
+                 ylabel="I(q)")\
+        .map(client.compute).map(resultsqueue.append)
 sout_imgstitch\
         .map((source_plotting.store_results),
-             images=['image'], hideaxes=True,
-             raw=True)\
-        .map(client.compute, raw=True).map(resultsqueue.append, raw=True)
+             images=['image'], hideaxes=True)\
+        .map(client.compute).map(resultsqueue.append)
 
 sout_imgstitch_log\
         .map((source_plotting.store_results), images=['image'],
-             hideaxes=True, raw=True)\
-        .map(client.compute, raw=True)\
-        .map(resultsqueue.append, raw=True)
+             hideaxes=True)\
+        .map(client.compute)\
+        .map(resultsqueue.append)
 sout_thumb\
         .map((source_plotting.store_results), images=['thumb'],
-             hideaxes=True, raw=True)\
-        .map(client.compute, raw=True)\
-        .map(resultsqueue.append, raw=True)
-sout_thumb.select(('thumb', None)).map(safelog10).select((0, 'thumb'))\
-        .map((add_attributes), stream_name="ThumbLog", raw=True)\
-        .map((source_plotting.store_results), images=['thumb'],
-             hideaxes=True, raw=True)\
-        .map(client.compute, raw=True).map(resultsqueue.append, raw=True)
+             hideaxes=True)\
+        .map(client.compute)\
+        .map(resultsqueue.append)
+sout_thumb.map(select, ('thumb', None)).map(psdm(safelog10)).map(select, (0, 'thumb'))\
+        .map(add_attributes, stream_name="ThumbLog")\
+        .map(source_plotting.store_results, images=['thumb'],
+             hideaxes=True)\
+        .map(client.compute).map(resultsqueue.append)
 
-sqphi_out.map(source_plotting.store_results, raw=True,
+sqphi_out.map(source_plotting.store_results,
               images=['sqphi'], xlabel="$\phi$",
               ylabel="$q$", vmin=0, vmax=100)\
-        .map(resultsqueue.append, raw=True)
+        .map(resultsqueue.append)
 sout_img_pca\
         .map(source_plotting.store_results,
-             images=['components'], raw=True)\
-        .map(client.compute, raw=True)\
-        .map(resultsqueue.append, raw=True)
+             images=['components'])\
+        .map(client.compute)\
+        .map(resultsqueue.append)
 
 # save to file system
 sout_thumb\
         .map((source_file.store_results_file),
-             {'writer': 'npy', 'keys': ['thumb']}, raw=True)\
-        .map(client.compute, raw=True).map(resultsqueue.append, raw=True)
+             {'writer': 'npy', 'keys': ['thumb']})\
+        .map(client.compute).map(resultsqueue.append)
 sout_circavg\
         .map((source_file.store_results_file),
-             {'writer': 'npy', 'keys': ['sqx', 'sqy']}, raw=True)\
-        .map(client.compute).map(resultsqueue.append, raw=True)
+             {'writer': 'npy', 'keys': ['sqx', 'sqy']})\
+        .map(client.compute).map(resultsqueue.append)
 
 # save to xml
-sout_circavg.map((source_xml.store_results_xml), outputs=None, raw=True)\
-        .map(client.compute).map(resultsqueue.append, raw=True)
+sout_circavg.map((source_xml.store_results_xml), outputs=None)\
+        .map(client.compute).map(resultsqueue.append)
 
 # TODO : make databroker not save numpy arrays by default i flonger than a
 # certain size
@@ -434,3 +372,7 @@ def start_run(start_time, dbname="cms:data",
         # at the end, update time stamp for latest time
         print("Reached end, waiting 1 sec for more data...")
         sleep(1)
+
+if __name__ == "__main__":
+    start_time = time.time()-24*3600
+    start_run(start_time)

@@ -46,6 +46,9 @@ def pack(*args, **kwargs):
     ''' pack arguments into one set of arguments.'''
     return args
 
+def toargs(arg):
+    return Arguments(*arg)
+
 def unpack(args):
     ''' assume input is a tuple, split into arguments.'''
     # print("Arguments : {}".format(args))
@@ -54,6 +57,68 @@ def unpack(args):
 def todict(kwargs):
     ''' assume input is a dictionary, split into kwargs.'''
     return Arguments(**kwargs)
+
+def add_attributes(sdoc, **attr):
+    newsdoc = StreamDoc(sdoc)
+    newsdoc.add(attributes=attr)
+    return newsdoc
+
+def merge(sdoc, *sdocs):
+    print("merging {} and {}".format(sdoc, sdocs))
+    return sdoc.merge(*sdocs)
+
+# TODO :  need to fix this
+def squash(sdocs):
+    ''' Squash results together.
+
+
+        For ex, a list of sdocs with a 2D np array
+            will lead to one sdoc with a 3D np array
+        etc.
+    '''
+    newsdoc = StreamDoc()
+    for sdoc in sdocs:
+        newsdoc.add(attributes=sdoc['attributes'])
+    N = len(sdocs)
+    cnt = 0
+    newargs = []
+    newkwargs = dict()
+    for sdoc in sdocs:
+        args, kwargs = sdoc['args'], sdoc['kwargs']
+        for i, arg in enumerate(args):
+            if cnt == 0:
+                if isinstance(arg, np.ndarray):
+                    newshape = []
+                    newshape.append(N)
+                    newshape.extend(arg.shape)
+                    newargs.append(np.zeros(newshape))
+                else:
+                    newargs.append([])
+            if isinstance(arg, np.ndarray):
+                newargs[i][cnt] = arg
+            else:
+                newargs[i].append[arg]
+
+        for key, val in kwargs.items():
+            if cnt == 0:
+                if isinstance(val, np.ndarray):
+                    newshape = []
+                    newshape.append(N)
+                    newshape.extend(val.shape)
+                    newkwargs[key] = np.zeros(newshape)
+                else:
+                    newkwargs[key] = []
+            if isinstance(val, np.ndarray):
+                newkwargs[key][cnt] = val
+            else:
+                newkwargs[key].append[val]
+
+        cnt = cnt + 1
+
+    newsdoc.add(args=newargs, kwargs=newkwargs)
+
+    return newsdoc
+
 
 
 class StreamDoc(dict):
@@ -177,7 +242,7 @@ class StreamDoc(dict):
             The new streamdoc's attributes/kwargs will override this one upon
             collison.
         '''
-        # print("in merge : {}".format(newstreamdocs[0]))
+        print("in merge : {}".format(newstreamdocs[0]))
         streamdoc = StreamDoc(self)
         for newstreamdoc in newstreamdocs:
             streamdoc.updatedoc(newstreamdoc)
@@ -386,7 +451,9 @@ def parse_streamdoc(name):
     return streamdoc_dec
 
 parse_streamdoc_map = parse_streamdoc("map")
+psdm = parse_streamdoc_map
 parse_streamdoc_acc = parse_streamdoc("acc")
+psda = parse_streamdoc_acc
 
 
 def _cleanexit(f, statistics):

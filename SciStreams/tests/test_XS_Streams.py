@@ -1,7 +1,8 @@
 # test the XSAnalysis Streams, make sure they're working properly
 from SciStreams.interfaces.StreamDoc import StreamDoc
 from SciStreams.analyses.XSAnalysis.Streams import ImageStitchingStream,\
-    CalibrationStream, CircularAverageStream, QPHIMapStream
+        CalibrationStream, CircularAverageStream, QPHIMapStream,\
+        ThumbStream
 
 from SciStreams.analyses.XSAnalysis.tools import roundbydigits
 
@@ -200,7 +201,15 @@ def test_roundbydigits():
                                   np.nan, np.inf, 0]), digits=6)
     assert_array_equal(res, np.array([123.421, 1.1351, np.nan, np.inf, 0]))
 
-def testThumbStream():
-    pass
+def test_ThumbStream():
+    sin, sout = ThumbStream()
+
+    L = list()
+    sout.map(L.append)
+
+    image = np.ones((100,100))
+    sin.emit(StreamDoc(args=[image]))
+
+    assert isinstance(L[0]['kwargs']['thumb'], np.ndarray)
 
 # rcParams['image.interpolation'] = None
