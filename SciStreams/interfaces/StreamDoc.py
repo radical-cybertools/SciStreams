@@ -63,9 +63,11 @@ def add_attributes(sdoc, **attr):
     newsdoc.add(attributes=attr)
     return newsdoc
 
-def merge(sdoc, *sdocs):
-    print("merging {} and {}".format(sdoc, sdocs))
-    return sdoc.merge(*sdocs)
+def merge(sdocs):
+    ''' merge a zipped tuple of streamdocs.'''
+    if len(sdocs) < 2:
+        raise ValueError("Error, number of sdocs not 2 or greater")
+    return sdocs[0].merge(*(sdocs[1:]))
 
 # TODO :  need to fix this
 def squash(sdocs):

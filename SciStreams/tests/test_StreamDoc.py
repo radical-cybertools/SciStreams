@@ -52,7 +52,7 @@ def test_merge():
     s1 = Stream()
     s2 = Stream()
 
-    stot = s1.map(merge, s2)
+    stot = s1.zip(s2).map(merge)
 
     L = list()
     stot.map(L.append)

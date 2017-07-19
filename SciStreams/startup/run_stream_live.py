@@ -205,7 +205,7 @@ mask_stream = mskstr.map(select, (0, 'mask'))
 
 
 # circular average
-sin_image_qmap = image.map(merge, sout_calib, mask_stream)
+sin_image_qmap = image.zip(sout_calib, mask_stream).map(merge)
 out_list = deque(maxlen=10)
 sin_circavg, sout_circavg = CircularAverageStream()
 sin_image_qmap.map(select, 0, 1, 'mask').map(sin_circavg.emit)
