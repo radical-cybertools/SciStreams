@@ -242,8 +242,15 @@ origin = sout_calib.map(lambda x: (x.origin[1], x.origin[0]))
 attributes.map(sin_calib.emit, raw=True)
 
 
+# example on how to quickly blemish a pixel
+def blemish_mask(mask):
+    # Add more entries here to blemish extra pixels
+    mask[248, 56] = 0
+    return mask
+
 # generate a mask
 mskstr = origin.map(mmg.generate)
+mskstr = mskstr.map(blemish_mask)
 
 mask_stream = mskstr.select((0, 'mask'))
 
@@ -273,7 +280,8 @@ exposure_mask = exposure_mask\
 
 exposure_mask = exposure_mask.select((0, 'mask'))
 
-sin_imgstitch, sout_imgstitch = ImageStitchingStream(return_intermediate=True)
+# set return_intermediate to True to get all stitches
+sin_imgstitch, sout_imgstitch = ImageStitchingStream(return_intermediate=False)
 
 sout_imgstitch_log = sout_imgstitch.select(('image', None))\
         .map(safelog10).select((0, 'image'))

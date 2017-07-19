@@ -65,9 +65,9 @@ def test_CircularAverageStream():
 
     mask = None
     bins = 3
-    img = np.random.random((10,10))
+    img = np.random.random((10, 10))
     x = np.linspace(-5, 5, 10)
-    X,Y = np.meshgrid(x,x)
+    X, Y = np.meshgrid(x, x)
     r_map = np.sqrt(X**2 + Y**2)
     q_map = r_map*.12
 
@@ -78,12 +78,13 @@ def test_CircularAverageStream():
 
     calibration = Calib(q_map, r_map)
 
-    sdoc = StreamDoc(args=[img, calibration], kwargs=dict(mask=mask,bins=bins))
+    sdoc = StreamDoc(args=[img, calibration],
+                     kwargs=dict(mask=mask, bins=bins))
 
     sin.emit(sdoc)
 
-
     return L
+
 
 def test_ImageStitch():
     ''' test the image stitching.'''
@@ -92,7 +93,7 @@ def test_ImageStitch():
     L = list()
     sout.map(L.append, raw=True)
 
-    mask = np.ones((10, 10))
+    mask = np.ones((10, 10), dtype=np.int64)
     img1 = np.ones_like(mask, dtype=float)
     # 3 rows are higher
     img1[2:4] = 2
@@ -150,6 +151,7 @@ def test_ImageStitch():
                                                        2., 2., 1., 1., 1., 1.,
                                                        1., 1.]))
 
+
 def test_roundbydigits():
     '''test the round by digits function.'''
     res = roundbydigits(123.421421, digits=6)
@@ -170,8 +172,8 @@ def test_roundbydigits():
     res = roundbydigits(np.inf, digits=3)
     assert np.isinf(res)
 
-    res = roundbydigits(np.array([123.421421, 1.1351, np.nan, np.inf, 0]), digits=6)
+    res = roundbydigits(np.array([123.421421, 1.1351,
+                                  np.nan, np.inf, 0]), digits=6)
     assert_array_equal(res, np.array([123.421, 1.1351, np.nan, np.inf, 0]))
-
 
 # rcParams['image.interpolation'] = None

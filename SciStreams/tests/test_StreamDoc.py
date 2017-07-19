@@ -26,10 +26,10 @@ def test_stream_map():
 
     assert L == [2, 5]
 
+
 def test_stream_accumulate():
     ''' This tests that the dispatching on the streamdoc's accumulate routine
     is working properly.'''
-
 
     def myacc(prevstate, newstate):
         return prevstate + newstate
