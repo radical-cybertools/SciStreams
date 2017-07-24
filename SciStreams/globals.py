@@ -22,7 +22,7 @@ else:
         def compute(*args, **kwargs):
             return dask.compute(*args, **kwargs)[0]
 
-FUTURES = deque(MAX_FUTURE_NUM)
+futures_cache = deque(maxlen=MAX_FUTURE_NUM)
 
 # assume all functions are pure globally
 try:

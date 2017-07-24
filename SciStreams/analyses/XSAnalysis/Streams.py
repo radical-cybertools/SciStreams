@@ -5,6 +5,8 @@
 from ...globals import cache, client
 cache.register()  # noqa
 
+from ... import globals as streams_globals
+
 
 from dask import compute
 
@@ -119,7 +121,7 @@ def CalibrationStream(keymap_name=None, detector=None):  # , wrapper=None):
 
     from SciStreams.globals import client
     calib_obj = calib_obj.map(lambda x : client.submit(psdm(_generate_qxyz_maps), x))
-    calib_obj.map(globals.FUTURES.append)
+    calib_obj.map(streams_globals.futures_cache.append)
     calib_obj = calib_obj.map(lambda x : client.gather(x))
     #calib_obj = calib_obj.map(lambda x: compute(x)[0])
 
