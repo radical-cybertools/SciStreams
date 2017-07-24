@@ -100,7 +100,7 @@ class scatter(DaskStream):
     All elements flowing through the input will be scattered out to the cluster
     """
     @gen.coroutine
-    def update(self, x, who=None):
+    def update_dask(self, x, who=None):
         client = default_client()
         future = yield client.scatter(x, asynchronous=True)
         yield self.emit(future)
