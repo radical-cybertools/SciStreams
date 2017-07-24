@@ -425,6 +425,7 @@ class scan(Stream):
     def update(self, x, who=None):
         if self.state is no_default:
             self.state = x
+            return self.emit(x)
         else:
             result = self.func(self.state, x)
             if self.returns_state:

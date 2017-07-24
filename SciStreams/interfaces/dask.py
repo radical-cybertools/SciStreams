@@ -35,10 +35,10 @@ from tornado import gen
 
 from distributed.client import default_client
 
-from . import core
+from . import streams
 
 
-class DaskStream(core.Stream):
+class DaskStream(streams.Stream):
     def map(self, func, *args, **kwargs):
         """ Apply a function to every element in the stream """
         return map(func, self, args=args, **kwargs)
@@ -46,7 +46,7 @@ class DaskStream(core.Stream):
     def gather(self):
         return gather(self)
 
-    def accumulate(self, func, start=core.no_default, returns_state=False):
+    def accumulate(self, func, start=streams.no_default, returns_state=False):
         """ Accumulate results with previous state """
         return scan(func, self, start=start, returns_state=returns_state)
 
@@ -72,14 +72,14 @@ class map(DaskStream):
 
 
 class scan(DaskStream):
-    def __init__(self, func, child, start=core.no_default, returns_state=False):
+    def __init__(self, func, child, start=streams.no_default, returns_state=False):
         self.func = func
         self.state = start
         self.returns_state = returns_state
         DaskStream.__init__(self, child)
 
     def update(self, x, who=None):
-        if self.state is core.no_default:
+        if self.state is streams.no_default:
             self.state = x
             return self.emit(self.state)
         else:
@@ -106,7 +106,7 @@ class scatter(DaskStream):
         yield self.emit(future)
 
 
-class gather(core.Stream):
+class gather(streams.Stream):
     """ Convert Dask stream to local Stream """
     @gen.coroutine
     def update(self, x, who=None):
@@ -115,5 +115,5 @@ class gather(core.Stream):
         yield self.emit(result)
 
 
-class zip(DaskStream, core.zip):
+class zip(DaskStream, streams.zip):
     pass

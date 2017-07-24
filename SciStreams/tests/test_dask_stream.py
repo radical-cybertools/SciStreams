@@ -1,2 +1,2 @@
-from SciAnalysis.interfaces.dask import DaskStream
-from SciAnalysis.interfaces.streams import Stream
+from SciStreams.interfaces.dask import DaskStream
+from SciStreams.interfaces.streams import Stream
