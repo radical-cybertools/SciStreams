@@ -272,51 +272,51 @@ sout_circavg.map((source_plotting.store_results),
                  lines=[('sqx', 'sqy')],
                  scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$",
                  ylabel="I(q)")\
-        .map(client.compute).map(resultsqueue.append)
+        #.map(client.compute).map(resultsqueue.append)
 sout_imgstitch\
         .map((source_plotting.store_results),
              images=['image'], hideaxes=True)\
-        .map(client.compute).map(resultsqueue.append)
+        #.map(client.compute).map(resultsqueue.append)
 
 sout_imgstitch_log\
         .map((source_plotting.store_results), images=['image'],
              hideaxes=True)\
-        .map(client.compute)\
-        .map(resultsqueue.append)
+        #.map(client.compute)\
+        #.map(resultsqueue.append)
 sout_thumb\
         .map((source_plotting.store_results), images=['thumb'],
              hideaxes=True)\
-        .map(client.compute)\
-        .map(resultsqueue.append)
+        #.map(client.compute)\
+        #.map(resultsqueue.append)
 sout_thumb.map(select, ('thumb', None)).map(psdm(safelog10)).map(select, (0, 'thumb'))\
         .map(add_attributes, stream_name="ThumbLog")\
         .map(source_plotting.store_results, images=['thumb'],
              hideaxes=True)\
-        .map(client.compute).map(resultsqueue.append)
+        #.map(client.compute).map(resultsqueue.append)
 
 sqphi_out.map(source_plotting.store_results,
               images=['sqphi'], xlabel="$\phi$",
               ylabel="$q$", vmin=0, vmax=100)\
-        .map(resultsqueue.append)
+        #.map(resultsqueue.append)
 sout_img_pca\
         .map(source_plotting.store_results,
              images=['components'])\
-        .map(client.compute)\
-        .map(resultsqueue.append)
+        #.map(client.compute)\
+        #.map(resultsqueue.append)
 
 # save to file system
 sout_thumb\
         .map((source_file.store_results_file),
              {'writer': 'npy', 'keys': ['thumb']})\
-        .map(client.compute).map(resultsqueue.append)
+        #.map(client.compute).map(resultsqueue.append)
 sout_circavg\
         .map((source_file.store_results_file),
              {'writer': 'npy', 'keys': ['sqx', 'sqy']})\
-        .map(client.compute).map(resultsqueue.append)
+        #.map(client.compute).map(resultsqueue.append)
 
 # save to xml
 sout_circavg.map((source_xml.store_results_xml), outputs=None)\
-        .map(client.compute).map(resultsqueue.append)
+        #.map(client.compute).map(resultsqueue.append)
 
 # TODO : make databroker not save numpy arrays by default i flonger than a
 # certain size

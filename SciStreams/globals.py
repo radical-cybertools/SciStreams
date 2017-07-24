@@ -15,12 +15,18 @@ if config.client is not None:
     client = Client(config.client)
 # no client, compute should compute and return nothing
 else:
+    print("No client supported, running locally")
     import dask
 
-    class client:
+    class Client:
         # make unbound method
-        def compute(*args, **kwargs):
-            return dask.compute(*args, **kwargs)[0]
+        def submit(self, f, *args, **kwargs):
+            return f(*args, **kwargs)
+        def gather(self, future):
+            # it's not a future, just a regular result
+            return future
+
+    client = Client()
 
 futures_cache = deque(maxlen=MAX_FUTURE_NUM)
 
