@@ -74,7 +74,8 @@ def add_attributes(sdoc, **attr):
 
 
 def get_attributes(sdoc):
-    return sdoc['attributes']
+    ''' Return attributes as keyword arguments.'''
+    return StreamDoc(kwargs=sdoc['attributes'])
 
 
 def merge(sdocs):
