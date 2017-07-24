@@ -45,7 +45,6 @@ from collections import deque
 
 # cache for qmaps
 # TODO : clean this up
-QMAP_CACHE = deque(maxlen=1000)
 
 
 # Calibration for SAXS data
@@ -119,7 +118,9 @@ def CalibrationStream(keymap_name=None, detector=None):  # , wrapper=None):
     # calib_obj.apply(compute).apply(print)
 
     from SciStreams.globals import client
-    calib_obj = calib_obj.map(lambda x : client.submit(psdm(_generate_qxyz_maps), x)).map(lambda x : client.gather(x))
+    calib_obj = calib_obj.map(lambda x : client.submit(psdm(_generate_qxyz_maps), x))
+    calib_obj.map(globals.FUTURES.append)
+    calib_obj = calib_obj.map(lambda x : client.gather(x))
     #calib_obj = calib_obj.map(lambda x: compute(x)[0])
 
     sout = calib_obj

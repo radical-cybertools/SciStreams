@@ -2,6 +2,8 @@ from dask import set_options
 
 from collections import deque
 
+MAX_FUTURE_NUM = 1000
+
 # client information
 # TODO : remove this client information
 from . import config
@@ -20,6 +22,7 @@ else:
         def compute(*args, **kwargs):
             return dask.compute(*args, **kwargs)[0]
 
+FUTURES = deque(MAX_FUTURE_NUM)
 
 # assume all functions are pure globally
 try:
