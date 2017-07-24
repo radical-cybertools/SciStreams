@@ -220,7 +220,7 @@ exposure_time = attributes\
 exposure_mask = mask_stream\
         .map(select, ('mask', None))
 exposure_mask = exposure_mask\
-        .map(merge, exposure_time.map(select,('exposure_time', None)))\
+        .zip(exposure_time.map(select,('exposure_time', None))).map(merge)\
         .map(psdm(lambda a, b: a*b))
 
 exposure_mask = exposure_mask.map(select, (0, 'mask'))
@@ -234,10 +234,11 @@ sout_imgstitch_log = sout_imgstitch_log\
         .map(add_attributes, stream_name="ImgStitchLog")
 
 img_masked = image\
-        .map(merge, mask_stream.map(select, ('mask', None))).map(psdm(lambda a, b: a*b))
+        .zip(mask_stream.map(select, ('mask', None))).map(merge).map(psdm(lambda a, b: a*b))
 img_mask_origin = img_masked.map(select, (0, 'image'))\
-        .map(merge, exposure_mask.map(select, ('mask', 'mask')),
-             origin.map(select, (0, 'origin')), stitch)
+        .zip(exposure_mask.map(select, ('mask', 'mask')),
+             origin.map(select, (0, 'origin')),
+             stitch).map(merge)
 img_mask_origin.map(sin_imgstitch.emit)
 
 sin_thumb, sout_thumb = ThumbStream(blur=1, resize=2)
@@ -257,7 +258,7 @@ sout_img_pca = sout_img_partitioned\
 # sout_circavg.apply(sqfit_in.emit)
 
 sqphi_in, sqphi_out = QPHIMapStream()
-image.map(merge, mask_stream, origin.map(select, (0, 'origin')))\
+image.zip(mask_stream, origin.map(select, (0, 'origin'))).map(merge)\
         .map(sqphi_in.emit)
 
 
