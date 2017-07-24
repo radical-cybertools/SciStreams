@@ -8,6 +8,7 @@ from . import config
 
 debugcache = deque(maxlen=1)
 if config.client is not None:
+    print("Adding a client: {}".format(config.client))
     from distributed import Client
     client = Client(config.client)
 # no client, compute should compute and return nothing
