@@ -26,6 +26,27 @@ def test_map(c, s, a, b):
 
 
 @gen_cluster(client=True)
+def test_map_pickle(c, s, a, b):
+    ''' test pickling an arbitrary object.'''
+    class myObj:
+        pass
+
+    def make_new_obj(x):
+        res = myObj()
+        res.x = x
+        return res
+
+    source = Stream()
+    futures = scatter(source).map(make_new_obj)
+    futures_L = futures.sink_to_list()
+    L = futures.gather().sink_to_list()
+
+    yield source.emit(0)
+
+    assert L[0].x == 0
+
+
+@gen_cluster(client=True)
 def test_scan(c, s, a, b):
     source = Stream()
     futures = scatter(source).map(inc).scan(add)

@@ -26,6 +26,8 @@ from ...interfaces.StreamDoc import Arguments
 from ...interfaces.StreamDoc import select, pack, unpack, todict,\
         add_attributes, psdm, psda
 
+from ...interfaces.dask import scatter
+
 
 '''
     Notes : load should be a separate function
@@ -116,8 +118,9 @@ def CalibrationStream(keymap_name=None, detector=None):  # , wrapper=None):
                           calib_defaults=defaults)
     # calib_obj.apply(compute).apply(print)
 
-    calib_obj = calib_obj.map(delayed(psdm(_generate_qxyz_maps)))
-    calib_obj = calib_obj.map(lambda x: compute(x)[0])
+    from SciStreams.globals import client
+    calib_obj = calib_obj.map(lambda x : client.submit(psdm(_generate_qxyz_maps), x)).map(lambda x : client.gather(x))
+    #calib_obj = calib_obj.map(lambda x: compute(x)[0])
 
     sout = calib_obj
     # return sin and the endpoints

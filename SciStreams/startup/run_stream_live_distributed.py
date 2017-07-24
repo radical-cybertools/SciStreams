@@ -387,21 +387,3 @@ def start_run(start_time, dbname="cms:data", noqbins=None):
 if __name__ == "__main__":
     start_time = time.time()-24*3600
     start_run(start_time)
-
-'''
-
-def test_sync(loop):
-    with cluster() as (s, [a, b]):
-        with Client(s['address'], loop=loop):  # flake8: noqa
-            source = Stream()
-            L = source.scatter().map(inc).gather().sink_to_list()
-
-            @gen.coroutine
-            def f():
-                for i in range(10):
-                    yield source.emit(i)
-
-            sync(loop, f)
-
-            assert L == list(map(inc, range(10)))
-'''
