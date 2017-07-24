@@ -14,6 +14,8 @@ from ..globals import debugcache
 from dask.delayed import delayed
 from dask.base import normalize_token
 
+import numpy as np
+
 
 # this class is used to wrap outputs to inputs
 # for ex, if a function returns Arguments(12,34, g=23,h=20)
@@ -25,6 +27,7 @@ class Arguments:
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
+
 
 # general idea : use single dispatch to act differently on different function
 # inputs. This allows one to change behaviour of how output args and kwargs are
@@ -38,36 +41,48 @@ def parse_args(res):
 def parse_args_Arguments(res):
     return Arguments(*res.args, **res.kwargs)
 
+
 # routines that add on to stream doc functionality
 def select(sdoc, *mapping):
     return sdoc.select(*mapping)
+
 
 def pack(*args, **kwargs):
     ''' pack arguments into one set of arguments.'''
     return args
 
+
 def toargs(arg):
     return Arguments(*arg)
+
 
 def unpack(args):
     ''' assume input is a tuple, split into arguments.'''
     # print("Arguments : {}".format(args))
     return Arguments(*args)
 
+
 def todict(kwargs):
     ''' assume input is a dictionary, split into kwargs.'''
     return Arguments(**kwargs)
+
 
 def add_attributes(sdoc, **attr):
     newsdoc = StreamDoc(sdoc)
     newsdoc.add(attributes=attr)
     return newsdoc
 
+
+def get_attributes(sdoc):
+    return sdoc['attributes']
+
+
 def merge(sdocs):
     ''' merge a zipped tuple of streamdocs.'''
     if len(sdocs) < 2:
         raise ValueError("Error, number of sdocs not 2 or greater")
     return sdocs[0].merge(*(sdocs[1:]))
+
 
 # TODO :  need to fix this
 def squash(sdocs):
@@ -120,7 +135,6 @@ def squash(sdocs):
     newsdoc.add(args=newargs, kwargs=newkwargs)
 
     return newsdoc
-
 
 
 class StreamDoc(dict):
