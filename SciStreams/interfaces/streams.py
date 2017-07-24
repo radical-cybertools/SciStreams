@@ -1,3 +1,32 @@
+Copyright (c) 2017, Continuum Analytics, Inc. and contributors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+
+Neither the name of Continuum Analytics nor the names of any contributors
+may be used to endorse or promote products derived from this software
+without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+THE POSSIBILITY OF SUCH DAMAGE.
+
 from __future__ import absolute_import, division, print_function
 
 from collections import deque
@@ -27,9 +56,6 @@ class Stream(object):
     Stream graph to get a full view of the data coming off of that point to do
     with as they will.
 
-
-    stream_name : the stream name (optional but useful for debugging)
-
     Examples
     --------
     >>> def inc(x):
@@ -52,8 +78,7 @@ class Stream(object):
     >>> L  # and the actions happen at the sinks
     ['1', '2', '3', '4', '5']
     """
-    def __init__(self, child=None, children=None, stream_name=None,
-                 **kwargs):
+    def __init__(self, child=None, children=None, **kwargs):
         self.parents = []
         if children is not None:
             self.children = children
@@ -64,9 +89,6 @@ class Stream(object):
         for child in self.children:
             if child:
                 child.parents.append(self)
-        if stream_name is None:
-            stream_name = "N/A"
-        self.stream_name = stream_name
 
     def emit(self, x):
         """ Push data into the stream at this point
@@ -104,6 +126,10 @@ class Stream(object):
                     return loop
         self._loop = IOLoop.current()
         return self._loop
+
+    def scatter(self):
+        from .dask import scatter
+        return scatter(self)
 
     def map(self, func, *args, **kwargs):
         """ Apply a function to every element in the stream """
