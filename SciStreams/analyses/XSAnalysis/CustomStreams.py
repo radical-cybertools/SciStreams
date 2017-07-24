@@ -4,13 +4,13 @@ from ...interfaces.StreamDoc import StreamDoc, Arguments
 from ...interfaces.streams import Stream
 from dask import compute, delayed
 
+# wrappers for parsing streamdocs
+from ...interfaces.StreamDoc import select, pack, unpack, todict,\
+        add_attributes, psdm, psda
+
+
 
 # TODO : make this part of streams
-def add_attributes(sdoc, **attr):
-    newsdoc = StreamDoc(sdoc)
-    newsdoc.add(attributes=attr)
-    return newsdoc
-
 # Sample custom stream : fit to a sphere form factor
 
 def SqFitStream(wrapper=None):
@@ -26,10 +26,10 @@ def SqFitStream(wrapper=None):
             'parameters'
 
     '''
-    sin = Stream(wrapper=wrapper)
-    s2 = sin.apply(delayed(add_attributes), stream_name="SqFitCustom")
-    s3 = s2.select(('sqx', None), ('sqy', None))
-    s4 = s3.map(fitsqsphere)
+    sin = Stream()
+    s2 = sin.map(add_attributes, stream_name="SqFitCustom")
+    s3 = s2.map(select,('sqx', None), ('sqy', None))
+    s4 = s3.map(psdm(fitsqsphere))
     sout = s4
     return sin, sout
 
@@ -74,27 +74,6 @@ def fitsqsphere(q, sqdata, Ncutoff=None):
     return Arguments(parameters=res.best_values, sqx=q, sqy=sqdata, sqfit=best_fit)
 
 
-def PCAStream(wrapper=None, partition_size=100, n_components=10):
-    sin = Stream(wrapper=wrapper)
-    sout_img_partitioned = sin.select(('thumb', None)).partition(partition_size).apply(delayed(squash))
-    sout_img_pca = sout_img_partitioned.map(PCA_fit, n_components = n_components).apply(delayed(add_attributes), stream_name="PCA")
-    return sin, sout_img_pca
-
-def PCA_fit(data, n_components=10):
-    ''' Run principle component analysis on data.
-        n_components : num components (default 10)
-    '''
-    # first reshape data if needed
-    if data.ndim > 2:
-        datashape = data.shape[1:]
-        data = data.reshape((data.shape[0], -1))
-
-    from sklearn.decomposition import PCA
-    pca = PCA(n_components=n_components)
-    pca.fit(data)
-    components = pca.components_.copy()
-    components = components.reshape((n_components, *datashape))
-    return dict(components=components)
 
 # TODO :  need to fix this
 @delayed

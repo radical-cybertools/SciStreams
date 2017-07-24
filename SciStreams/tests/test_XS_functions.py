@@ -1,23 +1,20 @@
 # test the XSAnalysis Streams, make sure they're working properly
-from SciStreams.interfaces.StreamDoc import StreamDoc
-
 from SciStreams.analyses.XSAnalysis.Streams import circavg
-
-from SciStreams.interfaces.detectors import detectors2D
+from SciStreams.analyses.XSAnalysis.tools import xystitch_accumulate
 
 import numpy as np
 
-from numpy.testing import assert_array_almost_equal, assert_array_equal
 
 def test_circavg():
-    #def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
+    # def circavg(image, q_map=None, r_map=None,  bins=None, mask=None,
+    # **kwargs):
     x = np.linspace(-5, 5, 10)
-    X, Y = np.meshgrid(x,x)
+    X, Y = np.meshgrid(x, x)
 
     r_map = np.sqrt(X**2 + Y**2)
     # some scaling, randomly chosen
     q_map = r_map**1.1
-    image = np.random.random((10,10))
+    image = np.random.random((10, 10))
 
     # just make sure they don't return errors
     mask = np.ones_like(image)
@@ -34,3 +31,17 @@ def test_circavg():
     assert 'sqxerr' in res.kwargs
     assert 'sqy' in res.kwargs
     assert 'sqyerr' in res.kwargs
+
+
+def test_xystitch_accumulate():
+    # mostly make sure it runs with no errors
+    img = np.zeros((100, 100), dtype=int)
+    mask = np.ones((100, 100), dtype=float)
+    origin = (40., 50)
+    stitchback = True
+
+    prevstate = img, mask, origin, stitchback
+    newstate = img, mask, origin, stitchback
+    res = xystitch_accumulate(prevstate, newstate)
+    assert res[0].shape == img.shape
+    assert res[1].shape == mask.shape

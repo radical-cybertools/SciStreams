@@ -1,7 +1,8 @@
 # test the XSAnalysis Streams, make sure they're working properly
 from SciStreams.interfaces.StreamDoc import StreamDoc
 from SciStreams.analyses.XSAnalysis.Streams import ImageStitchingStream,\
-    CalibrationStream, CircularAverageStream
+        CalibrationStream, CircularAverageStream, QPHIMapStream,\
+        ThumbStream
 
 from SciStreams.analyses.XSAnalysis.tools import roundbydigits
 
@@ -24,7 +25,7 @@ def test_CalibrationStream_pilatus():
 
     sin, sout = CalibrationStream(keymap_name=keymap_name, detector=detector)
     L = list()
-    sout.map(L.append, raw=True)
+    sout.map(L.append)
 
     data = dict(
         calibration_wavelength_A=1.0,
@@ -57,7 +58,6 @@ def test_CalibrationStream_pilatus():
 
 def test_CircularAverageStream():
     ''' Test the circular average stream'''
-    pass
     sin, sout = CircularAverageStream()
 
     L = list()
@@ -65,9 +65,9 @@ def test_CircularAverageStream():
 
     mask = None
     bins = 3
-    img = np.random.random((10,10))
+    img = np.random.random((10, 10))
     x = np.linspace(-5, 5, 10)
-    X,Y = np.meshgrid(x,x)
+    X, Y = np.meshgrid(x, x)
     r_map = np.sqrt(X**2 + Y**2)
     q_map = r_map*.12
 
@@ -78,21 +78,47 @@ def test_CircularAverageStream():
 
     calibration = Calib(q_map, r_map)
 
-    sdoc = StreamDoc(args=[img, calibration], kwargs=dict(mask=mask,bins=bins))
+    sdoc = StreamDoc(args=[img, calibration],
+                     kwargs=dict(mask=mask, bins=bins))
 
     sin.emit(sdoc)
 
-
     return L
 
-def test_ImageStitch():
+
+def test_QPHIMapStream():
+    ''' Test the qphimap stream'''
+    bins = (3,4)
+    sin, sout = QPHIMapStream(bins=bins)
+
+    L = list()
+    sout.map(L.append)
+
+    mask = None
+    img = np.random.random((10, 10))
+    x = np.linspace(-5, 5, 10)
+    X, Y = np.meshgrid(x, x)
+    r_map = np.sqrt(X**2 + Y**2)
+    q_map = r_map*.12
+
+    origin = (3,3)
+
+    sdoc = StreamDoc(args=[img],
+                     kwargs=dict(origin=origin, mask=mask))
+
+    sin.emit(sdoc)
+
+    assert(L[0]['kwargs']['sqphi'].shape == bins)
+
+
+def test_ImageStitchingStream():
     ''' test the image stitching.'''
     sin, sout = ImageStitchingStream()
 
     L = list()
-    sout.map(L.append, raw=True)
+    sout.map(L.append)
 
-    mask = np.ones((10, 10))
+    mask = np.ones((10, 10), dtype=np.int64)
     img1 = np.ones_like(mask, dtype=float)
     # 3 rows are higher
     img1[2:4] = 2
@@ -150,6 +176,7 @@ def test_ImageStitch():
                                                        2., 2., 1., 1., 1., 1.,
                                                        1., 1.]))
 
+
 def test_roundbydigits():
     '''test the round by digits function.'''
     res = roundbydigits(123.421421, digits=6)
@@ -170,8 +197,19 @@ def test_roundbydigits():
     res = roundbydigits(np.inf, digits=3)
     assert np.isinf(res)
 
-    res = roundbydigits(np.array([123.421421, 1.1351, np.nan, np.inf, 0]), digits=6)
+    res = roundbydigits(np.array([123.421421, 1.1351,
+                                  np.nan, np.inf, 0]), digits=6)
     assert_array_equal(res, np.array([123.421, 1.1351, np.nan, np.inf, 0]))
 
+def test_ThumbStream():
+    sin, sout = ThumbStream()
+
+    L = list()
+    sout.map(L.append)
+
+    image = np.ones((100,100))
+    sin.emit(StreamDoc(args=[image]))
+
+    assert isinstance(L[0]['kwargs']['thumb'], np.ndarray)
 
 # rcParams['image.interpolation'] = None

@@ -14,7 +14,6 @@ from ..globals import debugcache
 from dask.delayed import delayed
 from dask.base import normalize_token
 
-from .streams import stream_map, stream_accumulate
 
 # this class is used to wrap outputs to inputs
 # for ex, if a function returns Arguments(12,34, g=23,h=20)
@@ -27,16 +26,6 @@ class Arguments:
         self.args = args
         self.kwargs = kwargs
 
-
-# @stream_map.register(Delayed)
-# def stream_map_delayed(obj, func, **kwargs):
-    # return delayed(func)(obj)
-
-# @stream_accumulate.register(Delayed)
-# def stream_accumulate_delayed(obj, func, accumulator, **kwargs):
-    # return delayed(func)(accumulator, obj)
-
-
 # general idea : use single dispatch to act differently on different function
 # inputs. This allows one to change behaviour of how output args and kwargs are
 # sent
@@ -48,6 +37,90 @@ def parse_args(res):
 @parse_args.register(Arguments)
 def parse_args_Arguments(res):
     return Arguments(*res.args, **res.kwargs)
+
+# routines that add on to stream doc functionality
+def select(sdoc, *mapping):
+    return sdoc.select(*mapping)
+
+def pack(*args, **kwargs):
+    ''' pack arguments into one set of arguments.'''
+    return args
+
+def toargs(arg):
+    return Arguments(*arg)
+
+def unpack(args):
+    ''' assume input is a tuple, split into arguments.'''
+    # print("Arguments : {}".format(args))
+    return Arguments(*args)
+
+def todict(kwargs):
+    ''' assume input is a dictionary, split into kwargs.'''
+    return Arguments(**kwargs)
+
+def add_attributes(sdoc, **attr):
+    newsdoc = StreamDoc(sdoc)
+    newsdoc.add(attributes=attr)
+    return newsdoc
+
+def merge(sdocs):
+    ''' merge a zipped tuple of streamdocs.'''
+    if len(sdocs) < 2:
+        raise ValueError("Error, number of sdocs not 2 or greater")
+    return sdocs[0].merge(*(sdocs[1:]))
+
+# TODO :  need to fix this
+def squash(sdocs):
+    ''' Squash results together.
+
+
+        For ex, a list of sdocs with a 2D np array
+            will lead to one sdoc with a 3D np array
+        etc.
+    '''
+    newsdoc = StreamDoc()
+    for sdoc in sdocs:
+        newsdoc.add(attributes=sdoc['attributes'])
+    N = len(sdocs)
+    cnt = 0
+    newargs = []
+    newkwargs = dict()
+    for sdoc in sdocs:
+        args, kwargs = sdoc['args'], sdoc['kwargs']
+        for i, arg in enumerate(args):
+            if cnt == 0:
+                if isinstance(arg, np.ndarray):
+                    newshape = []
+                    newshape.append(N)
+                    newshape.extend(arg.shape)
+                    newargs.append(np.zeros(newshape))
+                else:
+                    newargs.append([])
+            if isinstance(arg, np.ndarray):
+                newargs[i][cnt] = arg
+            else:
+                newargs[i].append[arg]
+
+        for key, val in kwargs.items():
+            if cnt == 0:
+                if isinstance(val, np.ndarray):
+                    newshape = []
+                    newshape.append(N)
+                    newshape.extend(val.shape)
+                    newkwargs[key] = np.zeros(newshape)
+                else:
+                    newkwargs[key] = []
+            if isinstance(val, np.ndarray):
+                newkwargs[key][cnt] = val
+            else:
+                newkwargs[key].append[val]
+
+        cnt = cnt + 1
+
+    newsdoc.add(args=newargs, kwargs=newkwargs)
+
+    return newsdoc
+
 
 
 class StreamDoc(dict):
@@ -105,15 +178,6 @@ class StreamDoc(dict):
         self['statistics'].update(statistics)
 
         return self
-
-    # def __stream_map__(self, func, **kwargs):
-        # return parse_streamdoc("map")(func)(self, **kwargs)
-
-    # def __stream_reduce__(self, func, accumulator):
-        # return parse_streamdoc("reduce")(func)(accumulator, self)
-
-    # def __stream_merge__(self, *others):
-        # return self.merge(*others)
 
     @property
     def args(self):
@@ -180,7 +244,6 @@ class StreamDoc(dict):
             The new streamdoc's attributes/kwargs will override this one upon
             collison.
         '''
-        # print("in merge : {}".format(newstreamdocs[0]))
         streamdoc = StreamDoc(self)
         for newstreamdoc in newstreamdocs:
             streamdoc.updatedoc(newstreamdoc)
@@ -277,24 +340,6 @@ class StreamDoc(dict):
         streamdoc['kwargs'] = totargs['kwargs']
 
         return streamdoc
-
-
-def check_sdoc(sdoc):
-    return isinstance(sdoc, StreamDoc)
-
-
-@stream_map.register(StreamDoc)
-def stream_map_streamdoc(func, obj, **kwargs):
-    # print("in stream map for StreamDoc, obj : {}".format(obj))
-    return parse_streamdoc("map")(func)(obj, **kwargs)
-
-
-@stream_accumulate.register(StreamDoc)
-def stream_accumulate_streamdoc(prevobj, nextobj, func=None, **kwargs):
-    # print("accumulating a streamdoc")
-    return parse_streamdoc("accumulate")(func)(prevobj, nextobj, **kwargs)
-    # def __stream_reduce__(self, func, accumulator):
-    # return parse_streamdoc("reduce")(func)(accumulator, self)
 
 
 def _is_streamdoc(doc):
@@ -405,6 +450,11 @@ def parse_streamdoc(name):
         return f_new
 
     return streamdoc_dec
+
+parse_streamdoc_map = parse_streamdoc("map")
+psdm = parse_streamdoc_map
+parse_streamdoc_acc = parse_streamdoc("acc")
+psda = parse_streamdoc_acc
 
 
 def _cleanexit(f, statistics):

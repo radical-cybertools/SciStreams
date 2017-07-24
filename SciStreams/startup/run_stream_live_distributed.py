@@ -37,6 +37,10 @@ from SciStreams.analyses.XSAnalysis.Streams import CalibrationStream,\
 from SciStreams.interfaces.StreamDoc import select, pack, unpack, todict, toargs,\
         add_attributes, psdm, psda, merge
 
+from distributed.utils import sync
+from tornado.ioloop import IOLoop
+from tornado import gen
+
 # get databases (not necessary)
 from SciStreams.interfaces.databroker.databases import databases
 detector_key = "pilatus300_image"
@@ -330,13 +334,15 @@ sout_circavg.map((source_xml.store_results_xml), outputs=None)\
 
 # Emitting data
 
-def start_run(start_time, dbname="cms:data",
+@gen.coroutine
+def start_run_loop(start_time, dbname="cms:data",
               noqbins=None):
     ''' Start a live run of pipeline.'''
-
+    print("running loop")
     last_uid = None
     cddb = databases[dbname]
     while True:
+        print("running loop")
         hdrs = cddb(start_time=start_time)
         # need to reverse the headers in the correct order
         hdrs = list(hdrs)
@@ -352,7 +358,7 @@ def start_run(start_time, dbname="cms:data",
             print("Loading task for uid : {}".format(uid))
 
             try:
-                sin.emit(uid)
+                yield sin.emit(uid)
                 sleep(.1)
             except KeyError as e:
                 errormsg = "Got a keyerror (no image likely), ignoring\n"
@@ -374,6 +380,28 @@ def start_run(start_time, dbname="cms:data",
         print("Reached end, waiting 1 sec for more data...")
         sleep(1)
 
+def start_run(start_time, dbname="cms:data", noqbins=None):
+    loop = IOLoop()
+    sync(loop, start_run_loop, start_time, dbname=dbname, noqbins=noqbins)
+
 if __name__ == "__main__":
     start_time = time.time()-24*3600
     start_run(start_time)
+
+'''
+
+def test_sync(loop):
+    with cluster() as (s, [a, b]):
+        with Client(s['address'], loop=loop):  # flake8: noqa
+            source = Stream()
+            L = source.scatter().map(inc).gather().sink_to_list()
+
+            @gen.coroutine
+            def f():
+                for i in range(10):
+                    yield source.emit(i)
+
+            sync(loop, f)
+
+            assert L == list(map(inc, range(10)))
+'''

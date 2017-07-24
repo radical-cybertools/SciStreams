@@ -36,7 +36,7 @@ install:
 
 script:
   - coverage run run_tests.py
-  - flake8 --exclude=old,doc,extras,tests,examples,scripts,analyses .
+  - flake8 --exclude=old,doc,extras,examples,scripts,analyses .
 
 # don't run flake8 yet...
 
