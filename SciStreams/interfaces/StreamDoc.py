@@ -244,7 +244,6 @@ class StreamDoc(dict):
             The new streamdoc's attributes/kwargs will override this one upon
             collison.
         '''
-        print("in merge : {}".format(newstreamdocs[0]))
         streamdoc = StreamDoc(self)
         for newstreamdoc in newstreamdocs:
             streamdoc.updatedoc(newstreamdoc)
