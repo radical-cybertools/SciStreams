@@ -257,8 +257,8 @@ class Obstruction:
         newimg = np.zeros((dimy, dimx))
 
         cen = newimg.shape[0]//2, newimg.shape[1]//2
-        y0 = cen[0]-origin[0]
-        x0 = cen[1]-origin[1]
+        y0 = int(cen[0]-origin[0])
+        x0 = int(cen[1]-origin[1])
         newimg[y0:y0+img.shape[0], x0:x0+img.shape[1]] = img
         return newimg, cen
 
