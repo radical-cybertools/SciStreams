@@ -32,7 +32,7 @@ A general workflow would look as follows::
 
   # finally, send the data through the stream
   for record in data:
-  sin.emit(record)
+    sin.emit(record)
 
 The details are more thoroughly explained in the :doc:`Tutorials
 <tutorials>` section.
@@ -47,6 +47,7 @@ us.
 
 We choose to use a ``StreamDoc``, which is basically a dictionary with
 the following four elements:
+
 1. ``args`` : this is an ordered tuple of outputs from a stream. This
    becomes the ``args`` of any mapping onto a function and hence the
    name.
