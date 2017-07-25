@@ -8,11 +8,15 @@ Welcome to SciAnalysis's documentation!
 #######################################
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+ :maxdepth: 2
+ :caption: Contents:
 
-   streams
-   tutorials
+ installation
+ streams
+ tutorials
+
+.. currentmodule::
+  intro
 
 
 **********

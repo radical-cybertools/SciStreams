@@ -1,6 +1,12 @@
+.. currentmodule::
+  streams
+
+Streams
+=======
+The streams work from two main abstractions.
 
 The Stream
-==========
+----------
 
 When running computations, there are a number of approaches that may be taken.
 Since computation pipelines can run complex very quickly, we try to modularize
@@ -38,7 +44,7 @@ The details are more thoroughly explained in the :doc:`Tutorials
 <tutorials>` section.
 
 The StreamDoc
-=============
+-------------
 
 For streams to function, some convention of the inputs/outputs to the
 streams must be agreed upon. A simple convention is assuming that

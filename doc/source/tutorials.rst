@@ -1,3 +1,6 @@
+.. currentmodule::
+  tutorials
+
 Stream Tutorials
 ================
 The following tutorials are meant to walk through a user on how to use
@@ -6,10 +9,11 @@ any pre-written function and insert into the CMS pipeline, which follows
 this stream based logic.
 
 Install Instructions
-====================
+--------------------
 Before testing, it's recommended you start a conda analysis environment
 and install the necessary packages. You can this locally with the
 following instructions::
+
   conda create -n testenv2 pip nose python=3.6 numpy=1.11 coverage cython
   flake8 scipy
   source activate testenv2
@@ -26,7 +30,7 @@ following instructions::
   popd    
 
 Tutorial 1 : Simple Data Stream
-===============================
+-------------------------------
 
 The core of streams is the ``Stream`` object, developed by `Matt Rocklin
 <http://www.github.com/mrocklin/streams>`_. Let's start with a simple
@@ -54,6 +58,7 @@ number, multiplies it by two, and finally prints the result to screen::
 
 Note the nice abstraction between data and function, compared to the old
 method, which would have been::
+
   def mtimes2(a):
       return 2*a
   
@@ -64,7 +69,8 @@ Using streams involves more lines of code, however, it allows for more
 complex computations, as will be seen eventually.
 
 Tutorial 2 : Multiple Inputs
-============================
+----------------------------
+
 Before moving on to more complex stream operations, let us first show
 how to deal with functions with multiple inputs.
 Previously, the function ``mtimes2`` only took one input so it was
@@ -123,7 +129,8 @@ and the transformation and its inverse **T/T^(-1)** are taken
 care of by the ``psdm`` wrapper.
 
 Tutorial 3 : Re-mapping inputs/outputs
-======================================
+--------------------------------------
+
 Mapping inputs and outputs is nice. However, if one reads the previous
 examples, one will notice that such mapping is done before the entry
 point (``emit``) by instantiating a ``StreamDoc``. There is no
@@ -133,10 +140,12 @@ imagine this would be a useful option to have.
 How does one go about this? The answer is simple, through the
 ``select`` option. Let us work through a simple example. Let's say we
 wanted to run the following function::
+
   def multiplyadd(a,b, c=1):
       return a*(b+c)
 
 with as input the following ``StreamDoc``::
+
   sdoc = StreamDoc(args=(2,3), kwargs=dict(c=1))
 
 Let's say that we actually wanted a to be the second arg of the
@@ -155,15 +164,20 @@ the ``select`` method::
   sin.emit(sdoc)
 
 Tutorial 4 : Mapping Args into keyword args and vice versa
-==========================================================
+----------------------------------------------------------
+
 Now, let's exend our simple example to more combinations of mappings.
 Let's suppose now that our function does not contain keyword arguments
 at all::
+
   # now c is not kwarg but is kwarg in streamdoc
   def multiplyadd(a, b, c):
       return a*(b+c)
-and again our StreamDoc was:
+
+and again our StreamDoc was::
+
   sdoc = StreamDoc(args=(2,3), kwargs=dict(c=1))
+
 Re-mapping is as easy as specifying a tuple, where the first element is
 the key name (or arg number), and the second element is either another
 key name, or ``None`` (to specify that it is an arg)::
@@ -184,11 +198,12 @@ For more details on this, please see the [[Pipeline:Main:SelectionRules|
 Selection Rules]].
 
 Tutorial 5 : Merging Streams
-============================
+----------------------------
 
 Finally, how would one merge streams? It is easy. Let's say we have
 three streams which will receive as input the following three
 StreamDocs::
+
   sdoc1 = StreamDoc(args=(1,2), kwargs=dict(a=1, b=2, c=3))
   sdoc2 = StreamDoc(args=(3,6), kwargs=dict(a=4, c=3, d=1))
   sdoc3 = StreamDoc(kwargs=dict(e=1))
@@ -233,7 +248,7 @@ Note that the print from the s5 stream only occurs after **all** the
 documents have been emitted. This is controlled by ``zip``.
 
 Tutorial 6 : Adding Attributes (Metadata)
-=========================================
+-----------------------------------------
 
 At CMS, all measurements carry metadata along with the data. This
 metadata allows us to keep track of many things, such as who took the
