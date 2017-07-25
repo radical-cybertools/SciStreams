@@ -184,6 +184,9 @@ class Obstruction:
     image : image of the obstruction : 1 is present, 0 absent
     origin : the origin of the obstruction
 
+    _thresh : a tweak to separate 0's from 1's in the case of floats (i.e.
+        rotation/interpolation)
+
 
     '''
     _thresh = .5
@@ -231,16 +234,16 @@ class Obstruction:
     def rotate(self, phi, origin=None):
         ''' rotate the obstruction in phi, in degrees.'''
         # re-center image (for scipy rotate)
-        image = self.image
+        mask = self.mask
         old_origin = self.origin
         if origin is None:
             origin = old_origin
-            dorigin = (0,0)
+            dorigin = (0, 0)
         else:
             dorigin = old_origin[0] - origin[0], old_origin[1] - origin[1]
         # re-center
-        image, origin = self._center(image, origin)
-        rotimg = scipy_rotate(self.image, phi, reshape=True)
+        mask, origin = self._center(mask, origin)
+        rotimg = scipy_rotate(self.mask, phi, reshape=True)
 
         # get back to original origin
         origin = origin[0] + dorigin[0], origin[1] + dorigin[1]
