@@ -205,8 +205,8 @@ class Obstruction:
 
             Patched a bit so I can reuse stitching method.
         '''
-        prevstate = self.image.copy(), np.ones_like(self.image), self.origin, 1
-        nextstate = newob.image, np.ones_like(newob.image), newob.origin, 1
+        prevstate = self.image.copy(), np.ones_like(self.image), self.origin, True
+        nextstate = newob.image, np.ones_like(newob.image), newob.origin, True
         newstate = xystitch_accumulate(prevstate, nextstate)
 
         image, mask, origin, stitch = newstate
@@ -220,8 +220,8 @@ class Obstruction:
     def __sub__(self, newob):
         ''' Stitch the two together. Create a new obstruction object from
         this'''
-        prevstate = self.image.copy(), np.ones_like(self.image), self.origin, 1
-        nextstate = -1*newob.image, np.ones_like(newob.image), newob.origin, 1
+        prevstate = self.image.copy(), np.ones_like(self.image), self.origin, True
+        nextstate = -1*newob.image, np.ones_like(newob.image), newob.origin, True
         newstate = xystitch_accumulate(prevstate, nextstate)
         img, mask, origin, stitch = newstate
 
@@ -231,24 +231,48 @@ class Obstruction:
 
         return retobj
 
-    def rotate(self, phi, origin=None):
-        ''' rotate the obstruction in phi, in degrees.'''
-        # re-center image (for scipy rotate)
+    def rotate(self, phi):
+        ''' rotate the obstruction in phi, in degrees.
+
+            Note : scipy's new center is center of the full image rotated
+                this means that the old origin will be rotated by the vector pointing
+                from the center to the origin, floating point number
+        '''
         mask = self.mask
-        old_origin = self.origin
-        if origin is None:
-            origin = old_origin
-            dorigin = (0, 0)
-        else:
-            dorigin = old_origin[0] - origin[0], old_origin[1] - origin[1]
-        # re-center
-        mask, origin = self._center(mask, origin)
-        rotimg = scipy_rotate(self.mask, phi, reshape=True)
+        cen = (np.array(mask.shape)-1)*.5
+        old_shape = np.array(mask.shape)
 
-        # get back to original origin
-        origin = origin[0] + dorigin[0], origin[1] + dorigin[1]
+        # don't need this
+#        # re-center image (for scipy rotate)
+#        mask = self.mask
+#        old_origin = self.origin
+#        if origin is None:
+#            origin = old_origin
+#            dorigin = (0, 0)
+#        else:
+#            dorigin = old_origin[0] - origin[0], old_origin[1] - origin[1]
+#        # re-center
+#        mask, origin = self._center(mask, origin)
+        origin = self.origin
+        rotimg = scipy_rotate(mask, phi, reshape=True)
+        phir = np.radians(phi)
+        rotation  = np.array([
+            [np.cos(phir), np.sin(phir)],
+            [-np.sin(phir), np.cos(phir)],
+        ])
+        # now rotate origin
+        # attn: coordinate is [y,x]
+        originvec = np.array(origin) - cen
+        # counter clockwise rotation, tested with [0,1] and [1,0]
+        neworiginvec = np.tensordot(originvec, rotation, axes=(0,0))
+        neworigin = neworiginvec + cen
+        new_shape = np.array(rotimg.shape)
 
-        return Obstruction((rotimg > self._thresh).astype(int), origin)
+        dN = new_shape-old_shape
+        # also shift from expansion/compression of image
+        neworigin += dN/2.
+
+        return Obstruction((rotimg > self._thresh).astype(int), neworigin)
 
     def _center(self, img, origin):
         ''' center an image to array center.'''

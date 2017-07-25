@@ -55,8 +55,11 @@ def xystitch_accumulate(prevstate, newstate):
         nextstate : incoming IMG, mask, (x0, y0), stitchback
 
         rules for stitchback:
-            if next state 0, re-initialize
-            else : stitch from previous image
+            if next state is True, stitch from previous image
+            else:
+                re-initialize
+            NOTE : The stitchback parameter MUST be True to stitch
+                Values such as 1, etc will not work.
 
         returns accumulated state
 
