@@ -189,7 +189,7 @@ class Obstruction:
     _thresh = .5
     def __init__(self, mask, origin):
         # invert image
-        self.image = (mask < 1).astype(int)
+        self.image = (mask.astype(int) < 1).astype(int)
         self.origin = origin
 
     @property
@@ -251,8 +251,8 @@ class Obstruction:
         ''' center an image to array center.'''
         # center an image to origin
         # find largest dimension first
-        dimx = 2*np.max([origin[1], img.shape[1]-origin[1]-1])+1
-        dimy = 2*np.max([origin[0], img.shape[0]-origin[0]-1])+1
+        dimx = int(2*np.max([origin[1], img.shape[1]-origin[1]-1])+1)
+        dimy = int(2*np.max([origin[0], img.shape[0]-origin[0]-1])+1)
         # make new array with these dimensions
         newimg = np.zeros((dimy, dimx))
 
