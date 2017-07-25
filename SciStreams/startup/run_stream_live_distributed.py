@@ -14,10 +14,10 @@ from SciStreams.globals import client
 import SciStreams.config as config
 
 # interfaces
-from SciStreams.interfaces.plotting_mpl import plotting_mpl as source_plotting
-from SciStreams.interfaces.databroker import databroker as source_databroker
-from SciStreams.interfaces.file import file as source_file
-from SciStreams.interfaces.xml import xml as source_xml
+from SciStreams.interfaces.plotting_mpl import plotting_mpl as iplotting
+from SciStreams.interfaces.databroker import databroker as idb
+from SciStreams.interfaces.file import file as ifile
+from SciStreams.interfaces.xml import xml as ixml
 # from SciStreams.interfaces.detectors import detectors2D
 # Streams include stuff
 from SciStreams.interfaces.StreamDoc import StreamDoc, Arguments
@@ -86,7 +86,7 @@ def search_mask(detector_key, date=None):
 # Blemish file
 # blemish_filename = config.maskdir + "/Pilatus300k_main_gaps-mask.png"
 blemish_filename = search_mask(detector_key)
-blemish = source_file.FileDesc(blemish_filename).get_raw()[:, :, 0] > 1
+blemish = ifile.FileDesc(blemish_filename).get_raw()[:, :, 0] > 1
 blemish = blemish.astype(int)
 # prepare master mask import
 SAXS_bstop_fname = "pilatus300_mastermask.npz"
@@ -169,7 +169,7 @@ sin = Stream()
 # TODO : run asynchronously?
 
 s_event = sin\
-        .map(source_databroker.pullfromuid, dbname='cms:data')
+        .map(idb.pullfromuid, dbname='cms:data')
 
 s_event = s_event.map(check_stitchback)
 
@@ -268,60 +268,60 @@ image.zip(mask_stream, origin.map(select, (0, 'origin'))).map(merge)\
 
 # save to plots
 resultsqueue = deque(maxlen=1000)
-sout_circavg.map((source_plotting.store_results),
+sout_circavg.map((iplotting.store_results),
                  lines=[('sqx', 'sqy')],
                  scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$",
                  ylabel="I(q)")\
         #.map(client.compute).map(resultsqueue.append)
 sout_imgstitch\
-        .map((source_plotting.store_results),
+        .map((iplotting.store_results),
              images=['image'], hideaxes=True)\
         #.map(client.compute).map(resultsqueue.append)
 
 sout_imgstitch_log\
-        .map((source_plotting.store_results), images=['image'],
+        .map((iplotting.store_results), images=['image'],
              hideaxes=True)\
         #.map(client.compute)\
         #.map(resultsqueue.append)
 sout_thumb\
-        .map((source_plotting.store_results), images=['thumb'],
+        .map((iplotting.store_results), images=['thumb'],
              hideaxes=True)\
         #.map(client.compute)\
         #.map(resultsqueue.append)
 sout_thumb.map(select, ('thumb', None)).map(psdm(safelog10)).map(select, (0, 'thumb'))\
         .map(add_attributes, stream_name="ThumbLog")\
-        .map(source_plotting.store_results, images=['thumb'],
+        .map(iplotting.store_results, images=['thumb'],
              hideaxes=True)\
         #.map(client.compute).map(resultsqueue.append)
 
-sqphi_out.map(source_plotting.store_results,
+sqphi_out.map(iplotting.store_results,
               images=['sqphi'], xlabel="$\phi$",
               ylabel="$q$", vmin=0, vmax=100)\
         #.map(resultsqueue.append)
 sout_img_pca\
-        .map(source_plotting.store_results,
+        .map(iplotting.store_results,
              images=['components'])\
         #.map(client.compute)\
         #.map(resultsqueue.append)
 
 # save to file system
 sout_thumb\
-        .map((source_file.store_results_file),
+        .map((ifile.store_results_file),
              {'writer': 'npy', 'keys': ['thumb']})\
         #.map(client.compute).map(resultsqueue.append)
 sout_circavg\
-        .map((source_file.store_results_file),
+        .map((ifile.store_results_file),
              {'writer': 'npy', 'keys': ['sqx', 'sqy']})\
         #.map(client.compute).map(resultsqueue.append)
 
 # save to xml
-sout_circavg.map((source_xml.store_results_xml), outputs=None)\
+sout_circavg.map((ixml.store_results_xml), outputs=None)\
         #.map(client.compute).map(resultsqueue.append)
 
 # TODO : make databroker not save numpy arrays by default i flonger than a
 # certain size
 # sample databroker save (not implemented)
-# sout_circavg.map(source_databroker.store_results_databroker,
+# sout_circavg.map(idb.store_results_databroker,
 # dbname='cms:analysis', external_writers={'sqx' : 'npy', 'sqy' : 'npy',
 # 'sqxerr' : 'npy', 'sqyerr' : 'npy'}, raw=True)
 

@@ -305,6 +305,8 @@ def CircularAverageStream():
     ''' Circular average stream.
 
         Inputs :
+            (image, calibration, mask=, bins=)
+
             image : 2d np.ndarray
                 the image to run circular average on
 
@@ -529,9 +531,12 @@ def ImageStitchingStream(return_intermediate=False):
     '''
         Image stitching
         Inputs:
+            (image=, mask=, origin=, stitchback=)
+
             image : the image
             mask : the mask
             origin : the origin of the image
+            stitchback : whether to stitch or not
 
         Outputs:
             sin : source of stream

@@ -265,10 +265,12 @@ def correct_ylimits(ax):
     ax.set_ylim(vmin, None)
 
 
-def findLowHigh(img, maxcts=None):
+def findLowHigh(img, maxcts=None, percentage=.05):
     ''' Find the reasonable low and high values of an image
             based on its histogram.
             Ignore the zeros
+
+        percentage : percentage of counts to ignore
     '''
     if maxcts is None:
         maxcts = 65536
@@ -278,8 +280,8 @@ def findLowHigh(img, maxcts=None):
     hhsum = np.sum(hh)
     if hhsum > 0:
         hhs = hhs/np.sum(hh)
-        wlow = np.where(hhs > .01)[0]  # 5%
-        whigh = np.where(hhs < .99)[0]  # 95%
+        wlow = np.where(hhs > percentage)[0]  # 5%
+        whigh = np.where(hhs < (1-percentage))[0]  # 95%
     else:
         # some arbitrary values
         wlow = np.array([1])
