@@ -151,11 +151,11 @@ def _getexpansion(bounds_acc, bounds_next):
     expandby = [0, 0]
     # image accumulator does not extend far enough left
     if bounds_acc[0] > bounds_next[0]:
-        expandby[0] = bounds_acc[0] - bounds_next[0]
+        expandby[0] = bounds_acc[0] - bounds_next[0]+1
 
     # image accumulator does not extend far enough right
     if bounds_acc[1] < bounds_next[1]:
-        expandby[1] = bounds_next[1] - bounds_acc[1]
+        expandby[1] = bounds_next[1] - bounds_acc[1]+1
 
     return expandby
 
