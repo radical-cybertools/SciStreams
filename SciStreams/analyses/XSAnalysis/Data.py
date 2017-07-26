@@ -187,6 +187,8 @@ class Obstruction:
     _thresh : a tweak to separate 0's from 1's in the case of floats (i.e.
         rotation/interpolation)
 
+    basis : pass basis from a previous obstruction
+
 
     '''
     _thresh = .5
@@ -231,48 +233,63 @@ class Obstruction:
 
         return retobj
 
-    def rotate(self, phi):
+    def rotate(self, phi, rotation_offset=None):
         ''' rotate the obstruction in phi, in degrees.
+
+
+            rotation_offset : offset of origin from center of rotation
+                this amounts to a different origin being returned. Resultant
+                images are the same
 
             Note : scipy's new center is center of the full image rotated
                 this means that the old origin will be rotated by the vector pointing
                 from the center to the origin, floating point number
+
         '''
+        if rotation_offset is None:
+            rotation_offset = 0, 0
+
+        rotation_offset = np.array(rotation_offset)
         mask = self.mask
-        cen = (np.array(mask.shape)-1)*.5
+        cen = (np.array(mask.shape)-1)//2
         old_shape = np.array(mask.shape)
 
-        # don't need this
-#        # re-center image (for scipy rotate)
-#        mask = self.mask
-#        old_origin = self.origin
-#        if origin is None:
-#            origin = old_origin
-#            dorigin = (0, 0)
-#        else:
-#            dorigin = old_origin[0] - origin[0], old_origin[1] - origin[1]
-#        # re-center
-#        mask, origin = self._center(mask, origin)
+        # get original origin
         origin = self.origin
+        # compute the rotation center
+        rotation_center = origin + rotation_offset
+
+        # rotate image, the easy part. Expands image to keep all pixels
         rotimg = scipy_rotate(mask, phi, reshape=True)
+
+        # now we need to figure out where the new origin is
         phir = np.radians(phi)
         rotation  = np.array([
             [np.cos(phir), np.sin(phir)],
             [-np.sin(phir), np.cos(phir)],
         ])
-        # now rotate origin
+        # origin-cen vector in original image
         # attn: coordinate is [y,x]
-        originvec = np.array(origin) - cen
-        # counter clockwise rotation, tested with [0,1] and [1,0]
-        neworiginvec = np.tensordot(originvec, rotation, axes=(0,0))
-        neworigin = neworiginvec + cen
+        dr = np.array(rotation_center) - cen
+
+        # rotation is around center, and image is expanded
+        # so we need to figure out where it is now
+        # rotate the vector of CEN to rotation_center
+        new_rotation_center = np.tensordot(dr, rotation, axes=(0,0))
+        # now add the center
+        new_rotation_center = new_rotation_center + cen
+
+        # now we need to figure out how much image expanded/contracted by
         new_shape = np.array(rotimg.shape)
-
         dN = new_shape-old_shape
-        # also shift from expansion/compression of image
-        neworigin += dN/2.
+        # shift by delta N/2 (since both sides assumed to expand equally)
+        # Attn : susceptible to off by one error
+        new_rotation_center += dN/2.
 
-        return Obstruction((rotimg > self._thresh).astype(int), neworigin)
+        # shift back in place
+        new_origin = new_rotation_center - rotation_offset
+
+        return Obstruction((rotimg > self._thresh).astype(int), new_origin)
 
     def _center(self, img, origin):
         ''' center an image to array center.'''
