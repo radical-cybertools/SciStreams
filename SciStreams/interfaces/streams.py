@@ -78,7 +78,9 @@ class Stream(object):
     >>> L  # and the actions happen at the sinks
     ['1', '2', '3', '4', '5']
     """
-    def __init__(self, child=None, children=None, **kwargs):
+    str_list = ['func', 'predicate', 'n', 'interval']
+
+    def __init__(self, child=None, children=None, name=None, **kwargs):
         self.parents = []
         if children is not None:
             self.children = children
@@ -89,6 +91,32 @@ class Stream(object):
         for child in self.children:
             if child:
                 child.parents.append(self)
+        self.name = name
+
+    def __str__(self):
+        s_list = []
+        if self.name:
+            s_list.append('{}; {}'.format(self.name, self.__class__.__name__))
+        else:
+            s_list.append(self.__class__.__name__)
+
+        for m in self.str_list:
+            s = ''
+            at = getattr(self, m, None)
+            if at:
+                if not callable(at):
+                    s = str(at)
+                elif hasattr(at, '__name__'):
+                    s = getattr(self, m).__name__
+                elif hasattr(at.__class__, '__name__'):
+                    s = getattr(self, m).__class__.__name__
+                else:
+                    s = None
+            if s:
+                s_list.append('{}={}'.format(m, s))
+        s = "; ".join(s_list)
+        s = "<" + s + ">"
+        return s
 
     def emit(self, x):
         """ Push data into the stream at this point
@@ -104,6 +132,23 @@ class Stream(object):
             else:
                 result.append(r)
         return [element for element in result if element is not None]
+
+    def update(self, x, who=None):
+        self.emit(x)
+
+    def connect(self, parent):
+        ''' Connect another child to stream.
+            Note that parents go downstream and children go upstream.
+        '''
+        if self.parents == [None] or self.parents == []:
+            self.parents = [parent]
+        else:
+            self.parents.append(parent)
+
+        if parent.children == [None]:
+            parent.children = [self]
+        else:
+            parent.children.append(self)
 
     @property
     def child(self):

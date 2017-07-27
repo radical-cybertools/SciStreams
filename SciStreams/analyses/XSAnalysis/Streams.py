@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 # vi: ts=4 sw=4
 
+from copy import copy
+
 from ...globals import cache, client
 cache.register()  # noqa
 
@@ -48,35 +50,63 @@ from collections import deque
 # cache for qmaps
 # TODO : clean this up
 
+# NOTE : When defining streams, make sure to place the expected inputs
+# and outputs in the docstrings! See stream below for a good example.
+
 
 # Calibration for SAXS data
 # NOTE : Makes the assumption that the wrapper provides 'select' functionality
-def CalibrationStream(keymap_name=None, detector=None):  # , wrapper=None):
+def CalibrationStream(keymap_name=None, detector=None):
     '''
         This returns a stream of calibration methods.
 
-        Input:
-            A calibration dictionary
+        Parameters
+        ----------
+        keymap_name : optional, string
+            the keymap name
 
-        Optional parameters:
-            keymap_name : the name of the keymap to use
-                for now, it's just 'cms' for cms data
+        detector : optional, string
+            the detector name.
+            see SciStreams.interfaces.detectors for list of detectors
 
-            detector : the detector name
-                for ex : 'pilatus300' for SAXS detector
+        Stream Inputs
+        -------------
+            attributes : A calibration dictionary
+                    necessary elements are:
 
+                    keymap = {
+                        'wavelength': 'wavelength',
+                        'beamx0': 'beamx0',
+                        'beamy0': 'beamy0',
+                        'sample_det_distance': 'sample_det_distance',
+                        }
 
-        Output:
-            A tuple of the source and dictionary of streams:
-                calibration : the calibration stream
-                q_maps : the zipped q_maps stream, containing:
+            img_shape= : optional, 2D np.ndarray
+                the image for the calibration
+                This is useful when image stitching where the image dimensions
+                aren't the typical detector dimensions (and for computing the
+                qmap)
+
+        Stream Outputs
+        --------------
+            calib_obj : a Calibration instance
+                Has members:
                     qx_map : a qx_map
                     qy_map : a qy_map
                     qz_map : a qz_map
                     qr_map : a qr_map
                     q_map  : the magnitude sqrt(qx**2 + qy**2 + qz**2)
-                origin : the origin
+                    origin : the origin
+
+        Returns
+        -------
+        sin : Stream
+            The input for the stream
+
+        sout : Stream
+            The output for the stream
     '''
+    # TODO : do for arbitrary images (i.e. not rectangular, receive array of pixels instead)
     if keymap_name is None:
         keymap_name = "cms"
 
@@ -105,7 +135,7 @@ def CalibrationStream(keymap_name=None, detector=None):  # , wrapper=None):
         return input_data
 
     # the pipeline flow defined here
-    sin = Stream()
+    sin = Stream(name="Calibration")
     s2  = sin.map(validate)
     # s2 = dask_streams.scatter(sin)
     s2 = s2.map(add_attributes, stream_name="Calibration")
@@ -177,7 +207,7 @@ def _get_keymap_defaults(name):
     return keymap, defaults
 
 
-def load_calib_dict(attributes, keymap=None, defaults=None):
+def load_calib_dict(attributes, keymap=None, defaults=None, img_shape=None, origin=None):
     ''' Load calibration dictionary from attributes.
         Attributes are a dictionary.
 
@@ -195,6 +225,8 @@ def load_calib_dict(attributes, keymap=None, defaults=None):
                 beamx0 : x center of beam (rows) (pixels)
                 beamy0 : y center of beam (cols) (pixels)
                 sample_det_distance : the sample detector distance (m)
+
+        image : if not none, use the shape of this image instead
     '''
     # print("load_calib_dict, attributes: {}".format(attributes))
     # print("load_calib_dict, keymap: {}".format(keymap))
@@ -217,16 +249,24 @@ def load_calib_dict(attributes, keymap=None, defaults=None):
             raise KeyError("There is an entry missing" +
                            " in header : {}.".format(newkey) +
                            "Cannot proceed")
+
+    # update keyword argument overrides
+    if img_shape is not None:
+        newdict['img_shape'] = img_shape
+    if origin is not None:
+        newdict['beamx0'] = {'value' : origin[1], 'unit' : 'pixel'}
+        newdict['beamy0'] = {'value' : origin[0], 'unit' : 'pixel'}
     # TODO : mention dicts need to be returned as tuples or encapsulated in a
     # dict
     # this is new syntax for putting arguments in dict
-    # print("load_calib_dict, newdict : {}".format(newdict))
+    #print("load_calib_dict, newdict : {}".format(newdict))
     return newdict
 
 
 def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
     '''
         Update calibration with all keyword arguments fill in the defaults
+        img_shape : specify arbitrary shape (useful for stitched images)
     '''
     calib_tmp = dict()
     calib_tmp.update(calib_dict)
@@ -238,12 +278,19 @@ def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
     pixel_size_y_val = detectors2D[detector]['pixel_size_y']['value']
     pixel_size_y_unit = detectors2D[detector]['pixel_size_y']['unit']
 
-    img_shape = detectors2D[detector]['shape']
+    if 'img_shape' not in calib_dict:
+        img_shape = detectors2D[detector]['shape']
+    else:
+        img_shape = Singlet('img_shape', value=calib_dict['img_shape'],
+                            unit='pixel')['img_shape']
+
 
     calib_tmp.update(Singlet('pixel_size_x', pixel_size_x_val,
                              pixel_size_x_unit))
     calib_tmp.update(Singlet('pixel_size_y', pixel_size_y_val,
                              pixel_size_y_unit))
+
+    # it's a dict with 'value' 'unit' elements
     calib_tmp['shape'] = img_shape.copy()
 
     # some post calculations
@@ -304,35 +351,51 @@ def _generate_qxyz_maps(calib_obj):
 def CircularAverageStream():
     ''' Circular average stream.
 
-        Inputs :
+        Stream Inputs
+        -------------
             (image, calibration, mask=, bins=)
 
             image : 2d np.ndarray
                 the image to run circular average on
 
-            q_map : 2d np.ndarray
-                the magnite of the wave vectors
+            calibration : 2D np.ndarray
+                the calibration object, with members:
 
-            r_map : 2d np.ndarray
-                the pixel positions from center
+                q_map : 2d np.ndarray
+                    the magnite of the wave vectors
 
-            mask : 2d np.ndarray
+                r_map : 2d np.ndarray
+                    the pixel positions from center
+
+            mask= : 2d np.ndarray, optional
                 the mask
 
-        Outputs :
-            source : Stream, the source stream
-            sink : dict, the output returns a dictionary of four elements:
-                sqx : the q values
-                sqxerr : the error in q values
-                sqy : the intensities
-                sqyerr : the error in intensities (approximate)
+            bins= : int or tuple, optional
+                if an int, the number of bins to divide into
+                if a list, the bins to use
+
+        Stream Outputs
+        --------------
+            sqx= : 1D np.ndarray
+                the q values
+            sqxerr= : 1D np.ndarray
+                the error q values
+            sqy= : 1D np.ndarray
+                the intensities
+            sqyerr= : 1D np.ndarray
+                the error in intensities (approximate)
+
+        Returns
+        -------
+            sin : Stream, the source stream (see Stream Inputs)
+            sout : the output stream (see Stream Outputs)
 
         Notes
         -----
         - Assumes square pixels
         - Assumes variance comes from shot noise only (by taking average along
             ring/Npixels)
-        - If bins is None, it does it's best to estimate pixel sizes and make
+        - If bins is None, it does its best to estimate pixel sizes and make
             the bins a pixel in size. Note, for Ewald curvature this is not
             straightforward. You need both a r_map in pixels from the center
             and the q_map for the actual q values.
@@ -356,7 +419,7 @@ def CircularAverageStream():
         # kwargs are optional so don't validate them
         return x
 
-    sin = Stream()
+    sin = Stream(name="Circular Average Stream")
     s2 = sin.map(validate)
     # s2 = sin.map(add_attributes)  # , stream_name="CircularAverage")
     #s2.map(psdm(lambda x : x)).map(print)
@@ -407,6 +470,9 @@ def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
     # now we use the real rbins, taking into account Ewald curvature
     # rbinstat = RadialBinnedStatistic(image.shape, bins=bins, rpix=q_map,
     # statistic='mean', mask=mask)
+    print("qmap shape : {}".format(q_map.shape))
+    print("number bins : {}".format(bins))
+    print("mask shape : {}".format(mask.shape))
     rbinstat = BinnedStatistic1D(q_map.reshape(-1), statistic='mean',
                                  bins=bins, mask=mask.ravel())
     sqy = rbinstat(image.ravel())
@@ -456,14 +522,37 @@ def center2edge(centers, positive=True):
 
 def QPHIMapStream(bins=(400, 400)):
     '''
-        Input :
-                image
-                mask
+        Parameters
+        ----------
+        bins : 2 tuple, optional
+            the number of bins to divide into
 
-        Output :
-            qphimap
+        Stream Inputs
+        -------------
+            img : 2d np.ndarray
+                the image
+            mask : 2d np.ndarray, optional
+                the mask
+            bins : 2 tuple, optional
+                the number of bins to divide into
+            origin : 2 tuple
+                the beam center in the image
+
+        Stream Outputs
+        --------------
+            sqphi= : 2d np.ndarray
+                the sqphi map
+            qs= : 1d np.ndarray
+                the q values
+            phis= : 1d np.ndarray
+                the phi values
+
+        Returns
+        -------
+        sin : the input stream (see Stream Inputs)
+        sout : the output stream (see Stream Outputs)
     '''
-    sin = Stream()
+    sin = Stream(name="QPHI map Stream")
     sout = sin.map(select, 0, 'mask', 'origin')\
         .map((add_attributes), stream_name="QPHIMapStream")
     sout = sout.map(psdm(qphiavg), bins=bins)
@@ -490,7 +579,28 @@ def qphiavg(img, mask=None, bins=None, origin=None):
 
 def AngularCorrelatorStream():
     ''' Stream to run angular correlations.
-        inputs : shape, origin, mask
+
+        Stream Inputs
+        -------------
+        shape : 2 tuple
+            the image shape
+        origin : 2 tuple
+            the beam center of the image
+        mask : 2d np.ndarray
+            the mask
+        rbins : number, optional
+            the number of bins in q
+        phibins : number, optional
+            the number of bins in phi
+        method : string, optional
+            the method to use for the angular correlations
+            defaults to 'bgest'
+
+        Stream Outputs
+        --------------
+        sin : the stream input
+        sout : the stream output
+
         Incomplete
     '''
     # from SciAnalysis.analyses.XSAnalysis import rdpc
@@ -530,23 +640,44 @@ def _xystitch_accumulate(prevstate, newstate):
 def ImageStitchingStream(return_intermediate=False):
     '''
         Image stitching
-        Inputs:
-            (image=, mask=, origin=, stitchback=)
 
-            image : the image
-            mask : the mask
-            origin : the origin of the image
-            stitchback : whether to stitch or not
+        Stream Inputs
+        -------------
+            image= : 2d np.ndarray
+                the image for the stitching
+            mask= : 2d np.ndarray
+                the mask
+            origin= : 2 tuple
+                the beam center
+            stitchback= : bool
+                whether or not to stitchback to previous image
 
-        Outputs:
-            sin : source of stream
-            sout
+        Stream Outputs
+        --------------
+            image= : 2d np.ndarray
+                the stitched image
+            mask= : 2d np.ndarray
+                the mask from the stitch
+            origin= : 2 tuple
+                the beam center
+            stitchback= : bool
+                whether or not to stitchback to previous image
 
-        return_intermediate : decide whether to return intermediate results or
-        not
+        Returns
+        -------
+            sin : the input stream
+            sout : the output stream
 
-        NOTE : you should normalize images by exposure time before giving to
-        this stream
+        Parameters
+        ----------
+            return_intermediate : bool, optional
+                decide whether to return intermediate results or not
+                defaults to False
+
+        Notes
+        -----
+        Any normalization of images (for ex: by exposure time) should be done
+        before inputting to this stream.
     '''
     # TODO : add state. When False returned, need a reason why
     def validate(x):
@@ -572,12 +703,12 @@ def ImageStitchingStream(return_intermediate=False):
         return x
 
     # TODO : remove the add_attributes part and just keep stream_name
-    sin = Stream(stream_name="ImageStitch")
-    sin = sin.map(validate)
+    sin = Stream(name="Image Stitching Stream", stream_name="ImageStitch")
+    s2 = sin.map(validate)
     # sin.map(lambda x : print("Beginning of stream data\n\n\n"))
     from dask import compute
     # TODO : remove compute requirement
-    s2 = sin.map(add_attributes, stream_name="ImageStitch")
+    s2 = s2.map(add_attributes, stream_name="ImageStitch")
     # s2.map(print,raw=True)
     # make the image, mask origin as the first three args
     # s2.map(lambda x : print("in image stitch : {}".format(x)), raw=True)
@@ -635,15 +766,34 @@ def ImageStitchingStream(return_intermediate=False):
 def ThumbStream(blur=None, crop=None, resize=None):
     ''' Thumbnail stream
 
-        inputs :
-            image (argument)
+        Parameters
+        ----------
+            blur : float, optional
+                the sigma of the Gaussian kernel to convolve image with
+                    for smoothing
+                default is None, no smoothing
 
-        output :
-            reduced image
+            crop : 4 tuple of int, optional
+                the boundaries to crop by
+                default is None, no cropping
+
+            resize : int, optional
+                the factor to resize by
+                for example resize=2 performs 2x2 binning of the image
+
+        Stream Inputs
+        -------------
+            image : 2d np.ndarray
+                the image
+
+        Returns
+        -------
+            sin : the stream input
+            sout : the stream output
 
     '''
     # TODO add flags to actually process into thumbs
-    sin = Stream()
+    sin = Stream(name="Thumbnail Stream")
     s0 = sin.map((add_attributes), stream_name="Thumb")
     # s1 = sin.add_attributes(stream_name="ThumbStream")
     s1 = s0.map(psdm(_blur))

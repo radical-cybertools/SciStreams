@@ -152,7 +152,8 @@ def make_submask(master_mask, master_cen, shape=None, origin=None,
     x_master = np.arange(master_mask.shape[1]) - master_cen[1]
     y_master = np.arange(master_mask.shape[0]) - master_cen[0]
 
-    interpolator = RegularGridInterpolator((y_master, x_master), master_mask)
+    interpolator = RegularGridInterpolator((y_master, x_master), master_mask,
+                                           bounds_error=False, fill_value=0)
 
     # make submask
     x = np.arange(shape[1]) - origin[1]
@@ -233,6 +234,12 @@ class Obstruction:
 
         return retobj
 
+    def shiftx(self, dx):
+        self.origin = self.origin[0], self.origin[1] - dx
+
+    def shifty(self, dy):
+        self.origin = self.origin[0] - dy, self.origin[1]
+
     def rotate(self, phi, rotation_offset=None):
         ''' rotate the obstruction in phi, in degrees.
 
@@ -289,7 +296,8 @@ class Obstruction:
         # shift back in place
         new_origin = new_rotation_center - rotation_offset
 
-        return Obstruction((rotimg > self._thresh).astype(int), new_origin)
+        self.origin = new_origin
+        self.image = (rotimg > self._thresh).astype(int)
 
     def _center(self, img, origin):
         ''' center an image to array center.'''
