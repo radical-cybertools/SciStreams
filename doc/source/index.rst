@@ -13,6 +13,7 @@ Welcome to SciAnalysis's documentation!
  installation
  streams
  tutorials
+ debugging
 
 .. currentmodule::
   intro

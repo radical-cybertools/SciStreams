@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# SciAnalysis documentation build configuration file, created by
+# SciStreams documentation build configuration file, created by
 # sphinx-quickstart on Tue Jul 11 17:42:28 2017.
 #
 # This file is execfile()d with the current directory set to its
@@ -49,7 +49,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'SciAnalysis'
+project = 'SciStreams'
 copyright = '2017, Kevin Yager, Julien Lhermitte'
 author = 'Kevin Yager, Julien Lhermitte'
 
@@ -118,7 +118,7 @@ html_sidebars = {
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'SciAnalysisdoc'
+htmlhelp_basename = 'SciStreamsdoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -145,7 +145,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'SciAnalysis.tex', 'SciAnalysis Documentation',
+    (master_doc, 'SciStreams.tex', 'SciStreams Documentation',
      'Kevin Yager, Julien Lhermitte', 'manual'),
 ]
 
@@ -155,7 +155,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'scianalysis', 'SciAnalysis Documentation',
+    (master_doc, 'scianalysis', 'SciStreams Documentation',
      [author], 1)
 ]
 
@@ -166,8 +166,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'SciAnalysis', 'SciAnalysis Documentation',
-     author, 'SciAnalysis', 'One line description of project.',
+    (master_doc, 'SciStreams', 'SciStreams Documentation',
+     author, 'SciStreams', 'One line description of project.',
      'Miscellaneous'),
 ]
 
