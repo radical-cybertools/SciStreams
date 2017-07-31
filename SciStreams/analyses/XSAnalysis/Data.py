@@ -243,7 +243,6 @@ class Obstruction:
     def rotate(self, phi, rotation_offset=None):
         ''' rotate the obstruction in phi, in degrees.
 
-
             rotation_offset : offset of origin from center of rotation
                 this amounts to a different origin being returned. Resultant
                 images are the same
