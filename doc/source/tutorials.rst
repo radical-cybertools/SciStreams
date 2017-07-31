@@ -295,3 +295,85 @@ mapped to the function that extracts this information
 Note there is a general rule for attributes. They are always passed
 through, and for a ``merge`` operation, they follow the same conflict
 rules that ``kwargs`` follow.
+
+Tutorial 7 : Submitting to Cluster
+----------------------------------
+It is possible to submit some computations to a distributed scheduler
+and have them gathered back.
+
+::
+
+     # some global variables
+     from SciStreams.interfaces.streams import Stream
+     from SciStreams.interfaces.StreamDoc import StreamDoc
+
+     from distributed import Client
+     client = Client()
+
+     def inc(x):
+        print("Incrementing")
+        return x + 1
+
+     s = Stream()
+     s2 = s.map(lambda x : client.submit(inc, x))
+     s2 = s2.map(lambda x : client.gather(x))
+
+     s.emit(3)
+     s.emit(3)
+     s.emit(4)
+
+There are two things happening here:
+
+1. The results are being sent to the cluster through ``client.submit``.
+   The returned result will now be a ``dask.Future`` instead of the data
+   itself. A ``dask.Future`` object is very simple. It contains a
+   reference to the data on the cluster. For some future ``f =
+   Future()``, retrieving the result is then as simple as calling ``res
+   = f.result()``.
+2. The results are collected via ``client.gather()``. This basically
+   calls the ``.result()`` member of each incoming ``dask.Future`` object in
+   the stream, turning it into a concrete result once again.
+
+
+Advanced Tutorial 8 : Submitting to Cluster and Caching
+----------------------------------
+Sometimes redundant computations are sent to the cluster. It would be
+nice to have these computations cached so that they aren't computed over
+and over again. This is especially true when computing large 2D ``q`` and
+``phi`` maps. There is an easy mechanism to do so using
+``dask.distributed``. More information can be found `here
+<http://distributed.readthedocs.io/en/latest/manage-computation.html>`_.
+
+The basic idea is that the distributed scheduler will cache all results
+in memory that have a valid ``Future`` pointing to it.
+Here is an example:
+
+::
+
+     # some global variables
+     import SciStreams.globals as s_globals
+     from SciStreams.interfaces.streams import Stream
+     from SciStreams.interfaces.StreamDoc import StreamDoc
+
+     from distributed import Client
+     client = Client()
+
+     def inc(x):
+        print("Incrementing")
+        return x + 1
+
+     s = Stream()
+     s2 = s.map(lambda x : client.submit(inc, x))
+     # sink the resultant futures to list
+     s2.map(s_globals.futures_cache.append)
+     s2 = s2.map(lambda x : client.gather(x))
+
+     s.emit(3)
+     s.emit(3)
+     s.emit(4)
+
+The only difference in this case is that now, before the stream is
+``gather`` ed, its ``Future`` is also sent off to a queue
+``s_globals.futures_cache``. This queue is actually a global queue
+supplied by ``SciStreams`` for convenience. It has a maximum length
+defined by ``MAX_FUTURE_NUM`` in ``SciStreams.globals`.
