@@ -232,7 +232,10 @@ class Obstruction:
         return retobj
 
     def rotate(self, phi, origin=None):
-        ''' rotate the obstruction in phi, in degrees.'''
+        ''' rotate the obstruction in phi, in degrees.
+            counter clockwise
+            origin : the origin to rotate by
+        '''
         # re-center image (for scipy rotate)
         mask = self.mask
         old_origin = self.origin
@@ -241,6 +244,7 @@ class Obstruction:
             dorigin = (0, 0)
         else:
             dorigin = old_origin[0] - origin[0], old_origin[1] - origin[1]
+
         # re-center
         mask, origin = self._center(mask, origin)
         rotimg = scipy_rotate(self.mask, phi, reshape=True)
