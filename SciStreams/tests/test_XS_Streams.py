@@ -172,9 +172,9 @@ def test_ImageStitchingStream():
     # now get the stitch and make sure it was okay
     stitched = L[0]['kwargs']['image']
 
-    assert_array_almost_equal(stitched[:, 2], np.array([0., 0., 0., 0., 1., 1.,
-                                                       2., 2., 1., 1., 1., 1.,
-                                                       1., 1.]))
+    assert_array_almost_equal(stitched[:, 2], np.array([0., 0., 0., 0., 0., 1.,
+                                                        1., 2., 2., 1., 1., 1.,
+                                                        1., 1., 1.]))
 
 
 def test_roundbydigits():

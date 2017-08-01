@@ -1,5 +1,5 @@
 # test passing an object
-from dask import delayed, compute
+from dask import delayed, compute, get
 # for testing the caching
 from dask.delayed import tokenize
 from dask.base import normalize_token
@@ -27,7 +27,7 @@ def test_object_hash():
 
     s = Stream()
     # when delayed, should cache
-    s.map(delayed(psdm(add))).map(compute)
+    s.map(delayed(psdm(add))).map(compute, get=get)
 
     s2 = Stream()
     s2.map(psdm(add))
