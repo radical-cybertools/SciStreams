@@ -128,7 +128,7 @@ def bin2label(res, num_labels):
     return labels
 
 
-def store_result_tensorflow(result, dataset=None, dtype=np.uint32):
+def store_result_tensorflow(result, dataset=None, dtype=np.uint32, num_per_batch=None):
     ''' Store an image to be read by tensorflow
         This prepares binary files in temporary directories to be read by
         tensorflow applications.
@@ -189,6 +189,8 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32):
         [1] https://raw.githubusercontent.com/tensorflow/models/
                 master/tutorials/image/cifar10/cifar10_multi_gpu_train.py
     '''
+    if num_per_batch is None:
+        num_per_batch = TFLAGS.num_per_batch
 
     if dataset is None:
         raise ValueError("Error dataset not supplied")
@@ -243,7 +245,7 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32):
         # num recs, num batches per rec, image shape 1, image shape 2,
         #      num labels
         # TODO : add data type to master header
-        _save_master_file(master_filename, 0, TFLAGS.num_per_batch,
+        _save_master_file(master_filename, 0, num_per_batch,
                           image.shape, num_labels)
 
     master_record = _read_master_file(master_filename)
@@ -287,10 +289,10 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32):
         num_elements = array_size/elems_per_data
 
         # if the number of elements has reached maximum batch size
-        if num_elements == TFLAGS.num_per_batch:
+        if num_elements == num_per_batch:
             # update num recs and current file
             numrecs += 1
-            _save_master_file(master_filename, numrecs, TFLAGS.num_per_batch,
+            _save_master_file(master_filename, numrecs, num_per_batch,
                               image.shape, num_labels)
             curfilename = fpath + "/{:08d}.bin".format(numrecs)
             # arr = np.fromfile(curfilename, dtype=dtype).reshape((-1,
