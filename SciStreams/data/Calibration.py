@@ -1,5 +1,8 @@
+import numpy as np
 # Calibration
 # import Calibration for the calibration object
+from dask.base import normalize_token
+from ..processing.numerical import roundbydigits
 
 
 class CalibrationBase(object):
@@ -162,12 +165,34 @@ class CalibrationBase(object):
     ########################################
 
     def clear_maps(self):
-        raise NotImplementedError("Error : subclass this class and implement this")
+        self.r_map_data = None
+        self._q_per_pixel = None
+        self.q_map_data = None
+        self.angle_map_data = None
+
+        self.qx_map_data = None
+        self.qy_map_data = None
+        self.qz_map_data = None
+        self.qr_map_data = None
 
 
     @property
     def r_map(self):
-        raise NotImplementedError("Error : subclass this class and implement this")
+        '''Returns a 2D map of the distance from the origin (in pixel units) for
+        each pixel position in the detector image.'''
+
+        if self.r_map_data is not None:
+            return self.r_map_data
+
+        x = np.arange(self.width) - self.x0
+        y = np.arange(self.height) - self.y0
+        X, Y = np.meshgrid(x, y)
+        R = np.sqrt(X**2 + Y**2)
+
+        self.r_map_data = R
+
+        return self.r_map_data
+
 
 
     def q_map(self):
@@ -194,8 +219,7 @@ class CalibrationBase(object):
 
 
 
-from dask.base import normalize_token
-@normalize_token.register(Calibration)
+@normalize_token.register(CalibrationBase)
 def tokenize_calibration(self):
     # function to allow for intelligent caching
     # all all computations of data and submethods

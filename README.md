@@ -17,7 +17,15 @@ TODO:
  * add databroker interface to all functions
 
 File Structure:
- * /interfaces : Everything in the code runs on `StreamDoc` objects.
+ * core/ : The backbone of the streaming pipeline. This could likely be its own library.
+    * streams.py : the streams library (from http://www.github.com/mrocklin/streams)
+    * dask-streams.py : the dask extension to the streams library (from http://www.github.com/mrocklin/streams)
+    * StreamDoc.py : the StreamDoc extension to the streams library
+ * utils/ : various utilities that don't fit anywhere else
+ * streams/ : all processes involving streams go here
+ * data/ : objects that handle data
+ * processing/ : functions/objects that process data
+ * interfaces/ : Everything in the code runs on `StreamDoc` objects.
     External data must be converted to this format. All routines involving this
     conversion are found in folders in the `interfaces` folder:
     * /databroker : databroker data <-> StreamDoc conversions
@@ -29,6 +37,4 @@ File Structure:
     * streams.py : the stream handling objects.
     * dask.py : stream handling objects involving distributed computation
  * /startup : various frontend scripts to run routine batch processing
- * /analyses :  various analyis protocols
  * /tests : unit tests 
- * /data : various data for the different protocols

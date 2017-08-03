@@ -1,7 +1,7 @@
 from .core import jpegloader, pngloader, hdf5loader, npyloader
 from .core import jpegwriter, pngwriter
 
-from ...interfaces.StreamDoc import StreamDoc
+from ...core.StreamDoc import StreamDoc
 
 # Simple cloass to normalize way files are read
 # Add to _FORMATSPECS and _REQUIREDKEYS to handle more files

@@ -1,5 +1,3 @@
-import time
-
 from distributed.utils import sync
 from tornado.ioloop import IOLoop
 from tornado import gen

@@ -1,16 +1,15 @@
 # test the XSAnalysis Streams, make sure they're working properly
-from SciStreams.interfaces.StreamDoc import StreamDoc
-from SciStreams.analyses.XSAnalysis.Streams import ImageStitchingStream,\
+from SciStreams.core.StreamDoc import StreamDoc
+from SciStreams.streams.XS_Streams import ImageStitchingStream,\
         CalibrationStream, CircularAverageStream, QPHIMapStream,\
         ThumbStream
 
-from SciStreams.analyses.XSAnalysis.tools import roundbydigits
 
-from SciStreams.interfaces.detectors import detectors2D
+from SciStreams.data.detectors import detectors2D
 
 import numpy as np
 
-from numpy.testing import assert_array_almost_equal, assert_array_equal
+from numpy.testing import assert_array_almost_equal
 
 
 def test_CalibrationStream_pilatus():
@@ -88,7 +87,7 @@ def test_CircularAverageStream():
 
 def test_QPHIMapStream():
     ''' Test the qphimap stream'''
-    bins = (3,4)
+    bins = (3, 4)
     sin, sout = QPHIMapStream(bins=bins)
 
     L = list()
@@ -98,10 +97,10 @@ def test_QPHIMapStream():
     img = np.random.random((10, 10))
     x = np.linspace(-5, 5, 10)
     X, Y = np.meshgrid(x, x)
-    r_map = np.sqrt(X**2 + Y**2)
-    q_map = r_map*.12
+    # r_map = np.sqrt(X**2 + Y**2)
+    # q_map = r_map*.12
 
-    origin = (3,3)
+    origin = (3, 3)
 
     sdoc = StreamDoc(args=[img],
                      kwargs=dict(origin=origin, mask=mask))
@@ -177,37 +176,13 @@ def test_ImageStitchingStream():
                                                         1., 1., 1.]))
 
 
-def test_roundbydigits():
-    '''test the round by digits function.'''
-    res = roundbydigits(123.421421, digits=6)
-    assert res == 123.421
-
-    res = roundbydigits(-123.421421, digits=6)
-    assert res == -123.421
-
-    res = roundbydigits(123.421421, digits=3)
-    assert res == 123.0
-
-    res = roundbydigits(0, digits=3)
-    assert res == 0
-
-    res = roundbydigits(np.nan, digits=3)
-    assert np.isnan(res)
-
-    res = roundbydigits(np.inf, digits=3)
-    assert np.isinf(res)
-
-    res = roundbydigits(np.array([123.421421, 1.1351,
-                                  np.nan, np.inf, 0]), digits=6)
-    assert_array_equal(res, np.array([123.421, 1.1351, np.nan, np.inf, 0]))
-
 def test_ThumbStream():
     sin, sout = ThumbStream()
 
     L = list()
     sout.map(L.append)
 
-    image = np.ones((100,100))
+    image = np.ones((100, 100))
     sin.emit(StreamDoc(args=[image]))
 
     assert isinstance(L[0]['kwargs']['thumb'], np.ndarray)

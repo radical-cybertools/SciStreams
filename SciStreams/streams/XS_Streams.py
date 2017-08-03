@@ -1,36 +1,30 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-# vi: ts=4 sw=4
+# TODO : add pixel procesing/thresholding threshold_pixels((2**32-1)-1) # Eiger
+# inter-module gaps
+# TODO : add thumb
 
-from copy import copy
+from .. import globals as streams_globals
 
-from ...globals import cache, client
-cache.register()  # noqa
-
-from ... import globals as streams_globals
-
-
-from dask import compute
 
 from dask import set_options
 set_options(delayed_pure=True)  # noqa
 
 import numpy as np
 
-from dask.delayed import delayed
-
 from collections import ChainMap
-from ...data.Singlet import Singlet
+from ..data.Singlet import Singlet
 
 # Sources
-from ...interfaces.detectors import detectors2D
+from ..data.detectors import detectors2D
 
-from ...interfaces.StreamDoc import Arguments
 # wrappers for parsing streamdocs
-from ...interfaces.StreamDoc import select, pack, unpack, todict,\
+from ..core.StreamDoc import select, pack, unpack, todict,\
         add_attributes, psdm, psda
 
-from ...interfaces.dask import scatter
+from ..processing.stitching import xystitch_accumulate, xystitch_result
+from ..processing.circavg import circavg
+from ..processing.qphiavg import qphiavg
+from ..processing.image import blur as _blur, crop as _crop, resize as _resize
+from ..processing import rdpc
 
 
 '''
@@ -39,13 +33,9 @@ from ...interfaces.dask import scatter
 
 # from SciAnalysis.analyses.XSAnalysis.Data import Calibration
 # use RQConv now
-from .DataRQconv \
-        import CalibrationRQconv as Calibration
+from ..data.Calibration import Calibration
 
-from ...interfaces.StreamDoc import StreamDoc
-from ...interfaces.streams import Stream
-
-from collections import deque
+from ..core.streams import Stream
 
 # cache for qmaps
 # TODO : clean this up
@@ -106,7 +96,8 @@ def CalibrationStream(keymap_name=None, detector=None):
         sout : Stream
             The output for the stream
     '''
-    # TODO : do for arbitrary images (i.e. not rectangular, receive array of pixels instead)
+    # TODO : do for arbitrary images (i.e. not rectangular, receive array of
+    # pixels instead)
     if keymap_name is None:
         keymap_name = "cms"
 
@@ -118,11 +109,11 @@ def CalibrationStream(keymap_name=None, detector=None):
 
     def validate(input_data):
         if 'args' not in input_data:
-            message="args not in StreamDoc"
+            message = "args not in StreamDoc"
             raise ValueError(message)
         args = input_data['args']
         if len(args) != 1:
-            message="args not length 1"
+            message = "args not length 1"
             raise ValueError(message)
         data = args[0]
         # if 'sample_savename' not in kwargs:
@@ -136,27 +127,23 @@ def CalibrationStream(keymap_name=None, detector=None):
 
     # the pipeline flow defined here
     sin = Stream(name="Calibration")
-    s2  = sin.map(validate)
-    # s2 = dask_streams.scatter(sin)
+    s2 = sin.map(validate)
+
     s2 = s2.map(add_attributes, stream_name="Calibration")
-    # s2 = dask_streams.gather(s2)
-    # s2.map(compute, raw=True).map(print, raw=True)
+
     calib = s2.map(psdm(load_calib_dict), keymap=keymap, defaults=defaults)
-    # calib.map(compute, raw=True).map(print, raw=True)
-    # calib = calib.map(load_from_calib_dict, detector=detector,
-    # calib_defaults=defaults)
+
     calib_obj = calib.map(psdm(load_from_calib_dict), detector=detector,
                           calib_defaults=defaults)
-    # calib_obj.apply(compute).apply(print)
 
     from SciStreams.globals import client
-    calib_obj = calib_obj.map(lambda x : client.submit(psdm(_generate_qxyz_maps), x))
+    calib_obj = calib_obj.map(lambda x:
+                              client.submit(psdm(_generate_qxyz_maps), x))
     calib_obj.map(streams_globals.futures_cache.append)
-    calib_obj = calib_obj.map(lambda x : client.gather(x))
-    #calib_obj = calib_obj.map(lambda x: compute(x)[0])
+    calib_obj = calib_obj.map(lambda x: client.gather(x))
 
     sout = calib_obj
-    # return sin and the endpoints
+
     return sin, sout
 
 
@@ -207,7 +194,8 @@ def _get_keymap_defaults(name):
     return keymap, defaults
 
 
-def load_calib_dict(attributes, keymap=None, defaults=None, img_shape=None, origin=None):
+def load_calib_dict(attributes, keymap=None, defaults=None, img_shape=None,
+                    origin=None):
     ''' Load calibration dictionary from attributes.
         Attributes are a dictionary.
 
@@ -254,12 +242,12 @@ def load_calib_dict(attributes, keymap=None, defaults=None, img_shape=None, orig
     if img_shape is not None:
         newdict['img_shape'] = img_shape
     if origin is not None:
-        newdict['beamx0'] = {'value' : origin[1], 'unit' : 'pixel'}
-        newdict['beamy0'] = {'value' : origin[0], 'unit' : 'pixel'}
+        newdict['beamx0'] = {'value': origin[1], 'unit': 'pixel'}
+        newdict['beamy0'] = {'value': origin[0], 'unit': 'pixel'}
     # TODO : mention dicts need to be returned as tuples or encapsulated in a
     # dict
     # this is new syntax for putting arguments in dict
-    #print("load_calib_dict, newdict : {}".format(newdict))
+    # print("load_calib_dict, newdict : {}".format(newdict))
     return newdict
 
 
@@ -283,7 +271,6 @@ def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
     else:
         img_shape = Singlet('img_shape', value=calib_dict['img_shape'],
                             unit='pixel')['img_shape']
-
 
     calib_tmp.update(Singlet('pixel_size_x', pixel_size_x_val,
                              pixel_size_x_unit))
@@ -331,20 +318,14 @@ def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
     calib_object.set_image_size(width, height)
     calib_object.set_beam_position(calib_dict['beamx0']['value'],
                                    calib_dict['beamy0']['value'])
-    # print("calibration object: {}".format(calib_object))
-    # print("calibration object members: {}".format(calib_object.__dict__))
+    print("calibration object: {}".format(calib_object))
+    print("calibration object members: {}".format(calib_object.__dict__))
 
-    # return calibration,
     return calib_object
 
 
 def _generate_qxyz_maps(calib_obj):
-    # print("_generate_qxyz_maps calib_obj : {}".format(calib_obj))
     calib_obj.generate_maps()
-    # print("_generate_qxyz_maps calib object qxmap shape :
-    # {}".format(calib_obj.qx_map.shape))
-    # print(calib_obj.origin)
-    # MUST return the object if caching
     return calib_obj
 
 
@@ -406,10 +387,10 @@ def CircularAverageStream():
     # TODO : extend file to mltiple writers?
     def validate(x):
         if 'args' not in x:
-            message="args not in doc"
+            message = "args not in doc"
             raise ValueError(message)
         if 'kwargs' not in x:
-            message="kwargs not in doc"
+            message = "kwargs not in doc"
             raise ValueError(message)
         if len(x['args']) != 2:
             message = "expected two arguments: "
@@ -422,7 +403,7 @@ def CircularAverageStream():
     sin = Stream(name="Circular Average Stream")
     s2 = sin.map(validate)
     # s2 = sin.map(add_attributes)  # , stream_name="CircularAverage")
-    #s2.map(psdm(lambda x : x)).map(print)
+    # s2.map(psdm(lambda x : x)).map(print)
 
     sout = s2.map(psdm(circavg_from_calibration))
     return sin, sout
@@ -433,91 +414,6 @@ def circavg_from_calibration(image, calibration, mask=None, bins=None):
     # print("circavg : rmap: {} ".format(calibration.r_map))
     return circavg(image, q_map=calibration.q_map, r_map=calibration.r_map,
                    mask=mask, bins=bins)
-
-
-def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
-    ''' computes the circular average.'''
-    from skbeam.core.accumulators.binned_statistic import BinnedStatistic1D
-    # TODO : could avoid creating a mask to save time
-    if mask is None:
-        mask = np.ones_like(image)
-
-    # figure out bins if necessary
-    if bins is None:
-        # guess q pixel bins from r_map
-        if r_map is not None:
-            # choose 1 pixel bins (roughly, not true at very high angles)
-            # print("rmap not none, mask shape : {}, rmap shape :
-            # {}".format(mask.shape, r_map.shape))
-            pxlst = np.where(mask == 1)
-            nobins = int(np.max(r_map[pxlst]) - np.min(r_map[pxlst]) + 1)
-            # print("rmap is not none, decided on {} bins".format(nobins))
-        else:
-            # crude guess, I'll be off by a factor between 1-sqrt(2) or so
-            # (we'll have that factor less bins than we should)
-            # arbitrary number
-            nobins = int(np.maximum(*(image.shape))//4)
-
-        # here we assume the rbins uniform
-        bins = nobins
-        # rbinstat = RadialBinnedStatistic(image.shape, bins=nobins,
-        # rpix=r_map, statistic='mean', mask=mask)
-        rbinstat = BinnedStatistic1D(r_map.reshape(-1), statistic='mean',
-                                     bins=nobins, mask=mask.ravel())
-        bin_centers = rbinstat(q_map.ravel())
-        bins = center2edge(bin_centers)
-
-    # now we use the real rbins, taking into account Ewald curvature
-    # rbinstat = RadialBinnedStatistic(image.shape, bins=bins, rpix=q_map,
-    # statistic='mean', mask=mask)
-    print("qmap shape : {}".format(q_map.shape))
-    print("number bins : {}".format(bins))
-    print("mask shape : {}".format(mask.shape))
-    rbinstat = BinnedStatistic1D(q_map.reshape(-1), statistic='mean',
-                                 bins=bins, mask=mask.ravel())
-    sqy = rbinstat(image.ravel())
-    sqx = rbinstat.bin_centers
-    # get the error from the shot noise only
-    # NOTE : variance along ring could also be interesting but you
-    # need to know the correlation length of the peaks in the rings... (if
-    # there are peaks)
-    rbinstat.statistic = "sum"
-    noperbin = rbinstat(mask.ravel())
-    sqyerr = np.sqrt(rbinstat(image.ravel()))
-    sqyerr /= np.sqrt(noperbin)
-    # the error is just the bin widths/2 here
-    sqxerr = np.diff(rbinstat.bin_edges)/2.
-
-    return Arguments(sqx=sqx, sqy=sqy, sqyerr=sqyerr, sqxerr=sqxerr)
-
-
-def center2edge(centers, positive=True):
-    ''' Transform a set of bin centers to edges
-        This is useful for non-uniform bins.
-
-        Note : for the edges, an assumption is made. They are extended to half
-        the distance between the first two and last two points etc.
-
-        positive : make sure the edges are monotonically increasing
-    '''
-    midpoints = (centers[:-1] + centers[1:])*.5
-    dedge_left = centers[1]-centers[0]
-    dedge_right = centers[-1]-centers[-2]
-    left_edge = (centers[0] - dedge_left/2.).reshape(1)
-    right_edge = (centers[-1] + dedge_right/2.).reshape(1)
-    edges = np.concatenate((left_edge, midpoints, right_edge))
-    # cleanup nans....
-    w = np.where(~np.isnan(edges))
-    edges = edges[w]
-    if positive:
-        newedges = list()
-        mxedge = 0
-        for edge in edges:
-            if edge > mxedge:
-                newedges.append(edge)
-                mxedge = edge
-        edges = np.array(newedges)
-    return edges
 
 
 def QPHIMapStream(bins=(400, 400)):
@@ -561,22 +457,6 @@ def QPHIMapStream(bins=(400, 400)):
     return sin, sout
 
 
-def qphiavg(img, mask=None, bins=None, origin=None):
-    ''' quick qphi average calculator.
-        ignores bins for now
-    '''
-    # TODO : replace with method that takes qphi maps
-    # TODO : also return q and phi of this...
-    # print("In qphi average stream")
-    from skbeam.core.accumulators.binned_statistic import RPhiBinnedStatistic
-    rphibinstat = RPhiBinnedStatistic(img.shape, mask=mask, origin=origin,
-                                      bins=bins)
-    sqphi = rphibinstat(img)
-    qs = rphibinstat.bin_centers[0]
-    phis = rphibinstat.bin_centers[1]
-    return Arguments(sqphi=sqphi, qs=qs, phis=phis)
-
-
 def AngularCorrelatorStream():
     ''' Stream to run angular correlations.
 
@@ -613,11 +493,12 @@ def AngularCorrelatorStream():
 
 def prepare_correlation(shape, origin, mask, rbins=800, phibins=360,
                         method='bgest'):
-    rdphicorr = rdpc.RDeltaPhiCorrelator(image.shape,  origin=origin,
+    rdphicorr = rdpc.RDeltaPhiCorrelator(shape,  origin=origin,
                                          mask=mask, rbins=rbins,
                                          phibins=phibins)
     # print("kwargs : {}".format(kwargs))
     return rdphicorr
+
 
 def angularcorrelation(rdphicorr, image):
     ''' Run the angular correlation on the angular correlation object.'''
@@ -625,18 +506,17 @@ def angularcorrelation(rdphicorr, image):
     return rdphicorr.rdeltaphiavg_n
 
 
-
-from .tools import xystitch_accumulate, xystitch_result
 def _xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc):
     # print("_xystitch_result, img_acc : {}".format(img_acc))
     return xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc)
+
 
 def _xystitch_accumulate(prevstate, newstate):
     # print("_xystitch_accumulate, prevstate: {}".format(prevstate))
     return xystitch_accumulate(prevstate, newstate)
 
 
-### Image stitching Stream
+# Image stitching Stream
 def ImageStitchingStream(return_intermediate=False):
     '''
         Image stitching
@@ -694,11 +574,11 @@ def ImageStitchingStream(return_intermediate=False):
             raise ValueError(message)
 
         if not isinstance(kwargs['image'], np.ndarray):
-            message="image is not array"
+            message = "image is not array"
             raise ValueError(message)
 
         if len(kwargs['origin']) != 2:
-            message="origin not length 2"
+            message = "origin not length 2"
             raise ValueError(message)
         return x
 
@@ -706,22 +586,20 @@ def ImageStitchingStream(return_intermediate=False):
     sin = Stream(name="Image Stitching Stream", stream_name="ImageStitch")
     s2 = sin.map(validate)
     # sin.map(lambda x : print("Beginning of stream data\n\n\n"))
-    from dask import compute
     # TODO : remove compute requirement
     s2 = s2.map(add_attributes, stream_name="ImageStitch")
-    # s2.map(print,raw=True)
-    # make the image, mask origin as the first three args
-    # s2.map(lambda x : print("in image stitch : {}".format(x)), raw=True)
-    # s3 = s2.map(lambda x : compute(x)[0]).select(('image', None), ('mask', None), ('origin', None), ('stitchback', None))
-    s3 = s2.map(select, ('image', None), ('mask', None), ('origin', None), ('stitchback', None))
+
+    s3 = s2.map(select, ('image', None), ('mask', None), ('origin', None),
+                ('stitchback', None))
     sout = s3.map(psdm(pack))
     sout = sout.accumulate(psda(_xystitch_accumulate))
-    # sout.map(lambda x : print("imagestitch sdoc before unpack : {}".format(x)),raw=True)
+
     sout = sout.map(psdm(unpack))
     sout = sout.map(psdm(_xystitch_result))
     sout = sout.map(psdm(todict))
 
-    # now window the results and only output if stitchback from previous is nonzero
+    # now window the results and only output if stitchback from previous is
+    # nonzero
     # save previous value, grab previous stitchback value
     swin = sout.sliding_window(2)
 
@@ -762,7 +640,6 @@ def ImageStitchingStream(return_intermediate=False):
     return sin, swinout
 
 
-
 def ThumbStream(blur=None, crop=None, resize=None):
     ''' Thumbnail stream
 
@@ -798,43 +675,6 @@ def ThumbStream(blur=None, crop=None, resize=None):
     # s1 = sin.add_attributes(stream_name="ThumbStream")
     s1 = s0.map(psdm(_blur))
     s1 = s1.map(psdm(_crop))
-    sout = s1.map(psdm(_resize)).map(select,(0, 'thumb'))
+    sout = s1.map(psdm(_resize)).map(select, (0, 'thumb'))
 
     return sin, sout
-
-def _blur(img, sigma=None, **kwargs):
-    if sigma is not None:
-        from scipy.ndimage.filters import gaussian_filter
-        img = gaussian_filter(img, sigma)
-    return img
-
-# TODO : fix
-def _crop(img, crop=None, **kwargs):
-    if crop is not None:
-        x0, x1, y0, y1 = crop
-        img = img[int(y0):int(y1), int(x0):int(x1)]
-    return img
-
-def _resize(img, resize=None, **kwargs):
-    ''' Performs simple pixel binning
-
-        resize bins by that number
-            resize=2 bins 2x2 pixels
-        resize must be an integer > 1 and also smaller than the image shape
-    '''
-    newimg = img
-    if resize is not None:
-        resize = int(resize)
-        if resize > 1:
-            # cut off edges
-            newimg = np.zeros_like(img[resize-1::resize, resize-1::resize])
-            newdims = np.array(newimg.shape)*resize
-            img = img[:newdims[0], :newdims[1]]
-            for i in range(resize):
-                for j in range(resize):
-                    newimg += img[i::resize, j::resize]
-            newimg = newimg/resize**2
-    return newimg
-
-# TODO : add pixel procesing/thresholding threshold_pixels((2**32-1)-1) # Eiger inter-module gaps
-# TODO : add thumb

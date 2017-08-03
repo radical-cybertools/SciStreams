@@ -1,3 +1,8 @@
+import numpy as np
+from scipy.ndimage.interpolation import rotate as scipy_rotate
+from ..processing.stitching import xystitch_accumulate
+
+
 class Obstruction:
     ''' General obstruction on a detector. This is used to generate a mask.
     Origin is the origin of the absolute coordinate system that all
@@ -22,6 +27,7 @@ class Obstruction:
 
     '''
     _thresh = .5
+
     def __init__(self, mask, origin):
         # invert image
         self.image = (mask.astype(int) < 1).astype(int)
@@ -37,7 +43,8 @@ class Obstruction:
 
             Patched a bit so I can reuse stitching method.
         '''
-        prevstate = self.image.copy(), np.ones_like(self.image), self.origin, True
+        prevstate = self.image.copy(), np.ones_like(self.image),\
+            self.origin, True
         nextstate = newob.image, np.ones_like(newob.image), newob.origin, True
         newstate = xystitch_accumulate(prevstate, nextstate)
 
@@ -52,8 +59,10 @@ class Obstruction:
     def __sub__(self, newob):
         ''' Stitch the two together. Create a new obstruction object from
         this'''
-        prevstate = self.image.copy(), np.ones_like(self.image), self.origin, True
-        nextstate = -1*newob.image, np.ones_like(newob.image), newob.origin, True
+        prevstate = self.image.copy(), np.ones_like(self.image),\
+            self.origin, True
+        nextstate = -1*newob.image, np.ones_like(newob.image),\
+            newob.origin, True
         newstate = xystitch_accumulate(prevstate, nextstate)
         img, mask, origin, stitch = newstate
 
@@ -77,8 +86,8 @@ class Obstruction:
                 images are the same
 
             Note : scipy's new center is center of the full image rotated
-                this means that the old origin will be rotated by the vector pointing
-                from the center to the origin, floating point number
+                this means that the old origin will be rotated by the vector
+                pointing from the center to the origin, floating point number
 
         '''
         if rotation_offset is None:
@@ -99,10 +108,10 @@ class Obstruction:
 
         # now we need to figure out where the new origin is
         phir = np.radians(phi)
-        rotation  = np.array([
-            [np.cos(phir), np.sin(phir)],
-            [-np.sin(phir), np.cos(phir)],
-        ])
+        rotation = np.array([
+                             [np.cos(phir), np.sin(phir)],
+                             [-np.sin(phir), np.cos(phir)],
+                             ])
         # origin-cen vector in original image
         # attn: coordinate is [y,x]
         dr = np.array(rotation_center) - cen
@@ -110,7 +119,7 @@ class Obstruction:
         # rotation is around center, and image is expanded
         # so we need to figure out where it is now
         # rotate the vector of CEN to rotation_center
-        new_rotation_center = np.tensordot(dr, rotation, axes=(0,0))
+        new_rotation_center = np.tensordot(dr, rotation, axes=(0, 0))
         # now add the center
         new_rotation_center = new_rotation_center + cen
 
@@ -141,5 +150,3 @@ class Obstruction:
         x0 = int(cen[1]-origin[1])
         newimg[y0:y0+img.shape[0], x0:x0+img.shape[1]] = img
         return newimg, cen
-
-

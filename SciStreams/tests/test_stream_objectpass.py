@@ -1,11 +1,10 @@
 # test passing an object
 from dask import delayed, compute, get
 # for testing the caching
-from dask.delayed import tokenize
 from dask.base import normalize_token
 
-from SciStreams.interfaces.streams import Stream
-from SciStreams.interfaces.StreamDoc import StreamDoc, psdm
+from SciStreams.core.streams import Stream
+from SciStreams.core.StreamDoc import StreamDoc, psdm
 
 
 def test_object_hash():
@@ -19,6 +18,7 @@ def test_object_hash():
         return normalize_token((self.a, self.b))
 
     global_list = list()
+
     def add(foo):
         global_list.append(1)
         return foo.a + foo.b
@@ -38,4 +38,4 @@ def test_object_hash():
 
     s2.emit(StreamDoc(args=myobj))
     s2.emit(StreamDoc(args=myobj))
-    assert global_list == [1,1,1]
+    assert global_list == [1, 1, 1]

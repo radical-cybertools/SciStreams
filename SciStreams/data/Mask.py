@@ -1,3 +1,6 @@
+import numpy as np
+from scipy.interpolate import RegularGridInterpolator
+
 class Mask:
     def __init__(self, mask=None, shape=None):
         ''' just saves a mask in object based on shape.

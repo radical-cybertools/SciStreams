@@ -6,10 +6,10 @@ from uuid import uuid4
 import numpy as np
 import matplotlib
 
-from ..StreamDoc import StreamDoc
+from ...core.StreamDoc import StreamDoc
 # TODO : Replace this with more complex image simulators
 from .generate_images import gen_image
-from ..detectors import detectors2D
+from ...data.detectors import detectors2D
 
 matplotlib.use("Agg")
 

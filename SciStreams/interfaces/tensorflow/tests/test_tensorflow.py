@@ -1,7 +1,7 @@
 import numpy as np
 import tempfile
 
-from SciStreams.tools import make_dir
+from SciStreams.utils import make_dir
 
 from SciStreams.interfaces.tensorflow.tensorflow \
         import store_result_tensorflow, read_result_tensorflow,\

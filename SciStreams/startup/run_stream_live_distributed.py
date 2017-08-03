@@ -10,7 +10,7 @@ from collections import deque
 
 # SciStreams imports
 # this one does a bit of setup upon import, necessary
-from SciStreams.globals import client
+# from SciStreams.globals import client
 import SciStreams.config as config
 
 # interfaces
@@ -20,22 +20,22 @@ from SciStreams.interfaces.file import file as ifile
 from SciStreams.interfaces.xml import xml as ixml
 # from SciStreams.interfaces.detectors import detectors2D
 # Streams include stuff
-from SciStreams.interfaces.StreamDoc import StreamDoc, Arguments
+from SciStreams.core.StreamDoc import StreamDoc
 
 # wrappers for parsing streamdocs
-from SciStreams.interfaces.StreamDoc import psdm, psda, squash
+from SciStreams.core.StreamDoc import psdm, squash
+from SciStreams.core.StreamDoc import select, todict, add_attributes, merge
 
-from SciStreams.interfaces.streams import Stream
+from SciStreams.core.streams import Stream
 # Analyses
-from SciStreams.analyses.XSAnalysis.Data import \
-        MasterMask, MaskGenerator, Obstruction
-from SciStreams.analyses.XSAnalysis.Streams import CalibrationStream,\
+from SciStreams.data.Mask import \
+        MasterMask, MaskGenerator
+from SciStreams.data.Obstructions import Obstruction
+from SciStreams.streams.XS_Streams import CalibrationStream,\
     CircularAverageStream, ImageStitchingStream, ThumbStream, QPHIMapStream
 # from SciStreams.analyses.XSAnalysis.CustomStreams import SqFitStream
 
 # wrappers for parsing streamdocs
-from SciStreams.interfaces.StreamDoc import select, pack, unpack, todict, toargs,\
-        add_attributes, psdm, psda, merge
 
 from distributed.utils import sync
 from tornado.ioloop import IOLoop
@@ -44,7 +44,6 @@ from tornado import gen
 # get databases (not necessary)
 from SciStreams.interfaces.databroker.databases import databases
 detector_key = "pilatus300_image"
-
 
 
 def search_mask(detector_key, date=None):
@@ -112,6 +111,7 @@ master_mask = MasterMask(master=obs_total.mask, origin=obs_total.origin)
 # Instantiate the master mask generator
 mmg = MaskGenerator(master_mask, blemish)
 
+
 # TODO merge check with get stitch
 def check_stitchback(sdoc):
     sdoc['attributes']['stitchback'] = True
@@ -148,7 +148,6 @@ def PCA_fit(data, n_components=10):
     components = pca.components_.copy()
     components = components.reshape((n_components, *datashape))
     return dict(components=components)
-
 
 
 def isSAXS(sdoc):
@@ -224,7 +223,7 @@ exposure_time = attributes\
 exposure_mask = mask_stream\
         .map(select, ('mask', None))
 exposure_mask = exposure_mask\
-        .zip(exposure_time.map(select,('exposure_time', None))).map(merge)\
+        .zip(exposure_time.map(select, ('exposure_time', None))).map(merge)\
         .map(psdm(lambda a, b: a*b))
 
 exposure_mask = exposure_mask.map(select, (0, 'mask'))
@@ -232,13 +231,14 @@ exposure_mask = exposure_mask.map(select, (0, 'mask'))
 # set return_intermediate to True to get all stitches
 sin_imgstitch, sout_imgstitch = ImageStitchingStream(return_intermediate=False)
 
-sout_imgstitch_log = sout_imgstitch.map(select,('image', None))\
+sout_imgstitch_log = sout_imgstitch.map(select, ('image', None))\
         .map(psdm(safelog10)).map(select, (0, 'image'))
 sout_imgstitch_log = sout_imgstitch_log\
         .map(add_attributes, stream_name="ImgStitchLog")
 
 img_masked = image\
-        .zip(mask_stream.map(select, ('mask', None))).map(merge).map(psdm(lambda a, b: a*b))
+        .zip(mask_stream.map(select, ('mask', None)))\
+        .map(merge).map(psdm(lambda a, b: a*b))
 img_mask_origin = img_masked.map(select, (0, 'image'))\
         .zip(exposure_mask.map(select, ('mask', 'mask')),
              origin.map(select, (0, 'origin')),
@@ -271,52 +271,47 @@ resultsqueue = deque(maxlen=1000)
 sout_circavg.map((iplotting.store_results),
                  lines=[('sqx', 'sqy')],
                  scale='loglog', xlabel="$q\,(\mathrm{\AA}^{-1})$",
-                 ylabel="I(q)")\
-        #.map(client.compute).map(resultsqueue.append)
+                 ylabel="I(q)")
+
 sout_imgstitch\
         .map((iplotting.store_results),
-             images=['image'], hideaxes=True)\
-        #.map(client.compute).map(resultsqueue.append)
+             images=['image'], hideaxes=True)
 
 sout_imgstitch_log\
         .map((iplotting.store_results), images=['image'],
-             hideaxes=True)\
-        #.map(client.compute)\
-        #.map(resultsqueue.append)
+             hideaxes=True)
+
 sout_thumb\
         .map((iplotting.store_results), images=['thumb'],
-             hideaxes=True)\
-        #.map(client.compute)\
-        #.map(resultsqueue.append)
-sout_thumb.map(select, ('thumb', None)).map(psdm(safelog10)).map(select, (0, 'thumb'))\
+             hideaxes=True)
+
+sout_thumb.map(select, ('thumb', None))\
+        .map(psdm(safelog10)).map(select, (0, 'thumb'))\
         .map(add_attributes, stream_name="ThumbLog")\
         .map(iplotting.store_results, images=['thumb'],
-             hideaxes=True)\
-        #.map(client.compute).map(resultsqueue.append)
+             hideaxes=True)
 
 sqphi_out.map(iplotting.store_results,
               images=['sqphi'], xlabel="$\phi$",
-              ylabel="$q$", vmin=0, vmax=100)\
-        #.map(resultsqueue.append)
+              ylabel="$q$", vmin=0, vmax=100)
+
 sout_img_pca\
         .map(iplotting.store_results,
-             images=['components'])\
-        #.map(client.compute)\
-        #.map(resultsqueue.append)
+             images=['components'])
 
 # save to file system
 sout_thumb\
         .map((ifile.store_results_file),
              {'writer': 'npy', 'keys': ['thumb']})\
-        #.map(client.compute).map(resultsqueue.append)
+        # .map(client.compute).map(resultsqueue.append)
 sout_circavg\
         .map((ifile.store_results_file),
              {'writer': 'npy', 'keys': ['sqx', 'sqy']})\
-        #.map(client.compute).map(resultsqueue.append)
+        # .map(client.compute).map(resultsqueue.append)
 
 # save to xml
 sout_circavg.map((ixml.store_results_xml), outputs=None)\
-        #.map(client.compute).map(resultsqueue.append)
+        # .map(client.compute).map(resultsqueue.append)
 
 # TODO : make databroker not save numpy arrays by default i flonger than a
 # certain size
@@ -336,7 +331,7 @@ sout_circavg.map((ixml.store_results_xml), outputs=None)\
 
 @gen.coroutine
 def start_run_loop(start_time, dbname="cms:data",
-              noqbins=None):
+                   noqbins=None):
     ''' Start a live run of pipeline.'''
     print("running loop")
     last_uid = None
@@ -380,9 +375,11 @@ def start_run_loop(start_time, dbname="cms:data",
         print("Reached end, waiting 1 sec for more data...")
         sleep(1)
 
+
 def start_run(start_time, dbname="cms:data", noqbins=None):
     loop = IOLoop()
     sync(loop, start_run_loop, start_time, dbname=dbname, noqbins=noqbins)
+
 
 if __name__ == "__main__":
     start_time = time.time()-24*3600
