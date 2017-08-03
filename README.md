@@ -15,3 +15,20 @@ TODO:
 
  * current tests are not unit tests. Meant only for debugging
  * add databroker interface to all functions
+
+File Structure:
+ * /interfaces : Everything in the code runs on `StreamDoc` objects.
+    External data must be converted to this format. All routines involving this
+    conversion are found in folders in the `interfaces` folder:
+    * /databroker : databroker data <-> StreamDoc conversions
+    * /databroker_simulator : databroker data (simulated) <-> StreamDoc conversions
+    * /plotting_mpl : matploblib <-> StreamDoc conversions
+    * /xml : xmls <-> StreamDoc conversions
+    * /file : file <-> StreamDoc conversions
+    * StreamDoc.py : the `StreamDoc` object.
+    * streams.py : the stream handling objects.
+    * dask.py : stream handling objects involving distributed computation
+ * /startup : various frontend scripts to run routine batch processing
+ * /analyses :  various analyis protocols
+ * /tests : unit tests 
+ * /data : various data for the different protocols
