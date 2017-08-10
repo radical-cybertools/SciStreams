@@ -158,7 +158,7 @@ the ``select`` method::
   # swap arg1 and arg2
   # This will make 3 first arg and 2 second
   s2 = sin.select(1, 0, 'c')
-  s3 =  sin.map(psdm(multiplyadd))
+  s3 =  s2.map(psdm(multiplyadd))
   sout = s3.map(psdm(print))
   
   sin.emit(sdoc)
@@ -187,7 +187,7 @@ key name, or ``None`` (to specify that it is an arg)::
   sin = Stream()
   # swap arg1 and arg2
   s2 = sin.map(select, 1, 0, ('c',None))
-  s3 =  sin.map(psdm(multiply))
+  s3 =  s2.map(psdm(multiply))
   sout = s3.map(psdm(print))
 
   # now 3 is first arg and 2 is second
