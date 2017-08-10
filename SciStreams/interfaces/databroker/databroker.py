@@ -15,6 +15,10 @@ from .writers_custom \
 from ..StreamDoc import StreamDoc
 from metadatastore.core import NoEventDescriptors
 
+# TODO : change to the new databroker version but leave for now
+#from databroker.eventsource.shim import EventSourceShim
+#NoEventDescriptors = EventSourceShim.NoEventDescriptors
+
 matplotlib.use("Agg")
 
 

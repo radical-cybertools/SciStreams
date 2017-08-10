@@ -208,6 +208,8 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32, num_per_batch
         num_labels = 0
         labelbin = np.array([], dtype=dtype)
 
+    print("store_result_tensorflow : labels added {}".format(labels))
+
     nbytes = dtype().nbytes
     num_elems_label = calc_labelbin_size(num_labels, nbytes)
 
@@ -301,9 +303,8 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32, num_per_batch
         else:
             arr = np.concatenate((arr, data)).astype(dtype)
 
+    # the magical piece that saves to file
     arr.tofile(curfilename)
-
-    # now save image as a batch into a file
 
 
 def read_result_tensorflow(recno, dataset=None, dtype=np.uint32):
