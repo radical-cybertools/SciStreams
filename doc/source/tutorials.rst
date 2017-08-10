@@ -78,9 +78,55 @@ simple to ``map`` onto.
 For functions with multiple inputs/outputs, we need to develop some sort
 of ``wrapper`` that basically encodes the inputs for a function in a
 single entity which can be decoded (or transformed) back into
-conventional outputs.
+conventional outputs. This is resolved in two steps:
 
-Here is an example::
+1. We need a way to normalize data. This is done with an object called
+``StreamDoc``. It is defined as follows::
+
+  from SciStreams.interfaces.StreamDoc import StreamDoc
+  # define a StreamDoc
+  sdoc = StreamDoc(args=(2,3), kwargs=dict(c=1))
+
+The ``StreamDoc`` declaration means encode an input which is meant to be
+``f(2, 3, c=1)`` for some function ``f`` and save it into the variable
+``sdoc``. 
+
+2. We also need a way to parse the data in such a way that its contents
+are mapped as inputs to functions (without having to re-write a new
+function that handles the data specifically). This is done with the
+``psdm`` wrapper::
+
+  def multiply(a,b, c=1): 
+      return a*b*c
+
+  from SciStreams.interfaces.StreamDoc import psdm
+  new_multiply = psdm(multiply)
+
+  sdoc_result = new_multiply(sdoc)
+
+
+This results in a new ``StreamDoc`` that looks as such::
+
+  print(sdoc_result)
+
+  {'_StreamDoc': 'StreamDoc v1.0',
+   'args': [6],
+   'attributes': {'function_list': ['multiply']},
+   'kwargs': {},
+   'statistics': {},
+   'uid': '77781a1e-0d05-49c2-8eed-529aa0e3b19a'}
+
+This ``psdm`` wrapper (short for ``parse_streamdoc_map``) allows the
+mapping of the ``StreamDoc``'s contents into the appropriate inputs of
+the function.
+
+The combination of this new data format (the ``StreamDoc``) and an
+encoder/decoder (``parse_streamdoc``) for this new data format allows
+one to handle multiple inputs.
+
+
+Finally, we can tie this into streams again by simply ``mapping`` the
+new function, and the ``StreamDoc`` generated::
 
   from SciStreams.interfaces.streams import Stream
   from SciStreams.interfaces.StreamDoc import StreamDoc
@@ -107,17 +153,6 @@ The answer is with the ``StreamDoc``. In this case the following::
 
   sdoc = StreamDoc(args=(2,3), kwargs=dict(c=1))
 
-means encode an input which is meant to be ``f(2, 3, c=1)`` for some
-function ``f`` and save it into the variable ``sdoc``.
-When the ``sdoc`` is ``emit`` ted, how does the ``Stream`` know how
-to unravel it? The answer comes from the ``psdm``
-(short for ``parse_streamdoc_map``) wrapper. The details of the wrapper
-are not important. What is important to notice is that in general, when
-multiple input arguments are given, you need a new data format (the
-``StreamDoc``) and an encoder/decoder (``parse_streamdoc``) for this new
-data format.
-
-The end result of the code when emitted is to print the number 6.
 
 This can be understood by the following schematic:
 
@@ -336,7 +371,7 @@ There are two things happening here:
 
 
 Advanced Tutorial 8 : Submitting to Cluster and Caching
-----------------------------------
+-------------------------------------------------------
 Sometimes redundant computations are sent to the cluster. It would be
 nice to have these computations cached so that they aren't computed over
 and over again. This is especially true when computing large 2D ``q`` and
@@ -372,8 +407,9 @@ Here is an example:
      s.emit(3)
      s.emit(4)
 
+
 The only difference in this case is that now, before the stream is
 ``gather`` ed, its ``Future`` is also sent off to a queue
 ``s_globals.futures_cache``. This queue is actually a global queue
 supplied by ``SciStreams`` for convenience. It has a maximum length
-defined by ``MAX_FUTURE_NUM`` in ``SciStreams.globals`.
+defined by ``MAX_FUTURE_NUM`` in ``SciStreams.globals``.
