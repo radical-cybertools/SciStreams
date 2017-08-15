@@ -12,7 +12,10 @@ Install Instructions
 --------------------
 Before testing, it's recommended you start a conda analysis environment
 and install the necessary packages. You can this locally with the
-following instructions::
+following instructions. For now, they're a little long. The main reason is that
+we need the latest versions of ``dask`` ``distributed`` and ``scikit-beam`` for
+the streams to work effectively (some pull requests were specifically made to
+``dask`` and ``distributed`` recently to get this to work)::
 
   conda create -n testenv2 pip nose python=3.6 numpy=1.11 coverage cython
   flake8 scipy
@@ -27,7 +30,17 @@ following instructions::
   git clone http://www.github.com/scikit-beam/scikit-beam.git
   cd scikit-beam
   python setup.py develop
-  popd    
+  popd
+  pushd ..
+  git clone http://www.github.com/dask/dask.git
+  cd dask
+  python setup.py develop
+  popd
+  pushd ..
+  git clone http://www.github.com/dask/distributed.git
+  cd distributed
+  python setup.py develop
+  popd
 
 Tutorial 1 : Simple Data Stream
 -------------------------------
