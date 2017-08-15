@@ -1,13 +1,11 @@
-#try a partially filled lattice
+# try a partially filled lattice
 import numpy as np
-from ...interfaces.StreamDoc import StreamDoc, Arguments
-from ...interfaces.streams import Stream
-from dask import compute, delayed
+from ..core.StreamDoc import StreamDoc, Arguments
+from ..core.streams import Stream
+from dask import delayed
 
 # wrappers for parsing streamdocs
-from ...interfaces.StreamDoc import select, pack, unpack, todict,\
-        add_attributes, psdm, psda
-
+from ..core.StreamDoc import select, add_attributes, psdm
 
 
 # TODO : make this part of streams
@@ -28,12 +26,10 @@ def SqFitStream(wrapper=None):
     '''
     sin = Stream()
     s2 = sin.map(add_attributes, stream_name="SqFitCustom")
-    s3 = s2.map(select,('sqx', None), ('sqy', None))
+    s3 = s2.map(select, ('sqx', None), ('sqy', None))
     s4 = s3.map(psdm(fitsqsphere))
     sout = s4
     return sin, sout
-
-
 
 
 def fitsqsphere(q, sqdata, Ncutoff=None):
@@ -54,13 +50,14 @@ def fitsqsphere(q, sqdata, Ncutoff=None):
 
     # the function
     def calc_sphereff(q, radius, sigma_R, A, B):
-        pargs = {'radius' : radius, 'sigma_R' : sigma_R}
-        sphere = PolydisperseNanoObject(SphereNanoObject, pargs=pargs, argname='radius', argstdname='sigma_R')
+        pargs = {'radius': radius, 'sigma_R': sigma_R}
+        sphere = PolydisperseNanoObject(SphereNanoObject, pargs=pargs,
+                                        argname='radius', argstdname='sigma_R')
         sqmodel = sphere.form_factor_squared_isotropic(q)
         return A*sqmodel + B
 
     # using lmfit
-    #radius = 4.41;sigma_R = radius*.08
+    # radius = 4.41;sigma_R = radius*.08
     params = Parameters()
     params.add('radius', value=4.41)
     params.add('sigma_R', value=0.08)
@@ -71,8 +68,8 @@ def fitsqsphere(q, sqdata, Ncutoff=None):
     res = model.fit(sqdata, q=q, params=params, weights=q**4)
     best_fit = res.best_fit
 
-    return Arguments(parameters=res.best_values, sqx=q, sqy=sqdata, sqfit=best_fit)
-
+    return Arguments(parameters=res.best_values, sqx=q, sqy=sqdata,
+                     sqfit=best_fit)
 
 
 # TODO :  need to fix this
@@ -80,7 +77,7 @@ def fitsqsphere(q, sqdata, Ncutoff=None):
 def squash(sdocs):
     newsdoc = StreamDoc()
     for sdoc in sdocs:
-        newsdoc.add(attributes = sdoc['attributes'])
+        newsdoc.add(attributes=sdoc['attributes'])
     N = len(sdocs)
     cnt = 0
     newargs = []
@@ -120,4 +117,3 @@ def squash(sdocs):
     newsdoc.add(args=newargs, kwargs=newkwargs)
 
     return newsdoc
-

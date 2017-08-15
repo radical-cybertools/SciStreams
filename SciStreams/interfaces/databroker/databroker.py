@@ -12,7 +12,7 @@ import json
 
 from .writers_custom \
         import writers_dict as _writers_dict
-from ..StreamDoc import StreamDoc
+from ...core.StreamDoc import StreamDoc
 from metadatastore.core import NoEventDescriptors
 
 # TODO : change to the new databroker version but leave for now

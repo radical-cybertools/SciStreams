@@ -1,5 +1,8 @@
 # doesn't need to be an object
 import os.path
+import numpy as np
+from lxml import etree
+import json
 
 from ... import config
 _ROOTDIR = config.resultsroot
@@ -30,7 +33,6 @@ def get_filebase(name):
 
 def parse_attrs_xml(attrs):
     ''' parse the attributes into a string for each element'''
-    import json
     new_attrs = dict()
     for key, val in attrs.items():
         if isinstance(val, dict):
@@ -121,7 +123,6 @@ def store_results_xml(results, outputs=None):
     attrs = results['attributes']
     outfile = _make_fname_from_attrs(attrs)
 
-    from lxml import etree
     # just add to the sciresults so user knows it's been saved to xml
     results['attributes']['xml-outfile'] = outfile
 
@@ -150,7 +151,6 @@ def store_results_xml(results, outputs=None):
             content = results_dict[name]
             if name[0] == '_':
                 continue  # ignore hidden variables, like _start etc
-            import numpy as np
 
             if isinstance(content, dict):
                 content = dict([k, str(v)] for k, v in content.items())
@@ -174,8 +174,6 @@ def get_result(infile, protocol):
     '''Extracts a list of results for the given protocol, from the specified
     xml file. The most recent run of the protocol is used.'''
     # NOTE : Not tested yet
-    import numpy as np
-    from lxml import etree
 
     parser = etree.XMLParser(remove_blank_text=True)
     root = etree.parse(infile, parser).getroot()

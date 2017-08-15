@@ -2,6 +2,8 @@ import numpy as np
 from scipy.ndimage.filters import gaussian_filter
 from skbeam.core.accumulators.binned_statistic import RPhiBinnedStatistic,\
         RadialBinnedStatistic
+from numpy.fft import fft, ifft
+
 
 # this function just makes a nice status bar, not necessary
 try:
@@ -623,7 +625,6 @@ def _smooth2Dgauss(img, mask=None, sigma=30):
 def _convol1d(a, b=None, axis=-1):
     ''' convolve a with b. If b not specified, perform
         a self convolution.'''
-    from numpy.fft import fft, ifft
     if(b is None):
         b = a
     return ifft(fft(a, axis=axis)*np.conj(fft(b, axis=axis)), axis=axis).real

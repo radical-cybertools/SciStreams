@@ -1,15 +1,261 @@
-from .Data import Calibration, Mask, MasterMask, MaskGenerator,\
-        Obstruction, Calibration
-
-from dask.base import normalize_token
-from .tools import roundbydigits
-
 import numpy as np
+# Calibration
+# import Calibration for the calibration object
+from dask.base import normalize_token
+from ..processing.numerical import roundbydigits
+
+
+class CalibrationBase(object):
+    '''Stores aspects of the experimental setup; especially the calibration
+    parameters for a particular detector. That is, the wavelength, detector
+    distance, and pixel size that are needed to convert pixel (x,y) into
+    reciprocal-space (q) value.
+
+    This class may also store other information about the experimental setup
+    (such as beam size and beam divergence).
+    '''
+
+    def __init__(self, wavelength_A=None, distance_m=None, pixel_size_um=None,
+                 width=None, height=None, x0=None, y0=None):
+
+        self.wavelength_A = wavelength_A
+        self.distance_m = distance_m
+        self.pixel_size_um = pixel_size_um
+        # TODO :should we force these to be defined?
+        # or add another object inheritance layer?
+        if width is None:
+            self.width = None
+        else:
+            self.width = width
+
+        if height is None:
+            self.height = None
+        else:
+            self.height = height
+
+        if x0 is None:
+            self.x0 = None
+        else:
+            self.x0 = x0
+
+        if y0 is None:
+            self.y0 = None
+        else:
+            self.y0 = y0
+
+
+        # Data structures will be generated as needed
+        # (and preserved to speedup repeated calculations)
+        self.clear_maps()
+
+
+
+    # Experimental parameters
+    ########################################
+
+    def set_wavelength(self, wavelength_A):
+        '''Set the experimental x-ray wavelength (in Angstroms).'''
+
+        self.wavelength_A = wavelength_A
+
+
+    def get_wavelength(self):
+        '''Get the x-ray beam wavelength (in Angstroms) for this setup.'''
+
+        return self.wavelength_A
+
+
+    def set_energy(self, energy_keV):
+        '''Set the experimental x-ray beam energy (in keV).'''
+
+        energy_eV = energy_keV*1000.0
+        energy_J = energy_eV/6.24150974e18
+
+        h = 6.626068e-34 # m^2 kg / s
+        c = 299792458 # m/s
+
+        wavelength_m = (h*c)/energy_J
+        self.wavelength_A = wavelength_m*1e+10
+
+
+    def get_energy(self):
+        '''Get the x-ray beam energy (in keV) for this setup.'''
+
+        h = 6.626068e-34 # m^2 kg / s
+        c = 299792458 # m/s
+
+        wavelength_m = self.wavelength_A*1e-10 # m
+        E = h*c/wavelength_m # Joules
+
+        E *= 6.24150974e18 # electron volts
+
+        E /= 1000.0 # keV
+
+        return E
+
+
+    def get_k(self):
+        '''Get k = 2*pi/lambda for this setup, in units of inverse Angstroms.'''
+
+        return 2.0*np.pi/self.wavelength_A
+
+
+    def set_distance(self, distance_m):
+        '''Sets the experimental detector distance (in meters).'''
+
+        self.distance_m = distance_m
+
+
+    def set_pixel_size(self, pixel_size_um=None, width_mm=None, num_pixels=None):
+        '''Sets the pixel size (in microns) for the detector. Pixels are assumed
+        to be square.'''
+
+        if pixel_size_um is not None:
+            self.pixel_size_um = pixel_size_um
+
+        else:
+            if num_pixels is None:
+                num_pixels = self.width
+            pixel_size_mm = width_mm*1./num_pixels
+            self.pixel_size_um = pixel_size_mm*1000.0
+
+
+    def set_beam_position(self, x0, y0):
+        '''Sets the direct beam position in the detector images (in pixel
+        coordinates).'''
+
+        self.x0 = x0
+        self.y0 = y0
+
+    @property
+    def origin(self):
+        return self.x0, self.y0
+
+
+    def set_image_size(self, width, height=None):
+        '''Sets the size of the detector image, in pixels.'''
+
+        self.width = width
+        if height is None:
+            # Assume a square detector
+            self.height = width
+        else:
+            self.height = height
+
+
+    @property
+    def q_per_pixel(self):
+        '''Gets the delta-q associated with a single pixel. This is computed in
+        the small-angle limit, so it should only be considered approximate.
+        For instance, wide-angle detectors will have different delta-q across
+        the detector face.'''
+
+        if not hasattr(self, '_q_per_pixel') or self._q_per_pixel is not None:
+            return self._q_per_pixel
+
+        c = (self.pixel_size_um/1e6)/self.distance_m
+        twotheta = np.arctan(c) # radians
+
+        self._q_per_pixel = 2.0*self.get_k()*np.sin(twotheta/2.0)
+
+        return self._q_per_pixel
+
+
+    # Maps
+    ########################################
+
+    def clear_maps(self):
+        self.r_map_data = None
+        self._q_per_pixel = None
+        self.q_map_data = None
+        self.angle_map_data = None
+
+        self.qx_map_data = None
+        self.qy_map_data = None
+        self.qz_map_data = None
+        self.qr_map_data = None
+
+
+    @property
+    def r_map(self):
+        '''Returns a 2D map of the distance from the origin (in pixel units) for
+        each pixel position in the detector image.'''
+
+        if self.r_map_data is not None:
+            return self.r_map_data
+
+        x = np.arange(self.width) - self.x0
+        y = np.arange(self.height) - self.y0
+        X, Y = np.meshgrid(x, y)
+        R = np.sqrt(X**2 + Y**2)
+
+        self.r_map_data = R
+
+        return self.r_map_data
+
+
+
+    def q_map(self):
+        raise NotImplementedError("Error : subclass this class and implement this")
+
+
+    def angle_map(self):
+        raise NotImplementedError("Error : subclass this class and implement this")
+
+
+    def qx_map(self):
+        raise NotImplementedError("Error : subclass this class and implement this")
+
+
+    def qy_map(self):
+        raise NotImplementedError("Error : subclass this class and implement this")
+
+
+    def qz_map(self):
+        raise NotImplementedError("Error : subclass this class and implement this")
+
+    def qr_map(self):
+        raise NotImplementedError("Error : subclass this class and implement this")
+
+
+
+@normalize_token.register(CalibrationBase)
+def tokenize_calibration(self):
+    # function to allow for intelligent caching
+    # all all computations of data and submethods
+    # need to specify pure=True flag
+    args = [self.wavelength_A, self.distance_m]
+    args.append(self.pixel_size_um)
+    if self.width is not None:
+        args.append(self.width)
+    if self.height is not None:
+        args.append(self.height)
+
+    # round these by 3 digits
+    if self.x0 is not None:
+        args.append(roundbydigits(self.x0, 3))
+    if self.y0 is not None:
+        args.append(roundbydigits(self.y0, 3))
+    if self.angle_map_data is not None:
+        args.append(roundbydigits(self.angle_map_data, 3))
+    if self.q_map_data is not None:
+        args.append(roundbydigits(self.q_map_data, 3))
+    if self.qr_map_data is not None:
+        args.append(roundbydigits(self.qr_map_data, 3))
+    if self.qx_map_data is not None:
+        args.append(roundbydigits(self.qx_map_data, 3))
+    if self.qy_map_data is not None:
+        args.append(roundbydigits(self.qy_map_data, 3))
+    if self.qz_map_data is not None:
+        args.append(roundbydigits(self.qz_map_data, 3))
+
+    return normalize_token(args)
+
 
 
 # Calibration
 ################################################################################
-class CalibrationRQconv(Calibration):
+class Calibration(CalibrationBase):
     """
     The geometric claculations used here are described in Yang, J Synch Rad (2013) 20, 211–218
     http://dx.doi.org/10.1107/S0909049512048984
@@ -59,9 +305,11 @@ class CalibrationRQconv(Calibration):
 
 
         self.rot_matrix = None
-        super().__init__(wavelength_A=wavelength_A, distance_m=distance_m,
-                         pixel_size_um=pixel_size_um, height=height,
-                         width=width, x0=x0, y0=y0)
+        super(Calibration, self).__init__(wavelength_A=wavelength_A,
+                                          distance_m=distance_m,
+                                          pixel_size_um=pixel_size_um,
+                                          height=height, width=width, x0=x0,
+                                          y0=y0)
 
 
     # Experimental parameters
@@ -260,8 +508,8 @@ class CalibrationRQconv(Calibration):
     # End class CalibrationRQconv(Calibration)
     ########################################
 
-@normalize_token.register(CalibrationRQconv)
-def tokenize_calibrationrqconv(self):
+@normalize_token.register(Calibration)
+def tokenize_calibration(self):
     '''
         This function will first inherit the tokenization from Calibration
         then run it for the RQConv case.
@@ -274,8 +522,7 @@ def tokenize_calibrationrqconv(self):
     # inherit dispatch from Calibration object
     #calib_norm = normalize_token.dispatch(Calibration)
     #args = calib_norm(self)
-    from .Data import tokenize_calibration
-    args = tokenize_calibration(self)
+    args = tokenize_calibrationbase(self)
     # finally now tokenize the rest
     newargs = list()
     # round
@@ -289,230 +536,3 @@ def tokenize_calibrationrqconv(self):
     args = (args, newargs)
 
     return args
-
-
-################ Below is not to be used
-###   These are just the experimental parameters  #################
-#################
-
-class ExpPara:
-    """
-    The geomatric claculations used here are described in Yang, J Synch Rad (2013) 20, 211–218
-    http://dx.doi.org/10.1107/S0909049512048984
-
-    Initilized with image size:
-    __init__(self, width, height)
-
-    Calculate all coordinates and correction factors for each pixel:
-    init_coordinates(self)
-
-    Functions that can be called for converting coordinates (inputs are arrays)
-    calc_from_XY(self, X, Y, calc_cor_factors=False)
-    calc_from_QrQn(self, Qr, Qn, flag=False)
-    calc_from_QPhi(self, Q, Phi)
-
-    """
-    wavelength = None
-    bm_ctr_x = None
-    bm_ctr_y = None
-    ratioDw = None
-    grazing_incident = False
-    flip = 0
-    incident_angle = 0.2
-    sample_normal = 0.
-    rot_matrix = None
-
-    det_orient = 0.
-    det_tilt = 0.
-    det_phi = 0.
-
-
-    def __init__(self, width, height):
-        """
-        define image size here
-        but fill in the coordinates later
-        """
-        self.ImageWidth = width
-        self.ImageHeight = height
-        self.mask = Mask.Mask(width, height)
-
-    def init_coordinates(self):
-        """
-        calculate all coordinates (pixel position as well as various derived values)
-        all coordinates are stored in 2D arrays, as is the data itself in Data2D
-        """
-        (w,h) = (self.ImageWidth, self.ImageHeight)
-        self.X = np.repeat(np.arange(w), h).reshape((w, h)).T
-        X = self.X.flatten()
-        Y = np.repeat(np.arange(h), w)
-        self.Y = Y.reshape((h, w))
-
-        (Q, Phi, Qr, Qn, FPol, FSA) = self.calc_from_XY(X, Y, calc_cor_factors=True)
-
-        self.Q = Q.reshape((h, w))
-        self.Qr = Qr.reshape((h, w))
-        self.Qn = Qn.reshape((h, w))
-        self.Phi = Phi.reshape((h, w))
-        self.FPol = FPol.reshape((h, w))
-        self.FSA = FSA.reshape((h, w))
-
-
-    def calc_from_XY(self, X, Y, calc_cor_factors=False):
-        """
-        calculate Q values from pixel positions X and Y
-        X and Y are 1D arrays
-        returns reciprocal/angular coordinates, optionally returns
-        always calculates Qr and Qn, therefore incident_angle needs to be set
-        Note that Phi is saved in radians; but the angles in ExpPara are in degrees
-        """
-        if self.rot_matrix is None:
-            raise ValueError('the rotation matrix is not yet set.')
-
-        # the position vectors for each pixel, origin at the postion of beam impact
-        # R.shape should be (3, w*h), but R.T is more convinient for matrix calculation
-        # RT.T[i] is a vector
-        RT = np.vstack((X - self.bm_ctr_x, -(Y - self.bm_ctr_y), 0.*X))
-
-        dr = self.ratioDw*self.ImageWidth
-        # position vectors in lab coordinates, sample at the origin
-        [X1, Y1, Z1] = np.dot(self.rot_matrix, RT)
-        Z1 -= dr
-
-        # angles
-        r3sq = X1*X1+Y1*Y1+Z1*Z1
-        r3 = np.sqrt(r3sq)
-        r2 = np.sqrt(X1*X1+Y1*Y1)
-        Theta = 0.5*np.arcsin(r2/r3)
-        Phi = np.arctan2(Y1, X1) + np.radians(self.sample_normal)
-
-        Q = 4.0*np.pi/self.wavelength*np.sin(Theta)
-
-        # lab coordinates
-        Qz = Q*np.sin(Theta)
-        Qy = Q*np.cos(Theta)*np.sin(Phi)
-        Qx = Q*np.cos(Theta)*np.cos(Phi)
-
-        # convert to sample coordinates
-        alpha = np.radians(self.incident_angle)
-        Qn = Qy*np.cos(alpha) + Qz*np.sin(alpha)
-        Qr = np.sqrt(Q*Q-Qn*Qn)*np.sign(Qx)
-
-        if calc_cor_factors==True:
-            FPol = (Y1*Y1+Z1*Z1)/r3sq
-            FSA = np.power(np.fabs(Z1)/r3, 3)
-            return (Q, Phi, Qr, Qn, FPol, FSA)
-        else:
-            return (Q, Phi, Qr, Qn)
-
-    def calc_from_QrQn(self, Qr, Qn, flag=False):
-        """
-        Qr and Qn are 1D arrays
-        when flag is True, substitue Qr with the minimal Qr value at the given Qz allowed by scattering geometry
-        returns the pixel positions corresponding to (Qr, Qn)
-        note that the return arrays may contain non-numerical values
-        """
-        if self.rot_matrix is None:
-            raise ValueError('the rotation matrix is not yet set.')
-
-        alpha = np.radians(self.incident_angle)
-
-        if flag is True:
-            k = 2.0*np.pi/self.wavelength
-            tt = Qn/k -np.sin(alpha)
-            Qr0 = np.empty(len(Qr))
-            Qr0[tt<=1.] = np.fabs(np.sqrt(1.-(tt*tt)[tt<=1.]) - np.cos(alpha))*k
-            idx1 = (Qr<Qr0) & (tt<=1.)
-            Qr[idx1] = Qr0[idx1]*np.sign(Qr[idx1])
-
-        Q = np.sqrt(Qr*Qr+Qn*Qn)
-        Phi = np.empty(len(Q))
-
-        Theta = self.wavelength*Q/(4.0*np.pi)
-        idx = (Theta<=1.0)
-        Theta = np.arcsin(Theta[idx])
-        Phi[~idx] = np.nan
-
-        Qz = Q[idx]*np.sin(Theta)
-        Qy = (Qn[idx] - Qz*np.sin(alpha)) / np.cos(alpha)
-        tt = Q[idx]*Q[idx] - Qz*Qz - Qy*Qy
-        idx2 = (tt>=0)
-        Qx = np.empty(len(Q[idx]))
-        Qx[idx2] = np.sqrt(tt[idx2])*np.sign(Qr[idx][idx2])
-
-        Phi[idx & idx2] = np.arctan2(Qy[idx2], Qx[idx2])
-        Phi[idx & ~idx2] = np.nan
-
-        return self.calc_from_QPhi(Q, Phi)
-
-    def calc_from_QPhi(self, Q, Phi):
-        """
-        Q and Phi are 1D arrays
-        Phi=0 is the y-axis (pointing up), unless sample_normal is non-zero
-        returns the pixel positions corresponding to (Q, Phi)
-        note that the return arrays may contain non-numerical values
-        """
-        if self.rot_matrix is None:
-            raise ValueError('the rotation matrix is not yet set.')
-
-
-        Theta = self.wavelength*Q/(4.0*np.pi)
-        X0 = np.empty(len(Theta))
-        Y0 = np.empty(len(Theta))
-
-        idx = (Theta<=1.0) & (~np.isnan(Phi))  # Phi might contain nan from calc_from_QrQn()
-        Theta = np.arcsin(Theta[idx]);
-
-        Phi = Phi[idx] - np.radians(self.sample_normal)
-
-        [R13, R23, R33] = np.dot(self.rot_matrix, np.asarray([0., 0., 1.]))
-
-        dr = self.ratioDw*self.ImageWidth
-
-        # pixel position in lab referece frame, both centered on detector
-        # this is code from RQconv.c
-        # In comparison, the coordinates in equ(18) in the reference above are centered at the sample
-        tt = (R13*np.cos(Phi)+R23*np.sin(Phi))*np.tan(2.0*Theta)
-        Z1 = dr*tt/(tt-R33);
-        X1 = (dr-Z1)*np.tan(2.0*Theta)*np.cos(Phi);
-        Y1 = (dr-Z1)*np.tan(2.0*Theta)*np.sin(Phi);
-
-        R1 = np.vstack((X1, Y1, Z1))
-
-        # transform to detector frame
-        [X, Y, Z] = np.dot(self.rot_matrix.T, R1);
-
-        # pixel position, note reversed y-axis
-        X0[idx] = X + self.bm_ctr_x
-        Y0[idx] = -Y + self.bm_ctr_y
-        X0[~idx] = np.nan
-        Y0[~idx] = np.nan
-
-        return (X0, Y0)
-
-
-    def RotationMatrix(self, axis, angle):
-        if axis=='x' or axis=='X':
-            rot = np.asarray(
-                [[1., 0., 0.],
-                [0., np.cos(angle), -np.sin(angle)],
-                [0., np.sin(angle),  np.cos(angle)]])
-        elif axis=='y' or axis=='Y':
-            rot = np.asarray(
-                [[ np.cos(angle), 0., np.sin(angle)],
-                [0., 1., 0.],
-                [-np.sin(angle), 0., np.cos(angle)]])
-        elif axis=='z' or axis=='Z':
-            rot = np.asarray(
-                [[np.cos(angle), -np.sin(angle), 0.],
-                [np.sin(angle),  np.cos(angle), 0.],
-                [0., 0., 1.]])
-        else:
-            raise ValueError('unkown axis %s' % axis)
-
-        return rot
-
-    def calc_rot_matrix(self):
-        tm1 = self.RotationMatrix('z', np.radians(-self.det_orient))
-        tm2 = self.RotationMatrix('y', np.radians(self.det_tilt))
-        tm3 = self.RotationMatrix('z', np.radians(self.det_orient+self.det_phi))
-        self.rot_matrix = np.dot(np.dot(tm3, tm2), tm1)

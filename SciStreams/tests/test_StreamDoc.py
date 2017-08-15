@@ -1,6 +1,6 @@
-from SciStreams.interfaces.streams import Stream
-from SciStreams.interfaces.StreamDoc import StreamDoc
-from SciStreams.interfaces.StreamDoc import merge, psdm, psda
+from SciStreams.core.streams import Stream
+from SciStreams.core.StreamDoc import StreamDoc
+from SciStreams.core.StreamDoc import merge, psdm, psda
 
 
 def test_stream_map():
@@ -47,6 +47,7 @@ def test_stream_accumulate():
 
     print(L)
 
+
 def test_merge():
     ''' Test the merging option for StreamDoc's.'''
     s1 = Stream()
@@ -57,8 +58,8 @@ def test_merge():
     L = list()
     stot.map(L.append)
 
-    sdoc1 = StreamDoc(args=[1,2],kwargs={'a' : 1, 'c' : 3})
-    sdoc2 = StreamDoc(args=[3,4],kwargs={'b' : 2, 'c' : 4})
+    sdoc1 = StreamDoc(args=[1, 2], kwargs={'a': 1, 'c': 3})
+    sdoc2 = StreamDoc(args=[3, 4], kwargs={'b': 2, 'c': 4})
     s1.emit(sdoc1)
 
     assert len(L) == 0
@@ -71,4 +72,4 @@ def test_merge():
     assert result_kwargs['a'] == 1
     assert result_kwargs['b'] == 2
     assert result_kwargs['c'] == 4
-    assert result_args == [1,2,3,4]
+    assert result_args == [1, 2, 3, 4]

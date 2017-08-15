@@ -1,6 +1,5 @@
 # tests the stream library
-from nose.tools import assert_raises
-from SciStreams.interfaces.streams import Stream
+from SciStreams.core.streams import Stream
 
 
 def test_stream_map():
@@ -31,7 +30,6 @@ def test_stream_map():
     s.emit(4)
 
     assert L == [5, 6]
-
 
 
 def test_stream_accumulate():
