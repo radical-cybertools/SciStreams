@@ -7,7 +7,7 @@ from functools import wraps, singledispatch
 import time
 import sys
 from uuid import uuid4
-#from ..globals import debugcache
+# from ..globals import debugcache
 
 # convenience routine to return a hash of the streamdoc
 # from dask.delayed import tokenize, delayed, Delayed
@@ -409,8 +409,8 @@ def parse_streamdoc(name):
 
             kwargs.update(kwargs_additional)
             # print("args : {}, kwargs : {}".format(args, kwargs))
-            #debugcache.append(dict(args=args, kwargs=kwargs,
-                                   #attributes=attributes, funcname=f.__name__))
+            # debugcache.append(dict(args=args, kwargs=kwargs,
+            # attributes=attributes, funcname=f.__name__))
 
             statistics = dict()
             t1 = time.time()
@@ -465,6 +465,7 @@ def parse_streamdoc(name):
         return f_new
 
     return streamdoc_dec
+
 
 parse_streamdoc_map = parse_streamdoc("map")
 psdm = parse_streamdoc_map

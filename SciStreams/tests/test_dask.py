@@ -7,7 +7,8 @@ from SciStreams.core.streams import Stream
 from SciStreams.core.StreamDoc import StreamDoc, psdm
 
 # This will force delayed_pure=True which is necessary for local caching
-import SciStreams.globals
+import SciStreams.globals  # noqa
+
 
 def test_object_hash():
     # test that object hashing is working

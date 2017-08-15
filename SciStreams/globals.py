@@ -2,11 +2,11 @@ from dask import set_options
 
 from collections import deque
 
-MAX_FUTURE_NUM = 1000
-
 # client information
 # TODO : remove this client information
 from . import config
+
+MAX_FUTURE_NUM = 1000
 
 debugcache = deque(maxlen=1)
 if config.client is not None:
@@ -16,12 +16,13 @@ if config.client is not None:
 # no client, compute should compute and return nothing
 else:
     print("No client supported, running locally")
-    import dask
 
     class Client:
         # make unbound method
+
         def submit(self, f, *args, **kwargs):
             return f(*args, **kwargs)
+
         def gather(self, future):
             # it's not a future, just a regular result
             return future

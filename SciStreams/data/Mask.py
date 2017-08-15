@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
+
 class Mask:
     def __init__(self, mask=None, shape=None):
         ''' just saves a mask in object based on shape.
@@ -43,6 +44,7 @@ class MasterMask:
         else:
             self.mask = np.ones(shape)
         self.origin = origin
+
 
 # TODO add decorators for sciresults
 # for now, can't make into a sciresult
@@ -91,7 +93,6 @@ class MaskGenerator:
         ''' Rotate obstruction in degrees.'''
         # TODO : Add rotate about origin
         pass
-
 
     def load_obstruction(self, obstruction):
         self.mastermask = obstruction.mask

@@ -128,7 +128,8 @@ def bin2label(res, num_labels):
     return labels
 
 
-def store_result_tensorflow(result, dataset=None, dtype=np.uint32, num_per_batch=None):
+def store_result_tensorflow(result, dataset=None, dtype=np.uint32,
+                            num_per_batch=None):
     ''' Store an image to be read by tensorflow
         This prepares binary files in temporary directories to be read by
         tensorflow applications.

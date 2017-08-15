@@ -43,12 +43,9 @@ class CalibrationBase(object):
         else:
             self.y0 = y0
 
-
         # Data structures will be generated as needed
         # (and preserved to speedup repeated calculations)
         self.clear_maps()
-
-
 
     # Experimental parameters
     ########################################
@@ -58,12 +55,10 @@ class CalibrationBase(object):
 
         self.wavelength_A = wavelength_A
 
-
     def get_wavelength(self):
         '''Get the x-ray beam wavelength (in Angstroms) for this setup.'''
 
         return self.wavelength_A
-
 
     def set_energy(self, energy_keV):
         '''Set the experimental x-ray beam energy (in keV).'''
@@ -71,8 +66,8 @@ class CalibrationBase(object):
         energy_eV = energy_keV*1000.0
         energy_J = energy_eV/6.24150974e18
 
-        h = 6.626068e-34 # m^2 kg / s
-        c = 299792458 # m/s
+        h = 6.626068e-34  # m^2 kg / s
+        c = 299792458  # m/s
 
         wavelength_m = (h*c)/energy_J
         self.wavelength_A = wavelength_m*1e+10
