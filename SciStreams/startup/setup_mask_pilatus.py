@@ -17,8 +17,8 @@ start_time = "2017-07-12"
 stop_time = "2017-07-14"
 hdrs_GISAXS = list(cddb(sample_name="Julien_beamstop_GISAXS_2", start_time=start_time, stop_time=stop_time))
 hdrs_SAXS = list(cddb(sample_name="Julien_beamstop_SAXS_2", start_time=start_time, stop_time=stop_time))
-hdr = hdrs_GISAXS[11]
-#hdr = hdrs_SAXS[4]
+#hdr = hdrs_GISAXS[11]
+hdr = hdrs_SAXS[0]
 # TODO : allow multiple detectors
 det_key = hdr['start']['detectors'][0] + "_image"
 
@@ -28,11 +28,13 @@ bstop_kwargs = pilatus_mask_config['beamstop']
 frame_kwargs = pilatus_mask_config['frame']
 blemish_kwargs = pilatus_mask_config['blemish']
 
-det_key = "pilatus300_image"
 mask_filename = config['maskdir'] + "/" + det_key + "/pilatus300_mask_master_beamstop.npz"
 
 from functools import partial
+#bstop_kwargs['ref_rotx'] = 581
+#bstop_kwargs['ref_roty'] = 187
 beamstop_pilatus = partial(BeamstopXYPhi, **bstop_kwargs)
+frame_pilatus = MaskFrame(**frame_kwargs)
 
 
 
@@ -45,7 +47,7 @@ bsx= hdr['start']['motor_bsx']
 bsy= hdr['start']['motor_bsy']
 
 img = cddb.get_images(hdr, det_key)[0]
-obstruction = beamstop_pilatus(bsphi=bsphi, bsx=bsx,bsy=bsy)
+obstruction = beamstop_pilatus(bsphi=bsphi, bsx=bsx,bsy=bsy) + frame_pilatus
 blemish = np.array(Image.open(blemish_kwargs['filename']))
 if blemish.ndim == 3:
     blemish = blemish[:,:,0]
@@ -64,4 +66,4 @@ imshow(obstruction.mask)
 plot(obstruction.origin[1], obstruction.origin[0], 'ro')
 
 figure(2);clf()
-imshow(img*(mask ));clim(0,10)
+imshow(img*(mask +.1));clim(0,10)

@@ -8,10 +8,12 @@ matplotlib.use("Agg")  # noqa
 # from dask import delayed, compute
 from collections import deque
 
+from functools import partial
+
 # SciStreams imports
 # this one does a bit of setup upon import, necessary
 # from SciStreams.globals import client
-import SciStreams.config as config
+from SciStreams.config import config, masks as mask_config
 
 # interfaces
 from SciStreams.interfaces.plotting_mpl import plotting_mpl as iplotting
@@ -35,6 +37,8 @@ from SciStreams.streams.XS_Streams import CalibrationStream,\
     CircularAverageStream, ImageStitchingStream, ThumbStream, QPHIMapStream
 # from SciStreams.analyses.XSAnalysis.CustomStreams import SqFitStream
 
+from SciStreams.data.Mask import BeamstopXYPhi, MaskFrame
+
 # wrappers for parsing streamdocs
 
 from distributed.utils import sync
@@ -43,73 +47,53 @@ from tornado import gen
 
 # get databases (not necessary)
 from SciStreams.interfaces.databroker.databases import databases
-detector_key = "pilatus300_image"
+from PIL import Image
 
 
-def search_mask(detector_key, date=None):
-    ''' search for a mask in the mask dir using the detectorkey
-        optionally use date to search for a mask for a specific date.
+def generate_mask(md):
+    ''' Generate a mask from detector_key and metadata md
 
-        assumes detector_key is of form
-            detectorname_image
-            (underscore separating detector name and other attribute of it)
-
+        Parameters
+        ----------
+        detector_key : the key for the image for the detector
+        **md : the metadata
+            should contain `motor_bsphi`, `motor_bsx`, `motor_bsy`
+            `detector_SAXS_x0_pix` and `detector_SAXS_y0_pix`
+            which are the degrees of freedom for the beamstop and beam center
     '''
-    # TODO : implement for specific date
-    mask_dir = config.maskdir + "/" + detector_key
-    # search using date NOT IMPLEMENTED
-    if date is not None:
-        raise NotImplementedError
+    # TODO : allow for more than one detector
+    detector_key = md['detectors'][0] + "_image"
+    # TODO : Speed up by moving this outside of function
+    detector_mask_config = mask_config[detector_key]
 
-    # strip the last part i.e. "_image"
-    searchstring = detector_key[:detector_key.rfind("_")]
+    bstop_kwargs = detector_mask_config['beamstop']
+    frame_kwargs = detector_mask_config['frame']
+    blemish_kwargs = detector_mask_config['blemish']
 
-    matching_files = list()
-    for dirpath, dirnames, filenames in os.walk(mask_dir):
-        matching_files.extend([mask_dir + "/" + filename
-                               for filename in filenames
-                               if searchstring in filename])
+    beamstop_detector = partial(BeamstopXYPhi, **bstop_kwargs)
+    frame_detector = MaskFrame(**frame_kwargs)
 
-    if len(matching_files) == 0:
-        errormsg = "Error, could not find a "
-        errormsg += "file matching {}\n".format(searchstring)
-        errormsg += "mask dir : {}".format(mask_dir)
-        raise ValueError(errormsg)
+    # the known degrees of freedom
+    bsphi = md['motor_bsphi']
+    bsx = md['motor_bsx']
+    bsy = md['motor_bsy']
 
-    matching_file = matching_files[0]
+    obstruction = beamstop_detector(bsphi=bsphi, bsx=bsx,bsy=bsy) + frame_detector
+    blemish = np.array(Image.open(blemish_kwargs['filename']))
+    if blemish.ndim == 3:
+        blemish = blemish[:,:,0]
 
-    return matching_file
+    mmg = MaskGenerator(obstruction=obstruction, blemish=blemish)
+    x0 = md['detector_SAXS_x0_pix']
+    y0 = md['detector_SAXS_y0_pix']
+    origin = y0, x0
 
+    print("Generating mask")
+    mask = mmg.generate(origin)
 
-# Initialise Data objects
-# Blemish file
-# blemish_filename = config.maskdir + "/Pilatus300k_main_gaps-mask.png"
-blemish_filename = search_mask(detector_key)
-blemish = ifile.FileDesc(blemish_filename).get_raw()[:, :, 0] > 1
-blemish = blemish.astype(int)
-# prepare master mask import
-SAXS_bstop_fname = "pilatus300_mastermask.npz"
-res = np.load(config.maskdir + "/" + SAXS_bstop_fname)
-SAXS_bstop_mask = res['master_mask']
-SAXS_bstop_origin = res['y0_master'], res['x0_master']
-obs_SAXS = Obstruction(SAXS_bstop_mask, SAXS_bstop_origin)
-
-GISAXS_bstop_fname = "mask_master_CMS_GISAXS_May2017.npz"
-res = np.load(config.maskdir + "/" + GISAXS_bstop_fname)
-GISAXS_bstop_mask = res['mask']
-GISAXS_bstop_origin = res['origin']
-obs_GISAXS = Obstruction(GISAXS_bstop_mask, GISAXS_bstop_origin)
-
-obs_total = obs_GISAXS + obs_SAXS
-obs3 = obs_total - obs_SAXS
+    return mask
 
 
-# rows, cols
-# origin = y0, x0
-# Instantiate the MasterMask
-master_mask = MasterMask(master=obs_total.mask, origin=obs_total.origin)
-# Instantiate the master mask generator
-mmg = MaskGenerator(master_mask, blemish)
 
 
 # TODO merge check with get stitch
@@ -201,8 +185,18 @@ def blemish_mask(mask):
     return mask
 
 # generate a mask
-mskstr = origin.map(psdm(mmg.generate))
-mskstr = mskstr.map(psdm(blemish_mask))
+#mskstr = origin.map(psdm(mmg.generate))
+#mskstr = mskstr.map(psdm(blemish_mask))
+# make the dict into kwargs
+mskstr_in = attributes.map(psdm(generate_mask))
+
+mskstr_in.map(print)
+md = dict(detector_SAXS_x0_pix=100, detector_SAXS_y0_pix=10, motor_bsx=14,
+          motor_bsy=16, motor_bsphi=12, detectors=['pilatus300'])
+test_doc = StreamDoc(args=md)
+attributes.emit(test_doc)
+
+raise ValueError
 
 mask_stream = mskstr.map(select, (0, 'mask'))
 
