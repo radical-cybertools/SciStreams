@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
+from .Obstructions import Obstruction
+from ..utils.mask import load_master_mask
 
 
 class Mask:
@@ -148,3 +150,42 @@ def make_submask(master_mask, master_cen, shape=None, origin=None,
         submask = submask*blemish
 
     return submask*(submask > 0.5)
+
+
+class MaskFrame(Obstruction):
+    def __init__(self, filename):
+        self.mmask_frame, self.origin_frame = load_master_mask(filename)
+        super(MaskFrame, self).__init__(self.mmask_frame, self.origin_frame)
+
+
+class BeamstopXYPhi(Obstruction):
+    ''' Definition of the beamstop at the CMS beamline with an XY and Phi
+    degree of freedom'''
+    # hard coded reference positions
+    ''' hard coded values for the beamstop.'''
+    def __init__(self, bsphi, bsx, bsy, ref_bsphi, ref_bsx, ref_bsy, ref_rotx,
+                 ref_roty, dx, dy, filename):
+        ''' Create a beamstop from a mask, origin pair
+            origin is y0, x0
+
+            bsphi : phi rotation
+            bsx : x transaltion of beamstop
+            bsy : y transaltion of beamstop
+        '''
+        self.ref_bsphi = ref_bsphi
+        self.ref_bsx = ref_bsx
+        self.ref_bsy = ref_bsy
+        self.rotation_offset = ref_roty, ref_rotx
+        self.dx = dx
+        self.dy = dy
+        self.mmask_bstop, self.origin_bstop = load_master_mask(filename)
+        super(BeamstopXYPhi, self).__init__(self.mmask_bstop, self.origin_bstop)
+        self._generate_beamstop_mask(bsphi, bsx, bsy)
+
+
+    def _generate_beamstop_mask(self, bsphi, bsx, bsy):
+        # change origin
+        #obs.origin = 786, 669
+        self.rotate(-(bsphi - self.ref_bsphi), rotation_offset = self.rotation_offset)
+        self.shiftx(-(bsx - self.ref_bsx)/self.dx)
+        self.shifty(-(bsy - self.ref_bsy)/self.dy)

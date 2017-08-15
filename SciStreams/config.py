@@ -8,6 +8,19 @@ try:
 except FileNotFoundError:
     config = dict()
 
+filename_masks = os.path.expanduser("~/.config/scistreams/masks.yml")
+try:
+    f = open(filename_masks)
+    masks = yaml.load(f)
+    for key in masks.keys():
+        for key2 in masks[key].keys():
+            fname = masks[key][key2]['filename']
+            newfname = config['maskdir'] + "/" + key + "/" + fname
+            masks[key][key2]['filename'] = newfname
+except FileNotFoundError:
+    masks = dict()
+
+
 detector_names = dict(pilatus300='saxs', psccd='waxs')
 
 
