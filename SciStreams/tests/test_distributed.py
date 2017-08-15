@@ -2,8 +2,8 @@ from operator import add
 
 from tornado import gen
 
-from SciStreams.interfaces.dask import scatter
-from SciStreams.interfaces.streams import Stream
+from SciStreams.core.dask_streams import scatter
+from SciStreams.core.streams import Stream
 
 from distributed import Future, Client
 from distributed.utils import sync

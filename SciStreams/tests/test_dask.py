@@ -6,6 +6,8 @@ from dask.base import normalize_token
 from SciStreams.core.streams import Stream
 from SciStreams.core.StreamDoc import StreamDoc, psdm
 
+# This will force delayed_pure=True which is necessary for local caching
+import SciStreams.globals
 
 def test_object_hash():
     # test that object hashing is working
@@ -34,6 +36,7 @@ def test_object_hash():
 
     s.emit(StreamDoc(args=myobj))
     s.emit(StreamDoc(args=myobj))
+    print(global_list)
     assert global_list == [1]
 
     s2.emit(StreamDoc(args=myobj))

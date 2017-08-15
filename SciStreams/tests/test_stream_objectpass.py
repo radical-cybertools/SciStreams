@@ -5,6 +5,7 @@ from dask.base import normalize_token
 
 from SciStreams.core.streams import Stream
 from SciStreams.core.StreamDoc import StreamDoc, psdm
+import SciStreams.globals
 
 
 def test_object_hash():

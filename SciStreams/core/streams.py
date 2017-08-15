@@ -173,7 +173,7 @@ class Stream(object):
         return self._loop
 
     def scatter(self):
-        from .dask import scatter
+        from .dask_streams import scatter
         return scatter(self)
 
     def map(self, func, *args, **kwargs):
