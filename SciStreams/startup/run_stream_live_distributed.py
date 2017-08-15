@@ -196,7 +196,6 @@ md = dict(detector_SAXS_x0_pix=100, detector_SAXS_y0_pix=10, motor_bsx=14,
 test_doc = StreamDoc(args=md)
 attributes.emit(test_doc)
 
-raise ValueError
 
 mask_stream = mskstr.map(select, (0, 'mask'))
 
