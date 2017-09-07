@@ -10,8 +10,7 @@ def qphiavg(img, mask=None, bins=None, origin=None):
     # TODO : replace with method that takes qphi maps
     # TODO : also return q and phi of this...
     # print("In qphi average stream")
-    rphibinstat = RPhiBinnedStatistic(img.shape, mask=mask, origin=origin,
-                                      bins=bins)
+    rphibinstat = RPhiBinnedStatistic(img.shape, mask=mask, origin=origin)
     sqphi = rphibinstat(img)
     qs = rphibinstat.bin_centers[0]
     phis = rphibinstat.bin_centers[1]

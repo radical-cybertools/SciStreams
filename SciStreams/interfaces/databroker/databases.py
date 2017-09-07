@@ -27,12 +27,12 @@ from .handlers_custom import AreaDetectorTiffHandler
 analysis_handlers = {
     'PNG': PNGHandler,
     'JPG': PNGHandler,
-    'DAT': DATHandler,
-    'npy': NpyHandler,
+    #'DAT': DATHandler,
+    #'npy': NpyHandler,
 }
 
 data_handlers = {
-    'AD_TIFF': AreaDetectorTiffHandler,
+    #'AD_TIFF': AreaDetectorTiffHandler,
 }
 
 

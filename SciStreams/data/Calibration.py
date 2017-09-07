@@ -215,7 +215,7 @@ class CalibrationBase(object):
 
 
 @normalize_token.register(CalibrationBase)
-def tokenize_calibration(self):
+def tokenize_calibration_base(self):
     # function to allow for intelligent caching
     # all all computations of data and submethods
     # need to specify pure=True flag
@@ -517,7 +517,7 @@ def tokenize_calibration(self):
     # inherit dispatch from Calibration object
     #calib_norm = normalize_token.dispatch(Calibration)
     #args = calib_norm(self)
-    args = tokenize_calibrationbase(self)
+    args = tokenize_calibration_base(self)
     # finally now tokenize the rest
     newargs = list()
     # round

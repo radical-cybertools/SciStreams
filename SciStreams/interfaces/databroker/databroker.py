@@ -7,7 +7,6 @@ from uuid import uuid4
 import numpy as np
 import matplotlib
 
-from databroker.broker import Header
 import json
 
 from .writers_custom \
@@ -255,8 +254,6 @@ def safe_parse_databroker(val, nested=False):
     elif np.isscalar(val):
         # convenient to check if it's a number
         pass
-    elif isinstance(val, Header):
-        val = dict(val)
     else:
         val = str(type(val))
 

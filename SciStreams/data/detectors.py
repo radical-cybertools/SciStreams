@@ -10,6 +10,21 @@ from collections import ChainMap
 
 # very explicit, wordy, but better
 detectors2D = {
+    'pilatus2M':
+        ChainMap(
+            Singlet('pixel_size_x', value=172, unit="um"),
+            Singlet('pixel_size_y', value=172, unit="um"),
+            Singlet('shape', value=(1679, 1475), unit="pixel"),
+            Singlet('dynamic_range', value=20, unit="bit"),
+            Singlet('readout_time', value=2.3, unit="ms"),
+            Singlet('description', value='SAXS detector', unit=None),
+            # the detector keys
+            Singlet('image_key', value='pilatus2M_image', unit=None),
+            Singlet('stats1_key', value='pilatus2M_stats1_total', unit=None),
+            Singlet('stats2_key', value='pilatus2M_stats2_total', unit=None),
+            Singlet('stats3_key', value='pilatus2M_stats3_total', unit=None),
+            Singlet('stats4_key', value='pilatus2M_stats4_total', unit=None),
+        ),
     'pilatus300':
         ChainMap(
             Singlet('pixel_size_x', value=172, unit="um"),

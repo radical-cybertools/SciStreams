@@ -1,8 +1,9 @@
 # Create Databases
 # NOTE : cmsdb makes temporary analysis database for now...
-from metadatastore.mds import MDS
-from filestore.fs import FileStore
 from databroker.broker import Broker
+from databroker.headersource.mongo import MDSRO
+from databroker.assets.mongo import RegistryRO
+
 
 ''' This handles setting up the databroker database.
 
@@ -47,20 +48,21 @@ def init_db(host, port, mdsname, fsname, handlers=None):
                 'database': mdsname,
                 'timezone': 'US/Eastern',
                  }
-    mds = MDS(mds_conf, auth=False)
 
-    fs_conf = {
+    reg_conf = {
             'host': host,
             'port': port,
             'database': fsname
     }
 
-    fs = FileStore(fs_conf)  # , root_map=ROOTMAP)
+    mds = MDSRO(mds_conf)
+    reg = RegistryRO(reg_conf)
+
 
     if handlers is not None:
         for handler_key, handler_function in handlers.items():
-            fs.register_handler(handler_key, handler_function, overwrite=True)
+            reg.register_handler(handler_key, handler_function, overwrite=True)
 
-    db = Broker(mds, fs)
+    db = Broker(mds, reg)
 
     return db

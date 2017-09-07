@@ -5,6 +5,7 @@ import os
 
 import numpy as np
 
+import matplotlib.pyplot as plt
 
 class MasterRecord:
     ''' This is the object that defines a set of records.'''
@@ -224,10 +225,21 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32,
         raise ValueError(errormsg)
 
     # force it to have the required data type
+    plt.figure(2);plt.clf()
+    plt.subplot(2,2,1)
+    plt.imshow(image)
     image = image.astype(dtype)
+    plt.subplot(2,2,2)
+    plt.imshow(image)
+
 
     # make image and label data
     data = np.concatenate((labelbin, image.ravel()))
+
+    plt.subplot(2,2,3)
+    plt.imshow(data[1:].reshape((48,48)))
+
+    plt.pause(.1)
     expected_size = image.shape[0]*image.shape[1] + num_elems_label
     if (len(data) != expected_size):
         errormsg = "Data length doesn't match labels and image size\n"
@@ -281,6 +293,11 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32,
         # read curfile as raw array
         # arr = np.fromfile(curfilename, dtype=dtype)
         arr = _read_batch(numrecs, dataset=dataset, dtype=dtype)
+        print(arr.shape)
+        plt.subplot(2,2,4)
+        plt.imshow(arr[1:48**2+1].reshape((48,48)))
+        plt.pause(.1)
+
         array_size = len(arr)
         if array_size % elems_per_data != 0:
             errormsg = "Data mismatch\n"
@@ -380,7 +397,7 @@ def _read_master_file(filename):
     res = np.loadtxt(filename, delimiter=" ", dtype=int)
 
     master_record = MasterRecord()
-    master_record.number_records = res[0]
+    master_record.number_records = res[0]*res[1]
     master_record.records_per_batch = res[1]
     master_record.image_shape = res[2], res[3]
     master_record.number_labels = res[4]

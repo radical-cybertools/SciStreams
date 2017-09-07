@@ -98,7 +98,10 @@ def generate_mask(md):
 
 # TODO merge check with get stitch
 def check_stitchback(sdoc):
-    sdoc['attributes']['stitchback'] = True
+    if not hasattr(sdoc['attributes'], 'stitchback'):
+        sdoc['attributes']['stitchback'] = False
+
+    #sdoc['attributes']['stitchback'] = True
     # if 'stitchback' not in sdoc['attributes']:
     # sdoc['attributes']['stitchback'] = False
     return StreamDoc(sdoc)
@@ -375,5 +378,6 @@ def start_run(start_time, dbname="cms:data", noqbins=None):
 
 
 if __name__ == "__main__":
+    print("Starting run...")
     start_time = time.time()-24*3600
     start_run(start_time)

@@ -199,6 +199,9 @@ def load_calib_dict(attributes, keymap=None, defaults=None, img_shape=None,
     ''' Load calibration dictionary from attributes.
         Attributes are a dictionary.
 
+        This one transforms attributes read into a dictionary that is
+        normalized to what is expected.
+
         Parameters
         ----------
         attributes : dict
@@ -254,8 +257,17 @@ def load_calib_dict(attributes, keymap=None, defaults=None, img_shape=None,
 def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
     '''
         Update calibration with all keyword arguments fill in the defaults
+
+        This expects a dictionary of a certain form with certain elements:
+            'wavelength'
+            'pixel_size_x'
+            'sample_det_distance'
+            'beamx0'
+            'beamy0'
+
         img_shape : specify arbitrary shape (useful for stitched images)
     '''
+    # TODO : move detector stuff into previous load routine
     calib_tmp = dict()
     calib_tmp.update(calib_dict)
 
