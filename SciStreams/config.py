@@ -1,3 +1,4 @@
+# these read the configuration file and setup extra configuration of parameters
 import yaml
 import os.path
 # reads yaml file from user directory
@@ -8,20 +9,22 @@ try:
 except FileNotFoundError:
     config = dict()
 
+# read the mask conf file
 filename_masks = os.path.expanduser("~/.config/scistreams/masks.yml")
 try:
     f = open(filename_masks)
-    masks = yaml.load(f)
-    for key in masks.keys():
-        for key2 in masks[key].keys():
-            fname = masks[key][key2]['filename']
+    mask_config = yaml.load(f)
+    for key in mask_config.keys():
+        for key2 in mask_config[key].keys():
+            fname = mask_config[key][key2]['filename']
+            # prepend the mask directory to filename then save
             newfname = config['maskdir'] + "/" + key + "/" + fname
-            masks[key][key2]['filename'] = newfname
+            mask_config[key][key2]['filename'] = newfname
 except FileNotFoundError:
-    masks = dict()
+    mask_config = dict()
 
 
-detector_names = dict(pilatus300='saxs', psccd='waxs')
+detector_names = dict(pilatus300='saxs', psccd='waxs', pilatus2M='saxs')
 
 
 # no databases present, only add if config file gives some
@@ -37,6 +40,7 @@ _DEFAULTS = {
     'delayed': True,
     'client': None,
     'databases': default_databases,
+    # tensorflow storage stuff
     'TFLAGS': {'out_dir': '/GPFS/pipeline/ml-tmp',
                'num_batches': 16}
 }

@@ -124,7 +124,11 @@ class CalibrationBase(object):
 
     @property
     def origin(self):
-        return self.x0, self.y0
+        # return None if either x0 or y0 are None
+        if self.x0 is None or self.y0 is None:
+            return None
+        else:
+            return self.x0, self.y0
 
 
     def set_image_size(self, width, height=None):

@@ -14,17 +14,20 @@ from collections import ChainMap
 from ..data.Singlet import Singlet
 
 # Sources
-from ..data.detectors import detectors2D
+from ..detectors import detectors2D
 
 # wrappers for parsing streamdocs
-from ..core.StreamDoc import select, pack, unpack, todict,\
-        add_attributes, psdm, psda
+#from ..core.StreamDoc import select, pack, unpack, todict,\
+        #add_attributes, psdm, psda
 
 from ..processing.stitching import xystitch_accumulate, xystitch_result
 from ..processing.circavg import circavg
 from ..processing.qphiavg import qphiavg
 from ..processing.image import blur as _blur, crop as _crop, resize as _resize
 from ..processing import rdpc
+
+from ..config import config
+keymaps = config['keymaps']
 
 
 '''
@@ -35,7 +38,7 @@ from ..processing import rdpc
 # use RQConv now
 from ..data.Calibration import Calibration
 
-from ..core.streams import Stream
+#from ..core.streams import Stream
 
 # cache for qmaps
 # TODO : clean this up
@@ -44,217 +47,73 @@ from ..core.streams import Stream
 # and outputs in the docstrings! See stream below for a good example.
 
 
-# Calibration for SAXS data
-# NOTE : Makes the assumption that the wrapper provides 'select' functionality
-def CalibrationStream(keymap_name=None, detector=None):
+# CALIBRATION STREAM CREATION DELETED: put in startup/run_stream_live_shed.py
+# for now
+
+def normalize_calib_dict(**md):
+    ''' Normalize the calibration parameters to a set of parameters that the
+    analysis expects.
+        It gives entries like:
+            beamx0 : dict(value=a, unit=b)
+        etc...
     '''
-        This returns a stream of calibration methods.
+    keymap_name = md.get("keymap_name", "cms")
+    keymap = keymaps[keymap_name]
+    for key, val in keymap.items():
+        name = val['name']
+        if name is not None:
+            print("setting {} to {}".format(name, key))
+            # swap out temp vals
+            tmpval = md.pop(name)
+            default_unit = val['default_unit']
+            md[key] = dict(value=tmpval, unit=default_unit)
 
-        Parameters
-        ----------
-        keymap_name : optional, string
-            the keymap name
+    return md
 
-        detector : optional, string
-            the detector name.
-            see SciStreams.interfaces.detectors for list of detectors
 
-        Stream Inputs
-        -------------
-            attributes : A calibration dictionary
-                    necessary elements are:
+def _make_detector_name_from_key(name):
+    # remove last "_" character
+    return name[::-1].split("_", maxsplit=1)[-1][::-1]
 
-                    keymap = {
-                        'wavelength': 'wavelength',
-                        'beamx0': 'beamx0',
-                        'beamy0': 'beamy0',
-                        'sample_det_distance': 'sample_det_distance',
-                        }
 
-            img_shape= : optional, 2D np.ndarray
-                the image for the calibration
-                This is useful when image stitching where the image dimensions
-                aren't the typical detector dimensions (and for computing the
-                qmap)
-
-        Stream Outputs
-        --------------
-            calib_obj : a Calibration instance
-                Has members:
-                    qx_map : a qx_map
-                    qy_map : a qy_map
-                    qz_map : a qz_map
-                    qr_map : a qr_map
-                    q_map  : the magnitude sqrt(qx**2 + qy**2 + qz**2)
-                    origin : the origin
-
-        Returns
-        -------
-        sin : Stream
-            The input for the stream
-
-        sout : Stream
-            The output for the stream
+def add_detector_info(**md):
     '''
-    # TODO : do for arbitrary images (i.e. not rectangular, receive array of
-    # pixels instead)
-    if keymap_name is None:
-        keymap_name = "cms"
+        Add detector information to the metadata, like shape etc.
+        This is a useful step for 2D SAXS analysis, before making the
+        calibration parameters.
 
-    if detector is None:
-        detector = 'pilatus300'
+    Expects:
 
-    # getting some hard-coded defaults
-    keymap, defaults = _get_keymap_defaults(keymap_name)
+        detector_name : the detector name
+        img_shape : tuple, optional
+            force the image shape. This is useful when the detector image
+                has been transformed (i.e. image stitching)
+    '''
+    detector_key = md.get('detector_key', None)
 
-    def validate(input_data):
-        if 'args' not in input_data:
-            message = "args not in StreamDoc"
-            raise ValueError(message)
-        args = input_data['args']
-        if len(args) != 1:
-            message = "args not length 1"
-            raise ValueError(message)
-        data = args[0]
-        # if 'sample_savename' not in kwargs:
-        # return False
-        for key, value in keymap.items():
-            if value not in data:
-                message = "{} not in dict with keys {}"\
-                    .format(value, list(data.keys()))
-                raise ValueError(message)
-        return input_data
+    # only do something is there is a detector key
+    if detector_key is not None:
+        detector_name = _make_detector_name_from_key(detector_key)
 
-    # the pipeline flow defined here
-    sin = Stream(name="Calibration")
-    s2 = sin.map(validate)
+        md['detector_name'] = detector_name
 
-    s2 = s2.map(add_attributes, stream_name="Calibration")
+        # use the detector info supplied
+        # look up in local library
+        md['pixel_size_x'] = detectors2D[detector_name]['pixel_size_x']
+        md['pixel_size_y'] = detectors2D[detector_name]['pixel_size_y']
 
-    calib = s2.map(psdm(load_calib_dict), keymap=keymap, defaults=defaults)
-
-    calib_obj = calib.map(psdm(load_from_calib_dict), detector=detector,
-                          calib_defaults=defaults)
-
-    from SciStreams.globals import client
-    calib_obj = calib_obj.map(lambda x:
-                              client.submit(psdm(_generate_qxyz_maps), x))
-    calib_obj.map(streams_globals.futures_cache.append)
-    calib_obj = calib_obj.map(lambda x: client.gather(x))
-
-    sout = calib_obj
-
-    return sin, sout
-
-
-def get_beam_center(obj):
-    ''' Get beam center in row, col (y,x) format.'''
-    x0 = obj['beamx0']['value']
-    y0 = obj['beamy0']['value']
-    return (y0, x0),
-
-
-def _get_keymap_defaults(name):
-    ''' Get the keymap for the calibration, along with default values.'''
-    # print("_get_keymap_defaults, name : {}".format(name))
-    if name == "cms":
-        keymap = {
-                    'wavelength': 'calibration_wavelength_A',
-                    'beamx0': 'detector_SAXS_x0_pix',
-                    'beamy0': 'detector_SAXS_y0_pix',
-                    'sample_det_distance': 'detector_SAXS_distance_m',
-        }
-        # ChainMap is not hashed by dask properly
-        defaults = dict(ChainMap(Singlet('wavelength', None, 'Angstrom'),
-                                 Singlet('detector', 'pilatus300', 'N/A'),
-                                 Singlet('beamx0', None, 'pixel'),
-                                 Singlet('beamy0', None, 'pixel'),
-                                 Singlet('sample_det_distance', None, 'm'),
-                                 Singlet('pixel_size_x', None, 'pixel'),
-                                 Singlet('pixel_size_y', None, 'pixel'),))
-    elif name == "None":
-        keymap = {
-                    'wavelength': 'wavelength',
-                    'beamx0': 'beamx0',
-                    'beamy0': 'beamy0',
-                    'sample_det_distance': 'sample_det_distance',
-        }
-        defaults = dict(ChainMap(Singlet('wavelength', None, 'Angstrom'),
-                                 Singlet('detectors', ['pilatus300'],
-                                         'N/A'), Singlet('beamx0', None,
-                                                         'pixel'),
-                                 Singlet('beamy0', None, 'pixel'),
-                                 Singlet('sample_det_distance', None, 'm'),
-                                 Singlet('pixel_size_x', None, 'pixel'),
-                                 Singlet('pixel_size_y', None, 'pixel'),))
+        # shape is just a tuple, not a dict(value=...,unit=...)
+        if 'shape' not in md:
+            md['shape'] = detectors2D[detector_name]['shape']['value']
     else:
-        raise ValueError("Error, cannot find keymap for loading"
-                         "calibration")
+        msg = "Warning : no detector key found,"
+        msg += " not adding detector information"
+        print(msg)
 
-    return keymap, defaults
-
-
-def load_calib_dict(attributes, keymap=None, defaults=None, img_shape=None,
-                    origin=None):
-    ''' Load calibration dictionary from attributes.
-        Attributes are a dictionary.
-
-        This one transforms attributes read into a dictionary that is
-        normalized to what is expected.
-
-        Parameters
-        ----------
-        attributes : dict
-            the attributes for the calibration data
-                (wavelength etc.)
-
-        calib_keymap : dict
-            the mapping of the keywords for this calibration object
-            to the keywords of the attributes dictionary
-            some key words necessary:
-                wavelength : the wavelength (Angstroms)
-                beamx0 : x center of beam (rows) (pixels)
-                beamy0 : y center of beam (cols) (pixels)
-                sample_det_distance : the sample detector distance (m)
-
-        image : if not none, use the shape of this image instead
-    '''
-    # print("load_calib_dict, attributes: {}".format(attributes))
-    # print("load_calib_dict, keymap: {}".format(keymap))
-    # print("load_calib_dict, defaults: {}".format(defaults))
-    if keymap is None:
-        keymap, defaults = _get_keymap_defaults("None")
-    calib_keymap = keymap
-    calib_defaults = defaults
-
-    # TODO Allow for different units
-    olddict = attributes
-    newdict = dict()
-    # print("load_calib_dict, newdict : {}".format(newdict))
-    # print("load_calib_dict, calib_keymap: {}".format(calib_keymap))
-    for key, newkey in calib_keymap.items():
-        try:
-            newdict.update(Singlet(key, olddict[newkey],
-                                   calib_defaults[key]['unit']))
-        except KeyError:
-            raise KeyError("There is an entry missing" +
-                           " in header : {}.".format(newkey) +
-                           "Cannot proceed")
-
-    # update keyword argument overrides
-    if img_shape is not None:
-        newdict['img_shape'] = img_shape
-    if origin is not None:
-        newdict['beamx0'] = {'value': origin[1], 'unit': 'pixel'}
-        newdict['beamy0'] = {'value': origin[0], 'unit': 'pixel'}
-    # TODO : mention dicts need to be returned as tuples or encapsulated in a
-    # dict
-    # this is new syntax for putting arguments in dict
-    # print("load_calib_dict, newdict : {}".format(newdict))
-    return newdict
+    return md
 
 
-def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
+def make_calibration(**md):
     '''
         Update calibration with all keyword arguments fill in the defaults
 
@@ -268,38 +127,13 @@ def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
         img_shape : specify arbitrary shape (useful for stitched images)
     '''
     # TODO : move detector stuff into previous load routine
-    calib_tmp = dict()
-    calib_tmp.update(calib_dict)
-
-    # use the detector info supplied
-    # look up in local library
-    pixel_size_x_val = detectors2D[detector]['pixel_size_x']['value']
-    pixel_size_x_unit = detectors2D[detector]['pixel_size_x']['unit']
-    pixel_size_y_val = detectors2D[detector]['pixel_size_y']['value']
-    pixel_size_y_unit = detectors2D[detector]['pixel_size_y']['unit']
-
-    if 'img_shape' not in calib_dict:
-        img_shape = detectors2D[detector]['shape']
-    else:
-        img_shape = Singlet('img_shape', value=calib_dict['img_shape'],
-                            unit='pixel')['img_shape']
-
-    calib_tmp.update(Singlet('pixel_size_x', pixel_size_x_val,
-                             pixel_size_x_unit))
-    calib_tmp.update(Singlet('pixel_size_y', pixel_size_y_val,
-                             pixel_size_y_unit))
-
-    # it's a dict with 'value' 'unit' elements
-    calib_tmp['shape'] = img_shape.copy()
-
-    # some post calculations
     # k = 2pi/wv
-    wavelength = calib_tmp['wavelength']['value']
-    calib_tmp.update(Singlet('k', 2.0*np.pi/wavelength, '1/Angstrom'))
+    wavelength = md['wavelength']['value']
+    md['k'] = dict(value=2.0*np.pi/wavelength, unit='1/Angstrom')
     # energy
     # h = 6.626068e-34  # m^2 kg / s
     c = 299792458  # m/s
-    wavelength = calib_tmp['wavelength']['value']  # in Angs *1e-10  # m
+    wavelength = md['wavelength']['value']  # in Angs *1e-10  # m
     # E = h*c/wavelength  # Joules
     # E *= 6.24150974e18  # electron volts
     # E /= 1000.0  # keV
@@ -309,29 +143,29 @@ def load_from_calib_dict(calib_dict, detector=None, calib_defaults=None):
     the small-angle limit, so it should only be considered a approximate.
     For instance, wide-angle detectors will have different delta-q across
     the detector face.'''
-    c = (calib_tmp['pixel_size_x']['value']/1e6) / \
-        calib_tmp['sample_det_distance']['value']
+    c = (md['pixel_size_x']['value']/1e6) / \
+        md['sample_det_distance']['value']
     twotheta = np.arctan(c)  # radians
-    calib_tmp.update(Singlet('q_per_pixel',
-                             2.0*calib_tmp['k']['value']*np.sin(twotheta/2.0),
-                             "1/Angstrom"))
+    md['q_per_pixel'] = dict(value=2.0*md['k']['value']*np.sin(twotheta/2.0),
+                             unit="1/Angstrom")
 
     # some post calculations
-    # calibration = calib_tmp
 
-    pixel_size_um = pixel_size_x_val
-    distance_m = calib_tmp['sample_det_distance']['value']
+    pixel_size_um = md['pixel_size_x']['value']
+    distance_m = md['sample_det_distance']['value']
     wavelength_A = wavelength
+
+    # prepare the calibration object
     calib_object = Calibration(wavelength_A=wavelength_A,
                                distance_m=distance_m,
                                pixel_size_um=pixel_size_um)
     # NOTE : width, height reversed in calibration
-    height, width = calib_tmp['shape']['value']
+    height, width = md['shape']
     calib_object.set_image_size(width, height)
-    calib_object.set_beam_position(calib_dict['beamx0']['value'],
-                                   calib_dict['beamy0']['value'])
-    print("calibration object: {}".format(calib_object))
-    print("calibration object members: {}".format(calib_object.__dict__))
+    calib_object.set_beam_position(md['beamx0']['value'],
+                                   md['beamy0']['value'])
+    #print("calibration object: {}".format(calib_object))
+    #print("calibration object members: {}".format(calib_object.__dict__))
 
     return calib_object
 

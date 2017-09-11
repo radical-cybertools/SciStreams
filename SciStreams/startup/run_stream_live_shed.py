@@ -29,14 +29,14 @@ from functools import partial
 # SciStreams imports
 # this one does a bit of setup upon import, necessary
 # from SciStreams.globals import client
-from SciStreams.config import config, masks as mask_config
+from SciStreams.config import config, mask_config
 
 # interfaces for saving to databroker
 # NEED TO TURN INTO BLUESKY-LIKE CALLBACKS
-from SciStreams.interfaces.plotting_mpl import plotting_mpl as iplotting
-from SciStreams.interfaces.databroker import databroker as idb
-from SciStreams.interfaces.file import file as ifile
-from SciStreams.interfaces.xml import xml as ixml
+#from SciStreams.interfaces.plotting_mpl import plotting_mpl as iplotting
+#from SciStreams.interfaces.databroker import databroker as idb
+#from SciStreams.interfaces.file import file as ifile
+#from SciStreams.interfaces.xml import xml as ixml
 # from SciStreams.interfaces.detectors import detectors2D
 # Streams include stuff
 
@@ -51,9 +51,28 @@ from SciStreams.data.Mask import BeamstopXYPhi, MaskFrame
 #from tornado.ioloop import IOLoop
 #from tornado import gen
 
+from SciStreams.callbacks import CallbackBase
+class FeedToStream(CallbackBase):
+    def __init__(*args, stream, **kwargs):
+        self.stream = stream
+        super(FeedToStream, self).__init__(*args, **kwargs)
 
+    def start(self, doc):
+        self.stream.emit(("start", doc))
+
+    def stop(self, doc):
+        self.stream.emit(("stop", doc))
+
+    def event(self, doc):
+        self.stream.emit(("event", doc))
+
+    def descriptor(self, doc):
+        self.stream.emit(("descriptor", doc))
+
+
+from SciStreams.detectors import detectors2D
 # Will be replaced by more sophisticated masking routine later
-def generate_mask(**kwargs):
+def get_mask(**kwargs):
     ''' right now just a bland mask generator.
         need to replace it with something more sophisticated when time comes
 
@@ -62,16 +81,16 @@ def generate_mask(**kwargs):
     # TODO : don't make read everytime at the very least. but 
     # may require thought when distributing
     detector_key = kwargs.get('detector_key', None)
-    print("det key", detector_key)
-    BLEMISH_FNAME = BLEMISH_FILENAMES[detector_key]
-    from PIL import Image
-    mask = np.array(Image.open(BLEMISH_FNAME))
+    # remove last "_" character
+    detector_name = detector_key[::-1].split("_", maxsplit=1)[-1][::-1]
+    mask_generator = detectors2D[detector_name]['mask_generator']['value']
+    mask = mask_generator(**kwargs)
     return dict(mask=mask)
 
+#MASK_GENERATORS = {'pilatus2M_image' : generate_mask_pilatus2M,
+                   #'pilatus300_image' : generate_mask_pilatus300
+                   #}
 
-def set_detector_name(sdoc, detector_name='pilatus300'):
-    sdoc['attributes']['detector_name'] = detector_name
-    return StreamDoc(sdoc)
 
 
 def safelog10(img):
@@ -114,13 +133,12 @@ def isSAXS(sdoc):
 
 # use map to take no input info 
 #
-def filter_data(**kwargs):
-    ''' Filter events data based on a certion condaition
-        Here only choose two dimensional arrays.
+def pick_arrays(**kwargs):
+    ''' Only pass through array events, ignore rest.
     '''
     new_kwargs = dict()
-    for key, val in kwargs.items:
-        if hasattr(val, 'ndim') and val.ndim == 2:
+    for key, val in kwargs.items():
+        if hasattr(val, 'ndim') and val.ndim > 0:
             new_kwargs[key] = val
     return new_kwargs
 
@@ -128,25 +146,6 @@ def filter_data(**kwargs):
 
 import shed.event_streams as es
 import streamz.core as sc
-# this is meant to remove certain events 
-# based on a predicate on descriptors
-class filter_descriptor(es.EventStream):
-    def __init__(self, predicate, *args, **kwargs):
-        self.predicate = predicate
-
-        super().__init__(*args, **kwargs)
-
-    # this should just override output_info
-    def descriptor(self, docs):
-        output_info = list()
-        for doc in docs:
-            data_keys = doc['data_keys']
-            for key, val in data_keys.items():
-                if self.predicate(val):
-                    output_info.append((key, val))
-        self.output_info = output_info
-        return super().descriptor(docs)
-
 
 
 globaldict = dict()
@@ -157,30 +156,48 @@ globaldict = dict()
 # This is the main stream of data
 # Stream setup, datbroker data comes here (a string uid)
 sin = es.EventStream()
+sin_primary = es.filter(lambda x : x[0]['name'] == 'primary', sin,
+                        document_name='descriptor')
+
 
 # TODO : run asynchronously?
 
+def get_detector_key_start(**md):
+    # a cludge to get detector name
+    md['detector_key'] = md['detectors'][0] + "_image"
+    return md
 ###
+# prepare the attribues in some normalized form, add data and 
+# also make assumption that there is one detector here
+from SciStreams.streams.XS_Streams import normalize_calib_dict,\
+        add_detector_info, make_calibration
 # First split it off into attributes, but reading the metadata (Eventify)
 # and passing to a calibration object
 # push attributes into actual event data before we lose them
 s_attributes = es.Eventify(sin)
-# temporary stuff, until I patch it into with shed
-from SciStreams.streams.XS_Streams import load_calib_dict,\
-            _get_keymap_defaults, load_from_calib_dict
-keymap, defaults = _get_keymap_defaults("cms")
-def load_calib_dict_shed(keymap=None, defaults=None, **kwargs):
-    return load_calib_dict(kwargs, keymap=keymap, defaults=defaults)
-def load_from_calib_dict_shed(detector=None, calib_defaults=None, **kwargs):
-    return load_from_calib_dict(kwargs, detector=detector,
-            calib_defaults=calib_defaults)
-s_calib = es.map(load_calib_dict_shed, s_attributes, keymap=keymap, defaults=defaults)
+# set the detector name from det key in start (adding metadata)
+s_attributes = es.map(get_detector_key_start, s_attributes)
+
+s_attributes = es.map(normalize_calib_dict, s_attributes, keymap_name='cms')
+s_attributes = es.map(add_detector_info, s_attributes)
+
+from SciStreams.detectors.mask_generators import generate_mask
+
+
+
+
+# TODO : The detector key should be taken from descriptor
+# TODO : This assumes events for images are length 1. If more
+# than 1, need to repeat the s_calib stream (which is just 1 event)
+# first pick the detector, just the first one for now
+# TODO : add splits of stream to compute for multiple detectors
+# next make a calibration object
+s_calib = es.map(make_calibration, s_attributes, output_info=[('calibration', {})])
+
 # TODO : make a "grab first detector" argument (looks for first data element
 # that's an array and returns the name)
-s_calib = es.map(load_from_calib_dict_shed, s_calib,
-                      detector='pilatus300', calib_defaults=defaults,
-                      output_info=(('calibration', {}),))
-# now try caching, the object has its own builtin hashing that dask understands
+#
+## now try caching, the object has its own builtin hashing that dask understands
 def _generate_qxyz_maps(calibration):
     calibration.generate_maps()
     return calibration
@@ -193,16 +210,15 @@ s_calib_obj = es.map(lambda calibration:
 es.map(lambda calibration : streams_globals.futures_cache.append(calibration),
         s_calib_obj)
 s_calib_obj = s_calib_obj.map(lambda x: client.gather(x))
-#s_attributes.map(print)
-#s_calib_obj.map(print)
-#s_calib = es.map(load_from_calib, s_attributes, 
-                 #input_info="")
+# END Calibration
 
-# assume events coming in are a stream
-s_data = sin
+## assume events coming in are a stream
+s_data = sin_primary
 #s_image.map(print)
 #s_event = es.Eventify(s_event, None)
-s_data = filter_descriptor(lambda x : x['dtype'] == 'array', s_data)
+# TODO : synchronize this with start doc (maybe choose only the data key
+# corresponding to metadata)
+s_data = es.map(pick_arrays, s_data)
 def grab_first_det(**kwargs):
     ''' take first det and make it image key
         cludge for now
@@ -218,10 +234,12 @@ def grab_first_det_key(**kwargs):
     return dict(detector_key=key)
 
 s_image = es.map(grab_first_det, s_data)
+# TODO : synchronize with start doc
 s_detector_key = es.map(grab_first_det_key, s_data)
 #s_out = sc.map(print, s_event)
 
-s_mask = es.map(generate_mask, s_detector_key)
+#s_attributes.map(print)
+s_mask = es.map(generate_mask, s_attributes)
 
 s_imgmaskcalib = es.zip(s_image, s_calib_obj, s_mask)
 
@@ -235,7 +253,12 @@ def get_origin(**kwargs):
     ''' get the origin from the attributes.'''
     x = kwargs.get('detector_SAXS_x0_pix', None)
     y = kwargs.get('detector_SAXS_y0_pix', None)
-    return dict(origin=(y,x))
+    if x is None or y is None:
+        origin = None
+    else:
+        origin = (y,x)
+
+    return dict(origin=origin)
 
 s_origin = es.map(get_origin, s_attributes)
 
@@ -244,15 +267,10 @@ s_exposure = es.map(get_exposure, s_attributes)
 # move stitch to an event by grabbing from attributes
 s_stitch = es.map(get_stitch, s_attributes)
 
-def circavg_from_calibration_shed(*args, **kwargs):
-    # wrap from current output to just a dict
-    res = circavg_from_calibration(*args, **kwargs)
-    return dict(**res.kwargs)
-
 # merge streams to create zipped stream
 from SciStreams.streams.XS_Streams import circavg_from_calibration
 #def circavg_from_calibration(image, calibration, mask=None, bins=None):
-s_circavg = es.map(circavg_from_calibration_shed, s_imgmaskcalib,
+s_circavg = es.map(circavg_from_calibration, s_imgmaskcalib,
                    input_info={'image' : ('image', 0),
                                'calibration' : ('calibration', 1),
                                'mask' : ('mask', 2),
@@ -295,10 +313,6 @@ s_stitched_image = es.map(grab_stitched_image, s_stitched,
                                                 'shape' : (1679, 1475)})])
 
 from SciStreams.processing.qphiavg import qphiavg
-def qphiavg_shed(image, mask=None, bins=None, origin=None):
-    res = qphiavg(image, mask=mask, bins=bins, origin=origin)
-    # shed expects a dict
-    return res.kwargs
 
 s_img_mask_origin = es.map(lambda **kwargs : kwargs, es.zip(s_image, s_mask, s_origin),
                            input_info={'image' : ('image', 0),
@@ -306,7 +320,7 @@ s_img_mask_origin = es.map(lambda **kwargs : kwargs, es.zip(s_image, s_mask, s_o
                                        'origin' : ('origin', 2)
                                        }
                            )
-s_qphiavg = es.map(qphiavg_shed, s_img_mask_origin)
+s_qphiavg = es.map(qphiavg, s_img_mask_origin, bins=(800,360))
 def grab_sqphi(**kwargs):
     return kwargs.get('sqphi', None)
 s_sqphi = es.map(grab_sqphi, s_qphiavg,
@@ -317,15 +331,43 @@ L = s_qphiavg.sink_to_list()
 
 # attach to callbacks here
 # eventually re-write data outputs in terms of callbacks
-from bluesky.callbacks.broker import LiveImage
-from bluesky.callbacks import LivePlot
+# some callbacks are just bluesky imports. Also all callbacks inherit bluesky
+# templates. Maybe it may be better to remove bluesky dep in future?
+from SciStreams.callbacks.live import LiveImage, LivePlot
+
+# TODO : use kde's for normalization
+def image_norm(image, low=.05, high=.95):
+    ''' this is just threshold normalization
+        Assumes positive valued images
+    '''
+    img = image
+    data = img[~np.isnan(img)*~np.isinf(img)]
+    nobins = int(np.max(data))
+    hh, bin_edges = np.histogram(data, bins=nobins)
+    cumcnts = np.cumsum(hh)
+    hhsum = np.sum(hh)
+
+
+    # only threshold if there are counts
+    if hhsum > 0:
+        cumcnts = cumcnts/hhsum
+        wlow = np.where(cumcnts > low)[0][0]
+        whigh = np.where(cumcnts < high)[0][-1]
+        img = ((img>wlow) < whigh)*img
+        img[np.isnan(img)+np.isinf(img)] = 0
+
+    return image
+
+
 
 liveimage_stitch = LiveImage('image')
-s_stitched_image.sink(es.star(liveimage_stitch))
-liveimage_sqphi = LiveImage('sqphi')
-s_sqphi.sink(es.star(liveimage_sqphi))
+es.map(image_norm, s_stitched_image, output_info=[('image', {})]).sink(es.star(liveimage_stitch))
+liveimage_sqphi = LiveImage('sqphi', aspect='auto')
+es.map(image_norm, s_sqphi, input_info={'image' : 'sqphi'},
+        output_info=[('sqphi', {})]).sink(es.star(liveimage_sqphi))
 liveimage_sqplot = LivePlot('sqy', x='sqx')
 s_circavg.sink(es.star(liveimage_sqplot))
+
 
 
 
@@ -347,8 +389,8 @@ if True:
 
     cmsdb = databases['cms:data']
 
-    #hdrs = cmsdb(start_time="2017-09-01", stop_time="2017-09-07")
-    hdrs = cmsdb(start_time="2017-07-14", stop_time="2017-07-15")
+    hdrs = cmsdb(start_time="2017-07-13", stop_time="2017-07-14")# 16:00")
+    #hdrs = cmsdb(start_time="2017-07-14", stop_time="2017-07-15")
     stream = cmsdb.restream(hdrs, fill=True)
 
 elif True:
@@ -373,6 +415,24 @@ elif True:
     stream = to_event_model(data, output_info=output_info, md=md)
 
 for nds in stream:
-    sin.emit(nds)
+    print(nds)
+    x0, y0 = 720, 599
+    rdet = 5
+    if nds[0] == 'start':
+        startdoc = nds[1].copy()
+        if 'detector_SAXS_x0_pix' not in startdoc:
+            startdoc['detector_SAXS_x0_pix'] = x0
+            startdoc['detector_SAXS_y0_pix'] = y0
+            startdoc['detector_SAXS_distance_m'] = rdet
+            nds = 'start', startdoc
+        run_next = False
+        for det in startdoc['detectors']:
+            if 'pilatus' in det:
+                run_next = True
+    if nds[0] == 'stop':
+        run_next = True
+    if run_next:
+        sin.emit(nds)
     # refresh any plots to callbacks
-    plt.pause(.1)
+    if nds[0] == 'event':
+        plt.pause(.1)
