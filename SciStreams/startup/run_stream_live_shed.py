@@ -297,7 +297,7 @@ s_stitched = es.map(pack_args, es.zip(s_image, s_mask, s_origin,
                                 'origin' : ('origin', 2),
                                 'stitchback' : ('stitchback', 3)
                                }, output_info=[('state',  {})])
-s_stitched = es.accumulate(es.dstar(xystitch_accumulate), s_stitched,
+s_stitched = es.accumulate((xystitch_accumulate), s_stitched,
         input_info={'newstate' : 'state'}, output_info=[('state', {})],
         state_key='prevstate')
 
@@ -336,13 +336,13 @@ L = s_qphiavg.sink_to_list()
 from SciStreams.callbacks.live import LiveImage, LivePlot
 
 # TODO : use kde's for normalization
-def image_norm(image, low=.05, high=.95):
+def image_norm(image, low=.01, high=.99):
     ''' this is just threshold normalization
         Assumes positive valued images
     '''
     img = image
     data = img[~np.isnan(img)*~np.isinf(img)]
-    nobins = int(np.max(data))
+    nobins = max(1, int(np.max(data)))
     hh, bin_edges = np.histogram(data, bins=nobins)
     cumcnts = np.cumsum(hh)
     hhsum = np.sum(hh)
@@ -351,8 +351,16 @@ def image_norm(image, low=.05, high=.95):
     # only threshold if there are counts
     if hhsum > 0:
         cumcnts = cumcnts/hhsum
-        wlow = np.where(cumcnts > low)[0][0]
-        whigh = np.where(cumcnts < high)[0][-1]
+        wlow = np.where(cumcnts > low)[0]
+        if len(wlow) > 0:
+            wlow = wlow[0]
+        else:
+            wlow = 0
+        whigh = np.where(cumcnts < high)[0]
+        if len(whigh) > 1:
+            whigh = whigh[-1]
+        else:
+            whigh = 1
         img = ((img>wlow) < whigh)*img
         img[np.isnan(img)+np.isinf(img)] = 0
 
@@ -360,7 +368,7 @@ def image_norm(image, low=.05, high=.95):
 
 
 
-liveimage_stitch = LiveImage('image')
+liveimage_stitch = LiveImage('image', cmap="inferno")
 es.map(image_norm, s_stitched_image, output_info=[('image', {})]).sink(es.star(liveimage_stitch))
 liveimage_sqphi = LiveImage('sqphi', aspect='auto')
 es.map(image_norm, s_sqphi, input_info={'image' : 'sqphi'},
@@ -383,7 +391,7 @@ s_circavg.sink(es.star(liveimage_sqplot))
 #s_event = s_event\
         #.map(set_detector_name, detector_name='pilatus300')
 
-if False:
+if True:
     # patchy way to get stream for now, need to fix later
     from SciStreams.interfaces.databroker.databases import databases
 
@@ -396,10 +404,9 @@ if False:
 elif True:
     # simulate the data
     from shed.utils import to_event_model
-    Ndata = 2
-    width = 1475
-    height = 1679
-    data = np.random.random((Ndata, height, width))
+    Ndata = 10
+    shape = 619, 487
+    data = np.random.random((Ndata, *shape))
     output_info = (('data', {'dtype' : 'array'}), )
     # some metadata
     md = {'sample_name' : "AgBH"}
@@ -410,29 +417,32 @@ elif True:
             'detector_SAXS_x0_pix' : 100,
             'detector_SAXS_y0_pix' : 100,
             'detector_SAXS_distance_m' : 5,
+            'detectors' : ['pilatus300'],
             }
     md.update(md_calib)
     stream = to_event_model(data, output_info=output_info, md=md)
 
 for nds in stream:
-    print(nds)
+    #print(nds)
     x0, y0 = 720, 599
     rdet = 5
-    if nds[0] == 'start':
-        startdoc = nds[1].copy()
-        if 'detector_SAXS_x0_pix' not in startdoc:
-            startdoc['detector_SAXS_x0_pix'] = x0
-            startdoc['detector_SAXS_y0_pix'] = y0
-            startdoc['detector_SAXS_distance_m'] = rdet
-            nds = 'start', startdoc
-        run_next = False
-        for det in startdoc['detectors']:
-            if 'pilatus' in det:
-                run_next = True
-    if nds[0] == 'stop':
-        run_next = True
-    if run_next:
-        sin.emit(nds)
-    # refresh any plots to callbacks
-    if nds[0] == 'event':
-        plt.pause(.1)
+    sin.emit(nds)
+    plt.pause(.1)
+#    if nds[0] == 'start':
+#        startdoc = nds[1].copy()
+#        if 'detector_SAXS_x0_pix' not in startdoc:
+#            startdoc['detector_SAXS_x0_pix'] = x0
+#            startdoc['detector_SAXS_y0_pix'] = y0
+#            startdoc['detector_SAXS_distance_m'] = rdet
+#            nds = 'start', startdoc
+#        run_next = False
+#        for det in startdoc['detectors']:
+#            if 'pilatus' in det:
+#                run_next = True
+#    if nds[0] == 'stop':
+#        run_next = True
+#    if run_next:
+#        sin.emit(nds)
+#    # refresh any plots to callbacks
+#    if nds[0] == 'event':
+#        plt.pause(.1)

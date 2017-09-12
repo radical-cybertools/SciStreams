@@ -138,20 +138,23 @@ class LivePlot(CallbackBase):
         self._epoch_offset = None  # used if x == 'time'
         self._epoch = epoch
 
-    def start(self, doc):
-        # The doc is not used; we just use the singal that a new run began.
+    def _clear_plot(self, doc):
+        self.ax.cla()
         self._epoch_offset = doc['time']  # used if self.x == 'time'
         self.x_data, self.y_data = [], []
         label = " :: ".join(
             [str(doc.get(name, name)) for name in self.legend_keys])
         kwargs = ChainMap(self.kwargs, {'label': label})
-        if self.clear:
-            self.ax.cla()
-            self.lines = []
         self.current_line, = self.ax.plot([], [], **kwargs)
-        self.lines.append(self.current_line)
+        #self.lines.append(self.current_line)
+        self.lines = [self.current_line]
         self.legend = self.ax.legend(
             loc=0, title=self.legend_title).draggable()
+
+    def start(self, doc):
+        # The doc is not used; we just use the singal that a new run began.
+        # clear every start
+        self._clear_plot(doc)
         super().start(doc)
 
     def event(self, doc):
@@ -159,6 +162,9 @@ class LivePlot(CallbackBase):
         # This outer try/except block is needed because multiple event
         # streams will be emitted by the RunEngine and not all event
         # streams will have the keys we want.
+        # if clear set, clear every event as well
+        if self.clear:
+            self._clear_plot(doc)
         try:
             # This inner try/except block handles seq_num and time, which could
             # be keys in the data or accessing the standard entries in every

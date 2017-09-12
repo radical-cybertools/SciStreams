@@ -1,0 +1,55 @@
+pilatus300:
+    pixel_size_x : 
+        value: 172
+        unit: um
+    pixel_size_y :
+        value: 172
+        unit: um
+    shape: 
+        value: [619, 487]
+        unit: pixel
+    dynamic_range: 
+        value: 20
+        unit: bit
+    readout_time:
+        value: 7
+        unit: ms
+    point_spread_function:
+        value: 1
+        unit: pixel
+    max_frame_rate:
+        value: 20
+        unit: Hz
+    description:
+        value: 'SAXS detector'
+        unit: null
+    # the detector keys
+    image_key:
+        value: pilatus300_image
+        unit: null
+    stats1_key:
+        value: pilatus300_stats1_total
+        unit: null 
+    stats2_key:
+        value: pilatus300_stats2_total
+        unit: null
+    stats3_key:
+        value: pilatus300_stats3_total
+        unit: null
+    stats4_key:
+        value: pilatus300_stats4_total
+        unit: null
+
+PhotonicSciences_CMS:
+    shape: 
+        value: [1042, 1042]
+        unit: pixel
+    pixel_size_x:
+        value: 101.7
+        unit: um
+    pixel_size_y:
+        value: 101.7
+        unit: um
+    dynamic_range:
+        value: 16
+        unit: bit
