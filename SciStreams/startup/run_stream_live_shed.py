@@ -383,7 +383,7 @@ s_circavg.sink(es.star(liveimage_sqplot))
 #s_event = s_event\
         #.map(set_detector_name, detector_name='pilatus300')
 
-if True:
+if False:
     # patchy way to get stream for now, need to fix later
     from SciStreams.interfaces.databroker.databases import databases
 
