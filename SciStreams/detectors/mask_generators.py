@@ -1,16 +1,18 @@
 from .detectors2D import detectors2D
 import numpy as np
 
-# hard coded mask generators built into the library
-#mask_generators = 
 
 # TODO : need to fix again...
-def generate_mask(detector_key, **md):
-    # generate a mask from the metadata
+def generate_mask(**md):
+    # get name from det key
+    detector_key = md.get('detector_key', None)
     detector_name = detector_key[::-1].split("_",1)[-1][::-1]
-    detector_shape = detectors2D[detector_name]['shape']['value']
-    print("detector shape : {}".format(detector_shape))
-    mask = np.ones(detector_shape)
+    md['detector_name'] = detector_name
+
+    mask_gen = mask_generators[detector_name]
+
+    mask = mask_gen(**md)
+
     return dict(mask=mask)
 
 
@@ -60,4 +62,14 @@ def generate_mask_pilatus300(motor_bsphi, motor_bsx, motor_bsy, beamx0, beamy0):
 
 
 def generate_mask_pilatus2M(**md):
-    pass
+    detector_key = md.get('detector_key', 'pilatus2M')
+    # generate a mask from the metadata
+    detector_name = detector_key[::-1].split("_",1)[-1][::-1]
+    detector_shape = detectors2D[detector_name]['shape']['value']
+    print("detector shape : {}".format(detector_shape))
+    mask = np.ones(detector_shape)
+    return dict(mask=mask)
+
+# hard coded mask generators built into the library
+mask_generators = dict(pilatus300=generate_mask_pilatus300,
+                       pilatus2M=generate_mask_pilatus2M)
