@@ -71,6 +71,7 @@ class FeedToStream(CallbackBase):
 
 
 from SciStreams.detectors import detectors2D
+from SciStreams.detectors.mask_generators import generate_mask
 # Will be replaced by more sophisticated masking routine later
 def get_mask(**kwargs):
     ''' right now just a bland mask generator.
@@ -78,13 +79,14 @@ def get_mask(**kwargs):
 
         ignores kwargs for now
     '''
-    # TODO : don't make read everytime at the very least. but 
-    # may require thought when distributing
-    detector_key = kwargs.get('detector_key', None)
-    # remove last "_" character
-    detector_name = detector_key[::-1].split("_", maxsplit=1)[-1][::-1]
-    mask_generator = detectors2D[detector_name]['mask_generator']['value']
-    mask = mask_generator(**kwargs)
+    ## TODO : don't make read everytime at the very least. but 
+    ## may require thought when distributing
+    #detector_key = kwargs.get('detector_key', None)
+    ## remove last "_" character
+    #detector_name = detector_key[::-1].split("_", maxsplit=1)[-1][::-1]
+    #mask_generator = detectors2D[detector_name]['mask_generator']['value']
+    #mask = mask_generator(**kwargs)
+    mask = generate_mask(**kwargs)
     return dict(mask=mask)
 
 #MASK_GENERATORS = {'pilatus2M_image' : generate_mask_pilatus2M,

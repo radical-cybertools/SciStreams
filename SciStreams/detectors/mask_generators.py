@@ -1,5 +1,10 @@
 from .detectors2D import detectors2D
 import numpy as np
+from functools import partial
+from PIL import Image
+
+from SciStreams.config import mask_config
+from SciStreams.data.Mask import BeamstopXYPhi, MaskFrame, MaskGenerator
 
 
 # TODO : need to fix again...
@@ -16,7 +21,8 @@ def generate_mask(**md):
     return dict(mask=mask)
 
 
-def generate_mask_pilatus300(motor_bsphi, motor_bsx, motor_bsy, beamx0, beamy0):
+def generate_mask_pilatus300(motor_bsphi, motor_bsx, motor_bsy, beamx0, beamy0,
+        **kwargs):
     ''' Generate a mask from detector_key and metadata md
 
         Parameters
@@ -51,8 +57,8 @@ def generate_mask_pilatus300(motor_bsphi, motor_bsx, motor_bsy, beamx0, beamy0):
         blemish = blemish[:,:,0]
 
     mmg = MaskGenerator(obstruction=obstruction, blemish=blemish)
-    x0 = beamx0
-    y0 = beamy0
+    x0 = beamx0['value']
+    y0 = beamy0['value']
     origin = y0, x0
 
     print("Generating mask")

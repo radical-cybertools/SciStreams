@@ -78,7 +78,6 @@ def pixel_to_lab(x, y, detx, dety, detx_ref, dety_ref, dpx=1):
         detx_ref, dety_ref : detector x and y reference positions
         dpx : conversion of pixels to meters
 
-
         assumes square pixels
     '''
     # TODO : maybe use pint library for units
