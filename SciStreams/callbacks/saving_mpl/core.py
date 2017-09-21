@@ -107,7 +107,7 @@ class StorePlot_MPL(CallbackBase):
         self.kwargs = dict()
 
 
-def store_results(data, attrs, **plot_opts):
+def store_results(**attrs):
     ''' Store the results to a numpy file.
         This saves to numpy format by default.
         May raise an error if it doesn't understand data.
@@ -116,37 +116,33 @@ def store_results(data, attrs, **plot_opts):
         For images, you'll need to use a plotting/image interface (not
         implemented yet).
 
-        plot_opts : plot options forwarded to matplotlib
-            images : keys of images
-            lines : keys of lines to plot (on top of images)
-                if element is a tuple, assume (x,y) format, else assume it's
-                just y
-            labelsize
-            xlabel
-            ylabel
-            title
+            keywords:
+                plot_kws : plot options forwarded to matplotlib
+                images : keys of images
+                lines : keys of lines to plot (on top of images)
+                    if element is a tuple, assume (x,y) format, else assume it's
+                    just y
+                   elabelsize
+                xlabel
+                ylabel
+                title
     '''
+    data = attrs.get('data', [])
+    plot_kws = attrs.get('plot_kws', {})
     import matplotlib.pyplot as plt
     # TODO : move some of the plotting into a general object
 
-    plot_kws = plot_opts.pop('plot_kws', {})
 
 
-    if 'attributes' not in results:
-        raise ValueError("attributes not in the sciresults. " +
-                         "(Is this a valid SciResult object?)")
+    #if 'attributes' not in results:
+        #raise ValueError("attributes not in the sciresults. " +
+                         #"(Is this a valid SciResult object?)")
 
-    outfile = _make_fname_from_attrs(attrs) + ".png"
+    outfile = _make_fname_from_attrs(**attrs) + ".png"
     print("writing to {}".format(outfile))
 
-    if 'images' in plot_opts:
-        images = plot_opts['images']
-    else:
-        images = []
-    if 'lines' in plot_opts:
-        lines = plot_opts['lines']
-    else:
-        lines = []
+    images = attrs.get('images', [])
+    lines = attrs.get('lines', [])
 
     xlims = None
     ylims = None
@@ -171,10 +167,10 @@ def store_results(data, attrs, **plot_opts):
         if key in data:
             image = data[key]
             vmin, vmax = findLowHigh(image)
-            if 'vmin' in plot_opts:
-                vmin = plot_opts['vmin']
-            if 'vmax' in plot_opts:
-                vmax = plot_opts['vmax']
+            if 'vmin' in plot_kws:
+                vmin = plot_kws['vmin']
+            if 'vmax' in plot_kws:
+                vmax = plot_kws['vmax']
             if image.ndim == 2:
                 if isinstance(image, np.ndarray):
                     plt.imshow(image, vmin=vmin, vmax=vmax, **plot_kws)
@@ -223,32 +219,32 @@ def store_results(data, attrs, **plot_opts):
         plt.ylim(ylims[0], ylims[1])
 
     # plotting the extra options
-    if 'labelsize' in plot_opts:
-        labelsize = plot_opts['labelsize']
+    if 'labelsize' in plot_kws:
+        labelsize = plot_kws['labelsize']
     else:
         labelsize = 20
 
-    if 'hideaxes' in plot_opts:
-        hideaxes = plot_opts['hideaxes']
+    if 'hideaxes' in plot_kws:
+        hideaxes = plot_kws['hideaxes']
     else:
         hideaxes = False
 
-    if 'xlabel' in plot_opts:
-        xlabel = plot_opts['xlabel']
+    if 'xlabel' in plot_kws:
+        xlabel = plot_kws['xlabel']
         plt.xlabel(xlabel, size=labelsize)
 
-    if 'ylabel' in plot_opts:
-        ylabel = plot_opts['ylabel']
+    if 'ylabel' in plot_kws:
+        ylabel = plot_kws['ylabel']
         plt.xlabel(xlabel, size=labelsize)
         plt.ylabel(ylabel, size=labelsize)
 
-    if 'title' in plot_opts:
-        title = plot_opts['title']
+    if 'title' in plot_kws:
+        title = plot_kws['title']
         plt.title(title)
 
-    if 'scale' in plot_opts:
+    if 'scale' in plot_kws:
         try:
-            scale = plot_opts['scale']
+            scale = plot_kws['scale']
             if scale == 'loglog':
                 ax.set_xscale('log')
                 ax.set_yscale('log')

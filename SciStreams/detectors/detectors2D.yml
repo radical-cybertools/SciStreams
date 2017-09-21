@@ -53,3 +53,45 @@ PhotonicSciences_CMS:
     dynamic_range:
         value: 16
         unit: bit
+
+pilatus2M:
+    pixel_size_x : 
+        value: 172
+        unit: um
+    pixel_size_y :
+        value: 172
+        unit: um
+    shape: 
+        value: [1679, 1475]
+        unit: pixel
+    dynamic_range: 
+        value: 20
+        unit: bit
+    readout_time:
+        value: 7
+        unit: ms
+    point_spread_function:
+        value: 1
+        unit: pixel
+    max_frame_rate:
+        value: 20
+        unit: Hz
+    description:
+        value: 'SAXS detector'
+        unit: null
+    # the detector keys
+    image_key:
+        value: pilatus2M_image
+        unit: null
+    stats1_key:
+        value: pilatus2M_stats1_total
+        unit: null 
+    stats2_key:
+        value: pilatus2M_stats2_total
+        unit: null
+    stats3_key:
+        value: pilatus2M_stats3_total
+        unit: null
+    stats4_key:
+        value: pilatus2M_stats4_total
+        unit: null

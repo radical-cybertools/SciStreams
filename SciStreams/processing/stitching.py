@@ -4,6 +4,8 @@ def xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc):
     ''' Stitch_acc may not be necessary, it should just be a binary flag.  But
             could be generalized to a sequence number so I leave it.
     '''
+    if mask_acc is None:
+        mask_acc = np.ones_like(img_acc)
     mask_acc = mask_acc.astype(int)
     # need to make a copy
     img_acc_old = img_acc
@@ -47,6 +49,8 @@ def xystitch_accumulate(prevstate, newstate):
         return newstate
 
     img_next, mask_next, origin_next, stitchback_next = newstate
+    if mask_next is None:
+        mask_next = np.ones_like(img_next)
     # just in case
     img_next = img_next*(mask_next > 0).astype(int)
     shape_next = img_next.shape

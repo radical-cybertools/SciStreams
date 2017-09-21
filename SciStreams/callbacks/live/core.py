@@ -48,8 +48,9 @@ class LiveImage(CallbackBase):
 
     def event(self, doc):
         super().event(doc)
-        data = doc['data'][self.field]
-        self.update(data)
+        if self.field == doc['data']:
+            data = doc['data'][self.field]
+            self.update(data)
 
     def update(self, data):
         self.cs.update_image(data)

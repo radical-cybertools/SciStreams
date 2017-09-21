@@ -14,16 +14,16 @@ import matplotlib.pyplot as plt
 plt.ion()
 
 # CUSTOM USER GLOBALS (to be moved to yml file)
-#MASK_DIR = "~/research/projects/SciAnalysis-data/masks"
-#MASK_DIR = os.path.expanduser(MASK_DIR)
-#BLEMISH_pilatus2M = MASK_DIR + "/pilatus2M_image/blemish_pilatus2M_Sept2017.tif"
-#BLEMISH_pilatus300 = MASK_DIR + "/pilatus300_image/pilatus300_mask_main.png"
-#MASK_NAME = "/home/lhermitte/research/projects/SciStreams/SciStreams/mask.npz.npy"
+MASK_DIR = "~/research/projects/SciAnalysis-data/masks"
+MASK_DIR = os.path.expanduser(MASK_DIR)
+BLEMISH_pilatus2M = MASK_DIR + "/pilatus2M_image/blemish_pilatus2M_Sept2017.tif"
+BLEMISH_pilatus300 = MASK_DIR + "/pilatus300_image/pilatus300_mask_main.png"
+MASK_NAME = "/home/lhermitte/research/projects/SciStreams/SciStreams/mask.npz.npy"
 
-#BLEMISH_FILENAMES = dict(
-        #pilatus300_image=BLEMISH_pilatus300,
-        #pilatus2M_image=BLEMISH_pilatus2M,
-        #)
+BLEMISH_FILENAMES = dict(
+        pilatus300_image=BLEMISH_pilatus300,
+        pilatus2M_image=BLEMISH_pilatus2M,
+        )
 
 from functools import partial
 
@@ -53,7 +53,6 @@ from SciStreams.data.Mask import BeamstopXYPhi, MaskFrame
 #from tornado import gen
 
 from SciStreams.callbacks import CallbackBase
-# simple callback to feed data to stream
 class FeedToStream(CallbackBase):
     def __init__(*args, stream, **kwargs):
         self.stream = stream
@@ -98,6 +97,33 @@ class LivePlot_Custom(CallbackBase):
 
 from SciStreams.detectors import detectors2D
 from SciStreams.detectors.mask_generators import generate_mask
+# Will be replaced by more sophisticated masking routine later
+def get_mask(**kwargs):
+    ''' right now just a bland mask generator.
+        need to replace it with something more sophisticated when time comes
+
+        ignores kwargs for now
+    '''
+    ## TODO : don't make read everytime at the very least. but 
+    ## may require thought when distributing
+    #detector_key = kwargs.get('detector_key', None)
+    ## remove last "_" character
+    #detector_name = detector_key[::-1].split("_", maxsplit=1)[-1][::-1]
+    #mask_generator = detectors2D[detector_name]['mask_generator']['value']
+    #mask = mask_generator(**kwargs)
+    mask = generate_mask(**kwargs)
+    # dummy mask gen
+    #from PIL import Image
+    #mask = np.load(MASK_NAME)
+    #blem = np.array(Image.open(BLEMISH_pilatus2M))
+    #print("got mask and blem")
+    return dict(mask=mask*blem)
+
+
+#MASK_GENERATORS = {'pilatus2M_image' : generate_mask_pilatus2M,
+                   #'pilatus300_image' : generate_mask_pilatus300
+                   #}
+
 
 
 def safelog10(img):
@@ -158,50 +184,14 @@ import streamz.core as sc
 globaldict = dict()
 
 
-def document_viewer(nds):
-    docname = nds[0]
-    doc = nds[1]
-    #print("Current Document : {}".format(docname))
-    if docname == "start":
-        md = doc
-        print("Start document. Uid : {}".format(doc['uid']))
-        print("Metadata keys : {}".format(md.keys()))
-    elif docname == "descriptor":
-        data_keys = doc['data_keys']
-        print("Descriptor. Data keys: {}".format(data_keys))
-    elif docname == "event":
-        data_keys = doc['data'].keys()
-        print("Event. Data keys : {}".format(data_keys))
-    elif docname == "stop":
-        start_uid = doc['run_start']
-        print("Stop document. Run start uid: {}".format(start_uid))
-
-    print("End document description of {}".format(docname))
-
 
 
 # This is the main stream of data
 # Stream setup, datbroker data comes here (a string uid)
 sin = es.EventStream()
 sin_primary = es.filter(lambda x : x[0]['name'] == 'primary', sin,
-                        full_event=True, document_name='descriptor',
-                        keep_start=True)
-def filter_detectors(x):
-    print(x)
-    dets = ['pilatus2M', 'pilatus300']
-    data_keys = x[0]['data_keys']
-    found_det = False
-    for det in dets:
-        if det in data_keys:
-            found_det=True
+                        document_name='descriptor')
 
-    return found_det
-# TODO : having to set full_event True seems awkward, maybe PR a change?
-sin_primary = es.filter(filter_detectors, sin_primary,
-                        full_event=True, document_name='descriptor')
-
-# use reg stream mapping
-sin_primary.map(document_viewer)
 
 # TODO : run asynchronously?
 
@@ -217,7 +207,7 @@ from SciStreams.streams.XS_Streams import normalize_calib_dict,\
 # First split it off into attributes, but reading the metadata (Eventify)
 # and passing to a calibration object
 # push attributes into actual event data before we lose them
-s_attributes = es.Eventify(sin_primary)
+s_attributes = es.Eventify(sin)
 # set the detector name from det key in start (adding metadata)
 s_attributes = es.map(get_detector_key_start, s_attributes)
 
@@ -284,13 +274,14 @@ s_detector_key = es.map(grab_first_det_key, s_data)
 #s_attributes.map(print)
 s_mask = es.map(generate_mask, s_attributes)
 
+
 s_imgmaskcalib = es.zip(s_image, s_calib_obj, s_mask)
 
 def get_stitch(**kwargs):
     return dict(stitchback=kwargs.get('stitchback', False))
 
 def get_exposure(**kwargs):
-    return dict(exposure=kwargs.get('sample_exposure_time', None))
+    return dict(stitchback=kwargs.get('sample_exposure_time', None))
 
 def get_origin(**kwargs):
     ''' get the origin from the attributes.'''
@@ -489,8 +480,8 @@ if True:
 
     cmsdb = databases['cms:data']
 
-    #hdrs = cmsdb(start_time="2017-07-13", stop_time="2017-07-14")# 16:00")
-    hdrs = cmsdb(start_time="2017-09-13", stop_time="2017-09-14 16:00")
+    hdrs = cmsdb(start_time="2017-07-13", stop_time="2017-07-14")# 16:00")
+    #hdrs = cmsdb(start_time="2017-09-14", stop_time="2017-09-15")
     stream = cmsdb.restream(hdrs, fill=True)
 
 elif True:
