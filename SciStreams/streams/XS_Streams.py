@@ -37,6 +37,9 @@ keymaps = config['keymaps']
 # from SciAnalysis.analyses.XSAnalysis.Data import Calibration
 # use RQConv now
 from ..data.Calibration import Calibration
+import streamz as sc
+import SciStreams.core.scistreams as scs
+import SciStreams.core.StreamDoc as sd
 
 #from ..core.streams import Stream
 
@@ -50,6 +53,115 @@ from ..data.Calibration import Calibration
 # CALIBRATION STREAM CREATION DELETED: put in startup/run_stream_live_shed.py
 # for now
 
+def filter_detectors(sdoc):
+    ''' Filter the detectors out.
+        Looking only for certain detectors (hard coded).
+    '''
+
+    dets = ['pilatus2M_image', 'pilatus300_image']
+    data_keys = list(sdoc.kwargs.keys())
+
+    found_det = False
+    for det in dets:
+        if det in data_keys:
+            found_det=True
+
+    return found_det
+
+# use map to take no input info
+#
+def pick_arrays(sdoc):
+    ''' Only pass through array events, ignore rest.
+        This will also just pick first detector
+    '''
+    kwargs = sdoc.kwargs
+    new_kwargs = dict()
+    for key, val in kwargs.items():
+        if hasattr(val, 'ndim') and val.ndim > 0:
+            new_kwargs[key] = val
+    # then just choose the first one
+    md = sdoc.attributes.copy()
+    if len(new_kwargs) > 0:
+        first_key = list(new_kwargs.keys())[0]
+        new_kwargs = {first_key: new_kwargs[first_key]}
+        md['detector_key'] = list(new_kwargs.keys())[0]
+    else:
+        new_kwargs = dict()
+        md['detector_key'] = None
+    #print("new kwargs : {}".format(new_kwargs))
+    #print("kwargs : {}".format(kwargs))
+    # TODO : This directly touches streamdoc,
+    # maybe make it more indirect (to allow proper bookkeeping
+    # of sdocs, provenance, etc
+    sdoc_new = sd.StreamDoc(kwargs=new_kwargs, attributes=md)
+    return sdoc_new
+
+
+def check_data(sdoc):
+    ''' Check that the data contains a detector_key key.
+        If it does not, then ignore it.
+    '''
+    truth_value = sdoc.attributes['detector_key'] is not None
+    return truth_value
+
+
+### Streams : These return an sin and sout
+def PrimaryFilteringStream():
+    ''' Filter the stream for just primary results.'''
+    sin = sc.Stream()
+    sout = sc.filter(filter_detectors, sin)
+    sout = sc.map(pick_arrays, sout)
+    # just some checks to see if it's good data, else ignore
+    sout = sc.filter(check_data, sout)
+    return sin, sout
+
+def AttributeNormalizingStream():
+    sin = sc.Stream()
+    sout = scs.get_attributes(sin)
+    sout = scs.map(normalize_calib_dict, sout)
+    sout = scs.map(add_detector_info, sout)
+    return sin, sout
+
+
+def CalibrationStream():
+    ''' This stream takes data with kwargs and creates calibration object.
+
+         Note : use the AttributeNormalizingStream first so that the data
+         is as the CalibrationStream expects.
+    '''
+    sin = sc.Stream()
+    sout = scs.map(make_calibration, sin)
+    # this piece should be computed using Dask
+    #s_calib.map(streamdoc_viewer)
+    #s_calib.map(print)
+
+    def _generate_qxyz_maps(calibration):
+        calibration.generate_maps()
+        return dict(calibration=calibration)
+
+    from streamz.dask import scatter, gather
+    import SciStreams.globals as streams_globals
+    from SciStreams.globals import client
+
+    # TODO : change to use scatter/gather
+    # (need to setup event loop for this etc)
+
+    # obtaining calibration
+    # this is an example using dask
+    #s_calib_obj = scatter(s_calib)
+    #s_calib_obj = s_calib_obj.map(_generate_qxyz_maps)
+    sout = scs.map(lambda calibration:
+                          client.submit(_generate_qxyz_maps, calibration),
+                          sout)
+
+    sc.map(lambda calibration :
+           streams_globals.futures_cache.append(calibration), sout)
+    sout = scs.map(lambda calibration:
+            client.gather(calibration), sout)
+
+    return sin, sout
+#####
+
 def normalize_calib_dict(**md):
     ''' Normalize the calibration parameters to a set of parameters that the
     analysis expects.
@@ -62,9 +174,10 @@ def normalize_calib_dict(**md):
     for key, val in keymap.items():
         name = val['name']
         if name is not None:
-            print("setting {} to {}".format(name, key))
+            # for debugging
+            #print("setting {} to {}".format(name, key))
             # swap out temp vals
-            tmpval = md.pop(name)
+            tmpval = md.pop(name, val['default_value'])
             default_unit = val['default_unit']
             md[key] = dict(value=tmpval, unit=default_unit)
 
@@ -167,12 +280,12 @@ def make_calibration(**md):
     #print("calibration object: {}".format(calib_object))
     #print("calibration object members: {}".format(calib_object.__dict__))
 
-    return calib_object
+    return dict(calibration=calib_object)
 
 
-def _generate_qxyz_maps(calib_obj):
-    calib_obj.generate_maps()
-    return calib_obj
+def _generate_qxyz_maps(calibration):
+    calibration.generate_maps()
+    return dict(calibration=calibration)
 
 
 def CircularAverageStream():
@@ -232,26 +345,21 @@ def CircularAverageStream():
     '''
     # TODO : extend file to mltiple writers?
     def validate(x):
-        if 'args' not in x:
-            message = "args not in doc"
-            raise ValueError(message)
-        if 'kwargs' not in x:
-            message = "kwargs not in doc"
-            raise ValueError(message)
-        if len(x['args']) != 2:
-            message = "expected two arguments: "
+        kwargs = x['kwargs']
+        if 'image' not in kwargs or 'calibration' not in kwargs:
+            message = "expected two kwargs: "
             message += "(image, calibration), "
-            message += "got {} instead".format(len(x['args']))
+            message += "got {} instead".format(kwargs.keys())
             raise ValueError(message)
+
         # kwargs are optional so don't validate them
         return x
 
-    sin = Stream(name="Circular Average Stream")
-    s2 = sin.map(validate)
-    # s2 = sin.map(add_attributes)  # , stream_name="CircularAverage")
-    # s2.map(psdm(lambda x : x)).map(print)
+    sin = sc.Stream(name="Circular Average Stream")
+    sout = scs.add_attributes(sin, stream_name="circavg")
+    sout = sout.map(validate)
+    sout = scs.map(circavg_from_calibration, sout)
 
-    sout = s2.map(psdm(circavg_from_calibration))
     return sin, sout
 
 

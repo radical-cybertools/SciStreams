@@ -9,6 +9,21 @@ from SciStreams.data.Mask import BeamstopXYPhi, MaskFrame, MaskGenerator, Master
 
 # TODO : need to fix again...
 def generate_mask(**md):
+    if 'override' in md:
+        # override mask generator with simple loader
+        # override should be filename
+        # TODO : make read different formats
+        mask = np.load(md['override'])
+
+        # load the blemish
+        detector_key = md['detector_key']
+        blemish_kwargs = mask_config[detector_key]['blemish']
+        blemish = np.array(Image.open(blemish_kwargs['filename']))
+        if blemish.ndim == 3:
+            blemish = blemish[:,:,0]
+
+        return dict(mask=mask*blemish)
+
     # get name from det key
     detector_key = md.get('detector_key', None)
     detector_name = detector_key[::-1].split("_",1)[-1][::-1]
@@ -16,6 +31,7 @@ def generate_mask(**md):
 
     # ensure detector_name exists, else give no mask
     if detector_name in mask_generators:
+        print("calling function {}".format(mask_generators[detector_name]))
         mask_gen = mask_generators[detector_name]
 
         mask = mask_gen(**md)
@@ -49,7 +65,7 @@ def generate_mask_pilatus300(**md):
     #confidences = [doc[1] for doc in pilatus_masks['motors']]
     keys = ['motor_bsphi', 'motor_bsx', 'motor_bsy']
     # the errors tolerated in the positions
-    confidences = [.1, .1, .1]
+    confidences = [.1, .3, .3]
 
     master_mask = find_best_mask(pilatus_masks, keys, confidences, md)
 
@@ -68,7 +84,14 @@ def generate_mask_pilatus300(**md):
         motorx = md['motor_SAXSx']
         mask = mmg.generate([motory, motorx])
     else:
-        mask = None
+        # get detector shape from det file and make empty mask
+        detector_name = _make_detector_name_from_key(detector_key)
+        shape = detectors2D[detector_name]['shape']['value']
+        print("No suitable mask found, generating ones with shape {}".format(shape))
+        motor_list = {key : md[key] for key in keys}
+        print("Motors : {}".format(motor_list))
+
+        mask = np.ones(shape)
 
     return mask
 
@@ -131,9 +154,21 @@ def generate_mask_pilatus2M(**md):
         motorx = md['motor_SAXSx']
         mask = mmg.generate([motory, motorx])
     else:
-        mask = None
+        # get detector shape from det file and make empty mask
+        detector_name = _make_detector_name_from_key(detector_key)
+        shape = detectors2D[detector_name]['shape']['value']
+        print("No suitable mask found, generating ones with shape {}".format(shape))
+        motor_list = {key : md[key] for key in keys}
+        print("Motors : {}".format(motor_list))
+        print("Available masks : {}".format(pilatus_masks))
+        mask = np.ones(shape)
 
     return mask
+
+
+def _make_detector_name_from_key(name):
+    # remove last "_" character
+    return name[::-1].split("_", maxsplit=1)[-1][::-1]
 
 
 def find_best_mask(masks, keys, confidences, md):
@@ -164,15 +199,17 @@ def find_best_mask(masks, keys, confidences, md):
         found_mask = True
         for key, confidence in zip(keys, confidences):
             print("comparing {} with {}".format(mask_params[key], md[key]))
-            err1 = np.abs(mask_params[key]-md[key])
-            if err1 > confidence:
-                print("Error too big : {}".format(err1))
+            #err1 = np.abs(mask_params[key]-md[key])
+            #if err1 > confidence:
+            a = mask_params[key]
+            b = md[key]
+            if not np.allclose(a, b, atol=confidence):
+                print("Error too big : {} is not close to {}".format(a, b))
                 print("Tolerance : +/- {}".format(confidence))
                 found_mask = False
     if found_mask:
         retrieved_mask = MasterMask(filename)
     else:
-        print("No suitable mask found")
         retrieved_mask = None
     return retrieved_mask
 

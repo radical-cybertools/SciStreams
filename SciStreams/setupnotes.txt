@@ -1,0 +1,9 @@
+Extra notes for setup (eventually should go in some documentation):
+- config file. Should place it in ~/config/scistreams/scistreams.yml
+- mask : need to set the maskdir parameter to where masks are stored
+	- masks should be stored in
+		maskdir/detector_key/some masks etc.png etc...
+		so:
+		maskdir/pilatus300_image/
+		maskdir/pilatus2M_image/
+		etc

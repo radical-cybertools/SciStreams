@@ -10,10 +10,15 @@ from collections import deque
 
 from functools import partial
 
+
+# the main SciStreams module
+import SciStreams.core.streams as scs
+
+
 # SciStreams imports
 # this one does a bit of setup upon import, necessary
 # from SciStreams.globals import client
-from SciStreams.config import config, masks as mask_config
+from SciStreams.config import config, master_masks# as mask_config
 
 # interfaces
 from SciStreams.interfaces.plotting_mpl import plotting_mpl as iplotting
@@ -30,14 +35,16 @@ from SciStreams.core.StreamDoc import select, todict, add_attributes, merge
 
 from SciStreams.core.streams import Stream
 # Analyses
-from SciStreams.data.Mask import \
-        MasterMask, MaskGenerator
-from SciStreams.data.Obstructions import Obstruction
-from SciStreams.streams.XS_Streams import CalibrationStream,\
-    CircularAverageStream, ImageStitchingStream, ThumbStream, QPHIMapStream
+#from SciStreams.data.Mask import \
+        #MasterMask, MaskGenerator
+#from SciStreams.data.Obstructions import Obstruction
+from SciStreams.detectors.mask_generators import generate_mask
+
+#from SciStreams.streams.XS_Streams import CalibrationStream,\
+    #CircularAverageStream, ImageStitchingStream, ThumbStream, QPHIMapStream
 # from SciStreams.analyses.XSAnalysis.CustomStreams import SqFitStream
 
-from SciStreams.data.Mask import BeamstopXYPhi, MaskFrame
+#from SciStreams.data.Mask import BeamstopXYPhi, MaskFrame
 
 # wrappers for parsing streamdocs
 
@@ -48,50 +55,6 @@ from tornado import gen
 # get databases (not necessary)
 from SciStreams.interfaces.databroker.databases import databases
 from PIL import Image
-
-
-def generate_mask(md):
-    ''' Generate a mask from detector_key and metadata md
-
-        Parameters
-        ----------
-        detector_key : the key for the image for the detector
-        **md : the metadata
-            should contain `motor_bsphi`, `motor_bsx`, `motor_bsy`
-            `detector_SAXS_x0_pix` and `detector_SAXS_y0_pix`
-            which are the degrees of freedom for the beamstop and beam center
-    '''
-    # TODO : allow for more than one detector
-    detector_key = md['detectors'][0] + "_image"
-    # TODO : Speed up by moving this outside of function
-    detector_mask_config = mask_config[detector_key]
-
-    bstop_kwargs = detector_mask_config['beamstop']
-    frame_kwargs = detector_mask_config['frame']
-    blemish_kwargs = detector_mask_config['blemish']
-
-    beamstop_detector = partial(BeamstopXYPhi, **bstop_kwargs)
-    frame_detector = MaskFrame(**frame_kwargs)
-
-    # the known degrees of freedom
-    bsphi = md['motor_bsphi']
-    bsx = md['motor_bsx']
-    bsy = md['motor_bsy']
-
-    obstruction = beamstop_detector(bsphi=bsphi, bsx=bsx,bsy=bsy) + frame_detector
-    blemish = np.array(Image.open(blemish_kwargs['filename']))
-    if blemish.ndim == 3:
-        blemish = blemish[:,:,0]
-
-    mmg = MaskGenerator(obstruction=obstruction, blemish=blemish)
-    x0 = md['detector_SAXS_x0_pix']
-    y0 = md['detector_SAXS_y0_pix']
-    origin = y0, x0
-
-    print("Generating mask")
-    mask = mmg.generate(origin)
-
-    return mask
 
 
 
@@ -150,7 +113,10 @@ def isSAXS(sdoc):
 
 globaldict = dict()
 
+
+from streamz.dask import gather, scatter
 # Stream setup, datbroker data comes here (a string uid)
+# TODO : just add gather and scatter
 sin = Stream()
 # TODO : run asynchronously?
 
@@ -162,6 +128,7 @@ s_event = s_event.map(check_stitchback)
 # next start working on result
 s_event = s_event\
         .map(add_attributes, stream_name="InputStream")
+
 s_event = s_event\
         .map(set_detector_name, detector_name='pilatus300')
 
@@ -173,12 +140,18 @@ image = s_event.map(lambda x: (x.select)((detector_key, None)))\
         .map(psdm(lambda x: x.astype(float)))
 
 # calibration setup
-sin_calib, sout_calib = CalibrationStream()
+#sin_calib, sout_calib = CalibrationStream()
+from SciStreams.streams.XS_Streams import normalize_calib_dict,\
+    add_detector_info
+sin_calib = Stream()
+sout_calib = sin_calib.map(psdm(normalize_calib_dict))
+sout_calib = sout_calib.map(psdm(add_detector_info))
+sout_calib = sout_calib.map(psdm(make_calibration))
 # grab the origin
 origin = sout_calib.map(psdm(lambda x: (x.origin[1], x.origin[0])))
 
 # connect attributes to sin_calib
-attributes.map(sin_calib.emit)
+attributes.connect(sin_calib.emit)
 
 
 # example on how to quickly blemish a pixel

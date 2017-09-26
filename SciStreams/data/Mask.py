@@ -100,8 +100,8 @@ class MaskGenerator:
         # refpoint_lab units)
         # find out how much detector has moved by
         posy_lab, posx_lab = pos_lab
-        shifty_lab= (posy_lab - self.refpoint_lab[0])
-        shiftx_lab= (posx_lab - self.refpoint_lab[1])
+        shifty_lab = (posy_lab - self.refpoint_lab[0])
+        shiftx_lab = (posx_lab - self.refpoint_lab[1])
         # the shift in pixel space is negative and scaled by mm/pix scale
         # factor
         shifty_pix = -shifty_lab/self.scl[0]

@@ -1,7 +1,10 @@
 # eventually we may want to override these
 from bluesky.callbacks import CallbackBase
-
 from collections import ChainMap
+
+# these all assumed to depend on matplotlib. if not true, try to isolate 
+# this dependency if possible
+import matplotlib.pyplot as plt
 
 # overridden default since it will try to fill results
 # from db. I assume results are always filled here.
@@ -30,13 +33,16 @@ class LiveImage(CallbackBase):
 
     def __init__(self, field, *, cmap=None, norm=None,
                  limit_func=None, auto_redraw=True, interpolation=None,
-                 window_title=None, aspect='equal'):
+                 window_title=None, aspect='equal', tofile=None):
         from xray_vision.backend.mpl.cross_section_2d import CrossSection
         import matplotlib.pyplot as plt
+        self.tofile = tofile
         super().__init__()
         fig = plt.figure()
         self.field = field
-        self.cs = CrossSection(fig, cmap, norm,
+        self._plot_norm = norm
+        # the None field is supposed to be norm
+        self.cs = CrossSection(fig, cmap, None,
                                limit_func, auto_redraw, interpolation)
         # not supported feature but do anyway...
         # need to set aspect ratio!!!!
@@ -48,9 +54,14 @@ class LiveImage(CallbackBase):
 
     def event(self, doc):
         super().event(doc)
-        if self.field == doc['data']:
+        if self.field in doc['data']:
+            print("field : {}".format(self.field))
             data = doc['data'][self.field]
+            if self._plot_norm is not None:
+                data = self._plot_norm(data)
             self.update(data)
+            if self.tofile is not None:
+                plt.savefig(self.tofile)
 
     def update(self, data):
         self.cs.update_image(data)
@@ -100,7 +111,8 @@ class LivePlot(CallbackBase):
     >>> RE(my_scan, my_plotter)
     """
     def __init__(self, y, x=None, *, legend_keys=None, xlim=None, ylim=None,
-                 ax=None, fig=None, epoch='run', clear=True, **kwargs):
+                 ax=None, fig=None, epoch='run', clear=True,
+                 logx=False, logy=False, **kwargs):
         super().__init__()
         import matplotlib.pyplot as plt
         if fig is not None:
@@ -116,6 +128,9 @@ class LivePlot(CallbackBase):
             fig, ax = plt.subplots()
         self.ax = ax
         self.clear = clear
+        self.logx = logx
+        self.logy = logy
+
 
         if legend_keys is None:
             legend_keys = []
@@ -151,6 +166,12 @@ class LivePlot(CallbackBase):
         self.lines = [self.current_line]
         self.legend = self.ax.legend(
             loc=0, title=self.legend_title).draggable()
+
+        if self.logx:
+            self.ax.set_xscale("log")
+
+        if self.logy:
+            self.ax.set_yscale("log")
 
     def start(self, doc):
         # The doc is not used; we just use the singal that a new run began.

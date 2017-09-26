@@ -3,6 +3,8 @@ matplotlib.use("Agg")  # noqa
 from ... import config
 import os.path
 
+from ...tools.image import findLowHigh
+
 from bluesky.callbacks import CallbackBase
 
 import numpy as np
@@ -82,40 +84,70 @@ def _make_fname_from_attrs(**attrs):
 
 from .. import CallbackBase
 class StorePlot_MPL(CallbackBase):
-    def __init__(self, *args, **kwargs):
-        self.plot_opts = kwargs.get('plot_opts', {})
-        self.kwargs = {}
-        super(StorePlot_MPL, self).__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        ''' kwargs are the options for store_results.
+            see store_results for the kwargs details
+        '''
+        self.kwargs = kwargs
+        self.start_uid = None
+        self.descriptor_uid = None
+        # don't pass the kwargs or args to CallbackBase
+        super(StorePlot_MPL, self).__init__()
 
-    #def start(self, doc):
-        #self.kwargs = dict()
-        #for key, val in doc.items():
-            #self.kwargs[key] = val
+    def start(self, doc):
+        # for each new start save the metadata
+        #print("Got start: {}".format(doc))
+        self.md = dict()
+        self.start_uid = doc['uid']
+        for key, val in doc.items():
+            self.md[key] = val
+
+    def descriptor(self, doc):
+        #print("Got descriptor: {}".format(doc))
+        if self.start_uid != doc['run_start']:
+            errormsg = "Error, uid of descriptor and run start"
+            errormsg += " do not match. Perhaps a run start"
+            errormsg += " and descriptor are out of sync"
+            raise ValueError(errormsg)
+
+        self.descriptor_uid = doc['uid']
 
     # approach for now will be to assume all necessary data is in the event
     # itself
     def event(self, doc):
+        #print("Got event: {}".format(doc))
         data = doc['data']
+        if doc['descriptor'] != self.descriptor_uid:
+            errormsg = "Error, uid of event and run start"
+            errormsg += " do not match. Perhaps a run start"
+            errormsg += " and descriptor are out of sync"
+            raise ValueError(errormsg)
         #attrs = self.kwargs
-        attrs = doc['attrs']
+        attrs = self.md
         # use the store_results function in this file
         # (i.e. don't include it in object)
-        store_results(data, attrs, **self.plot_opts)
+        store_results(data, attrs, **self.kwargs)
 
     def stop(self, doc):
         # clear state
-        self.kwargs = dict()
+        self.start_uid = None
+        self.descriptor_uid = None
 
 
-def store_results(**attrs):
+def store_results(data, attrs, **kwargs):
     ''' Store the results to a numpy file.
         This saves to numpy format by default.
         May raise an error if it doesn't understand data.
         Expects a StreamDoc
 
+        data : the data itself (a dict)
+        attrs : the attributes of the data
+            This is used to create the kwargs
+
         For images, you'll need to use a plotting/image interface (not
         implemented yet).
 
+        kwargs : options as follows:
             keywords:
                 plot_kws : plot options forwarded to matplotlib
                 images : keys of images
@@ -127,22 +159,21 @@ def store_results(**attrs):
                 ylabel
                 title
     '''
-    data = attrs.get('data', [])
-    plot_kws = attrs.get('plot_kws', {})
+    # NOTE : This is different from the interface version which expect a
+    # StreamDoc as input
+    img_norm = kwargs.get('img_norm', None)
+    plot_kws = kwargs.get('plot_kws', {})
     import matplotlib.pyplot as plt
     # TODO : move some of the plotting into a general object
-
-
-
-    #if 'attributes' not in results:
-        #raise ValueError("attributes not in the sciresults. " +
-                         #"(Is this a valid SciResult object?)")
 
     outfile = _make_fname_from_attrs(**attrs) + ".png"
     print("writing to {}".format(outfile))
 
-    images = attrs.get('images', [])
-    lines = attrs.get('lines', [])
+    images = kwargs.get('images', [])
+    lines = kwargs.get('lines', [])
+    linecuts = kwargs.get('linecuts', [])
+
+    stream_name = attrs.get("stream_name", "noname")
 
     xlims = None
     ylims = None
@@ -162,56 +193,13 @@ def store_results(**attrs):
     fig = plt.figure(0)  # int(np.random.random()*MAXFIGNUM))
     fig.clf()
     ax = fig.gca()
-    for key in images:
-        # find some reasonable color scale
-        if key in data:
-            image = data[key]
-            vmin, vmax = findLowHigh(image)
-            if 'vmin' in plot_kws:
-                vmin = plot_kws['vmin']
-            if 'vmax' in plot_kws:
-                vmax = plot_kws['vmax']
-            if image.ndim == 2:
-                if isinstance(image, np.ndarray):
-                    plt.imshow(image, vmin=vmin, vmax=vmax, **plot_kws)
-                    plt.colorbar()
-            elif image.ndim == 3:
-                nimgs = image.shape[0]
-                dim = int(np.ceil(np.sqrt(nimgs)))
-                fig, axes = plt.subplots(dim, dim)
-                axes = np.array(axes).ravel()
-                for j in range(len(image)):
-                    if isinstance(image, np.ndarray):
-                        axes[j].imshow(image[j], **plot_kws)
-        else:
-            print("Warning : key {} not found ".format(key) +
-                  "in data for plotting(mpl)")
 
-    for line in lines:
-        if isinstance(line, tuple) and len(line) == 2:
-            if line[0] in data and line[1] in data:
-                x = data[line[0]]
-                y = data[line[1]]
-            else:
-                x, y = None, None
-        else:
-            if line in data:
-                y = data[line]
-                x = np.arange(len(y))
-            else:
-                x, y = None, None
-        if x is not None and y is not None:
-            plt.plot(x, y, **plot_kws)
-            if xlims is None:
-                xlims = [np.min(x), np.max(x)]
-            else:
-                xlims[0] = np.min([np.min(x), xlims[0]])
-                xlims[1] = np.max([np.max(x), xlims[1]])
-            if ylims is None:
-                ylims = [np.min(y), np.max(y)]
-            else:
-                ylims[0] = np.min([np.min(y), ylims[0]])
-                ylims[1] = np.max([np.max(y), ylims[1]])
+    plot_images(images, data, img_norm, plot_kws)
+    xlims, ylims = plot_lines(lines, data, img_norm,
+            plot_kws,xlims=xlims,ylims=ylims)
+    xlims, ylims = plot_linecuts(linecuts, data, img_norm, plot_kws,
+            xlims=xlims, ylims=ylims)
+
 
     if xlims is not None:
         plt.xlim(xlims[0], xlims[1])
@@ -272,6 +260,103 @@ def store_results(**attrs):
     plt.close(fig)
 
 
+def plot_linecuts(linecuts, data, img_norm, plot_kws, xlims=None, ylims=None):
+    ''' assume that each linecut is a 2d image meant to be plotted as 1d
+        linecuts can be tuples or one key. if tuple, first index assumed x-axis
+    '''
+    import matplotlib.pyplot as plt
+    for linecut in linecuts:
+        if isinstance(linecut, tuple) and len(linecut) == 2:
+            if linecut[0] in data and linecut[1] in data:
+                x = data[linecut[0]]
+                y = data[linecut[1]]
+            else:
+                x, y = None, None
+        else:
+            if line in data:
+                y = data[line]
+                x = np.arange(len(y))
+            else:
+                x, y = None, None
+        if x is not None and y is not None:
+            for suby in y:
+                # y should be 2d image
+                plt.plot(x, suby, **plot_kws)
+                if xlims is None:
+                    xlims = [np.min(x), np.max(x)]
+                else:
+                    xlims[0] = np.min([np.min(x), xlims[0]])
+                    xlims[1] = np.max([np.max(x), xlims[1]])
+
+            # dont set ylim from for loop
+            if ylims is None:
+                ylims = [np.min(y), np.max(y)]
+            else:
+                ylims[0] = np.min([np.min(y), ylims[0]])
+                ylims[1] = np.max([np.max(y), ylims[1]])
+
+    return xlims, ylims
+
+def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None):
+    import matplotlib.pyplot as plt
+    for line in lines:
+        if isinstance(line, tuple) and len(line) == 2:
+            if line[0] in data and line[1] in data:
+                x = data[line[0]]
+                y = data[line[1]]
+            else:
+                x, y = None, None
+        else:
+            if line in data:
+                y = data[line]
+                x = np.arange(len(y))
+            else:
+                x, y = None, None
+        if x is not None and y is not None:
+            plt.plot(x, y, **plot_kws)
+            if xlims is None:
+                xlims = [np.min(x), np.max(x)]
+            else:
+                xlims[0] = np.min([np.min(x), xlims[0]])
+                xlims[1] = np.max([np.max(x), xlims[1]])
+            if ylims is None:
+                ylims = [np.min(y), np.max(y)]
+            else:
+                ylims[0] = np.min([np.min(y), ylims[0]])
+                ylims[1] = np.max([np.max(y), ylims[1]])
+
+    return xlims, ylims
+
+def plot_images(images, data, img_norm, plot_kws):
+    import matplotlib.pyplot as plt
+    for key in images:
+        # find some reasonable color scale
+        if key in data:
+            image = data[key]
+            if img_norm is not None:
+                print("normalizing image")
+                image = img_norm(image)
+            vmin, vmax = findLowHigh(image)
+            if 'vmin' in plot_kws:
+                vmin = plot_kws['vmin']
+            if 'vmax' in plot_kws:
+                vmax = plot_kws['vmax']
+            if image.ndim == 2:
+                if isinstance(image, np.ndarray):
+                    plt.imshow(image, vmin=vmin, vmax=vmax, **plot_kws)
+                    plt.colorbar()
+            elif image.ndim == 3:
+                nimgs = image.shape[0]
+                dim = int(np.ceil(np.sqrt(nimgs)))
+                fig, axes = plt.subplots(dim, dim)
+                axes = np.array(axes).ravel()
+                for j in range(len(image)):
+                    if isinstance(image, np.ndarray):
+                        axes[j].imshow(image[j], **plot_kws)
+        else:
+            print("Warning : key {} not found ".format(key) +
+                  "in data for plotting(mpl)")
+
 def correct_ylimits(ax):
     # correct for funky plots, mainly for loglog
     lns = ax.get_lines()
@@ -285,40 +370,3 @@ def correct_ylimits(ax):
         else:
             vmin = np.minimum(vmin, vmintmp)
     ax.set_ylim(vmin, None)
-
-
-def findLowHigh(img, maxcts=None, percentage=.05):
-    ''' Find the reasonable low and high values of an image
-            based on its histogram.
-            Ignore the zeros
-
-        percentage : percentage of counts to ignore
-    '''
-    if maxcts is None:
-        maxcts = 65536
-    w = np.where((~np.isnan(img.ravel()))*(~np.isinf(img.ravel())))
-    hh, bb = np.histogram(img.ravel()[w], bins=maxcts, range=(1, maxcts))
-    hhs = np.cumsum(hh)
-    hhsum = np.sum(hh)
-    if hhsum > 0:
-        hhs = hhs/np.sum(hh)
-        wlow = np.where(hhs > percentage)[0]  # 5%
-        whigh = np.where(hhs < (1-percentage))[0]  # 95%
-    else:
-        # some arbitrary values
-        wlow = np.array([1])
-        whigh = np.array([10])
-
-    if len(wlow):
-        low = wlow[0]
-    else:
-        low = 0
-    if len(whigh):
-        high = whigh[-1]
-    else:
-        high = maxcts
-    if high <= low:
-        high = low + 1
-    # debugging
-    # print("low: {}, high : {}".format(low, high))
-    return low, high

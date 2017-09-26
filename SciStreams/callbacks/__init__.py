@@ -1,1 +1,1 @@
-from .core import CallbackBase
+from .core import CallbackBase, SciStreamCallback

@@ -52,7 +52,7 @@ if 'maskdir' in config:
         for filename in filenames:
             # look for npz files
             fname = mask_subdir + '/' + filename
-            #print('loading {}'.format(fname))
+            print('loading {}'.format(fname))
             try:
                 res = np.load(fname)
                 print('reading items')
@@ -65,7 +65,7 @@ if 'maskdir' in config:
 
                 master_masks[key].append(newdict)
             except Exception:
-                pass
+                print("Error, could not load filename {}".format(fname))
 
 
 detector_names = dict(pilatus300='saxs', psccd='waxs', pilatus2M='saxs')
