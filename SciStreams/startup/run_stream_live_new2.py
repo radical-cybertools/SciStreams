@@ -4,7 +4,7 @@ from time import sleep
 import os
 import numpy as np
 import matplotlib
-#matplotlib.use("Agg")  # noqa
+matplotlib.use("Agg")  # noqa
 # from dask import delayed, compute
 from collections import deque
 import dask
@@ -255,8 +255,6 @@ sout_sqpeaks = scs.merge(sc.zip(sout_circavg, scs.select(sout_pkfind,
                                 'inds_peak', 'peaksx', 'peaksy')))
 
 
-
-
 L_sqpeaks = sout_sqpeaks.sink_to_list()
 
 
@@ -409,8 +407,9 @@ if True:
     plot_storage_stitch = StorePlot_MPL(images=['image'], img_norm=normalizer)
     plot_storage_sq = StorePlot_MPL(lines=[('sqx', 'sqy')])
     plot_storage_sqphi = StorePlot_MPL(images=['sqphi'], img_norm=normalizer)
-    plot_storage_peaks = StorePlot_MPL(lines=[('sqx', 'sqy'), ('peakx',
-                                       'peaky')], plot_kws=dict(marker='o'))
+    plot_storage_peaks = StorePlot_MPL(lines=[dict(x='sqx', y='sqy'),
+                                       dict(x='peaksx', y='peaksy', marker='o',
+                                           color='r', linewidth=0)])
     plot_storage_linecuts = StorePlot_MPL(linecuts=[('phis', 'linecuts')],
                                           )
     scs.map(scs.star(plot_storage_img), event_stream_img)

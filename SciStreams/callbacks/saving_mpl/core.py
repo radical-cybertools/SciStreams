@@ -195,8 +195,10 @@ def store_results(data, attrs, **kwargs):
     ax = fig.gca()
 
     plot_images(images, data, img_norm, plot_kws)
+
     xlims, ylims = plot_lines(lines, data, img_norm,
-            plot_kws,xlims=xlims,ylims=ylims)
+            plot_kws, xlims=xlims,ylims=ylims)
+
     xlims, ylims = plot_linecuts(linecuts, data, img_norm, plot_kws,
             xlims=xlims, ylims=ylims)
 
@@ -278,52 +280,85 @@ def plot_linecuts(linecuts, data, img_norm, plot_kws, xlims=None, ylims=None):
                 x = np.arange(len(y))
             else:
                 x, y = None, None
+
+        # only plot if there is data
         if x is not None and y is not None:
             for suby in y:
                 # y should be 2d image
                 plt.plot(x, suby, **plot_kws)
                 if xlims is None:
-                    xlims = [np.min(x), np.max(x)]
+                    xlims = [np.nanmin(x), np.nanmax(x)]
                 else:
-                    xlims[0] = np.min([np.min(x), xlims[0]])
-                    xlims[1] = np.max([np.max(x), xlims[1]])
+                    xlims[0] = np.nanmin([np.nanmin(x), xlims[0]])
+                    xlims[1] = np.nanmax([np.nanmax(x), xlims[1]])
 
-            # dont set ylim from for loop
-            if ylims is None:
-                ylims = [np.min(y), np.max(y)]
-            else:
-                ylims[0] = np.min([np.min(y), ylims[0]])
-                ylims[1] = np.max([np.max(y), ylims[1]])
+                # dont set ylim from for loop
+                if ylims is None:
+                    ylims = [np.nanmin(suby), np.nanmax(suby)]
+                else:
+                    ylims[0] = np.nanmin([np.nanmin(suby), ylims[0]])
+                    ylims[1] = np.nanmax([np.nanmax(suby), ylims[1]])
 
     return xlims, ylims
 
 def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None):
     import matplotlib.pyplot as plt
     for line in lines:
+        # reset the per data plot opts (only set if line is a dict)
+        opts = {}
         if isinstance(line, tuple) and len(line) == 2:
             if line[0] in data and line[1] in data:
                 x = data[line[0]]
                 y = data[line[1]]
             else:
                 x, y = None, None
+        elif isinstance(line, dict):
+            # make a copy of line
+            line = dict(line)
+            xkey = line.pop('x', None)
+            ykey = line.pop('y', None)
+
+            if ykey is not None:
+                if ykey not in data:
+                    errormsg = "Error {} y key not in data.".format(ykey)
+                    errormsg += "\n Data is : {}".format(data)
+                    raise ValueError(errormsg)
+                y = data[ykey]
+            else:
+                y = None
+
+            if xkey is not None:
+                if xkey not in data:
+                    errormsg = "Error {} x key not in data.".format(xkey)
+                    errormsg += "\n Data is : {}".format(data)
+                    raise ValueError(errormsg)
+                x = data[xkey]
+            else:
+                x = None
+
+            if x is None and y is not None:
+                x = np.arange(len(y))
+
+            opts = line
         else:
             if line in data:
                 y = data[line]
                 x = np.arange(len(y))
             else:
                 x, y = None, None
+
         if x is not None and y is not None:
-            plt.plot(x, y, **plot_kws)
+            plt.plot(x, y, **opts, **plot_kws)
             if xlims is None:
-                xlims = [np.min(x), np.max(x)]
+                xlims = [np.nanmin(x), np.nanmax(x)]
             else:
-                xlims[0] = np.min([np.min(x), xlims[0]])
-                xlims[1] = np.max([np.max(x), xlims[1]])
+                xlims[0] = np.nanmin([np.nanmin(x), xlims[0]])
+                xlims[1] = np.nanmax([np.nanmax(x), xlims[1]])
             if ylims is None:
-                ylims = [np.min(y), np.max(y)]
+                ylims = [np.nanmin(y), np.nanmax(y)]
             else:
-                ylims[0] = np.min([np.min(y), ylims[0]])
-                ylims[1] = np.max([np.max(y), ylims[1]])
+                ylims[0] = np.nanmin([np.nanmin(y), ylims[0]])
+                ylims[1] = np.nanmax([np.nanmax(y), ylims[1]])
 
     return xlims, ylims
 
