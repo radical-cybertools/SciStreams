@@ -52,49 +52,47 @@ import SciStreams.core.StreamDoc as sd
 
 # CALIBRATION STREAM CREATION DELETED: put in startup/run_stream_live_shed.py
 # for now
-
-def filter_detectors(sdoc):
-    ''' Filter the detectors out.
-        Looking only for certain detectors (hard coded).
-    '''
-
-    dets = ['pilatus2M_image', 'pilatus300_image']
-    data_keys = list(sdoc.kwargs.keys())
-
-    found_det = False
-    for det in dets:
-        if det in data_keys:
-            found_det=True
-
-    return found_det
+allowed_detector_keys = ['pilatus2M_image', 'pilatus300_image']
 
 # use map to take no input info
 #
-def pick_arrays(sdoc):
-    ''' Only pass through array events, ignore rest.
-        This will also just pick first detector
+def pick_allowed_detectors(sdoc):
+    ''' Only pass through 2d array events, ignore rest.
+
+        It will output a list of sdocs, each with different detector.
     '''
+    sdocs = list()
+    md = sdoc.attributes
     kwargs = sdoc.kwargs
-    new_kwargs = dict()
-    for key, val in kwargs.items():
-        if hasattr(val, 'ndim') and val.ndim > 0:
-            new_kwargs[key] = val
-    # then just choose the first one
-    md = sdoc.attributes.copy()
-    if len(new_kwargs) > 0:
-        first_key = list(new_kwargs.keys())[0]
-        new_kwargs = {first_key: new_kwargs[first_key]}
-        md['detector_key'] = list(new_kwargs.keys())[0]
-    else:
-        new_kwargs = dict()
-        md['detector_key'] = None
-    #print("new kwargs : {}".format(new_kwargs))
-    #print("kwargs : {}".format(kwargs))
-    # TODO : This directly touches streamdoc,
-    # maybe make it more indirect (to allow proper bookkeeping
-    # of sdocs, provenance, etc
-    sdoc_new = sd.StreamDoc(kwargs=new_kwargs, attributes=md)
-    return sdoc_new
+    for key in allowed_detector_keys:
+        if key in kwargs:
+            data = kwargs[key]
+        else:
+            continue
+        if hasattr(data, 'ndim') and data.ndim > 0:
+            # this picks data of dimensions 2 only 
+            # but also outputs some hints (in case we get a different
+            # detector that outputs different data. for ex: time series etc)
+            if data.ndim == 1:
+                # TODO : return an sdoc that can raise something if needed
+                print("Found a 1D line of data? Ignoring...")
+                continue
+            elif data.ndim == 3:
+                msg = "Found 3D array data. Ignoring (but make sure this"
+                msg += " is not something you want to analyze"
+                continue
+            elif data.ndim > 3:
+                continue
+        else:
+            continue
+        # everything is good, output this in list
+        new_md = dict(md)
+        new_md.update(detector_key=key)
+        new_kwargs = dict(key=kwargs[key])
+        sdoc_new = sd.StreamDoc(kwargs=new_kwargs, attributes=new_md)
+        sdocs.append(sdoc_new)
+
+    return sdocs
 
 
 def check_data(sdoc):
@@ -107,12 +105,34 @@ def check_data(sdoc):
 
 ### Streams : These return an sin and sout
 def PrimaryFilteringStream():
-    ''' Filter the stream for just primary results.'''
+    ''' Filter the stream for just primary results.
+        Stream Inputs
+        -------------
+
+            md : No requirements
+
+            data :
+                must have a 2D np.ndarray with one of accepted detector
+                    keys
+
+        Stream Outputs
+        --------------
+            From 0 - any number streams
+                (depends on how many detectors were found)
+
+            md :
+                detector_key : the detector key (string)
+            data :
+                data with only one image as detector key
+                if there was more than one, it selects one of them
+                Note this has unspecified behaviour.
+    '''
     sin = sc.Stream()
-    sout = sc.filter(filter_detectors, sin)
-    sout = sc.map(pick_arrays, sout)
+    sout = sc.map(pick_allowed_detectors, sin)
+    # turn list into individual streams
+    # (if empty list, emits nothing, this is sort of like filter)
+    sout = sout.concat()
     # just some checks to see if it's good data, else ignore
-    sout = sc.filter(check_data, sout)
     return sin, sout
 
 def AttributeNormalizingStream():
@@ -126,15 +146,35 @@ def AttributeNormalizingStream():
 def CalibrationStream():
     ''' This stream takes data with kwargs and creates calibration object.
 
-         Note : use the AttributeNormalizingStream first so that the data
-         is as the CalibrationStream expects.
+
+       Stream Inputs
+       -------------
+
+             metadata : No requirements
+             data : requires keys who contain calibration information
+                (this is usually obtained by moving metadata to data in first
+                step)
+            Note : use the AttributeNormalizingStream first so that the data
+            is as the CalibrationStream expects.
+
+        Stream Outputs
+        --------------
+
+            md : keeps regular md
+            data :
+                calibration : a calibration object
+
+        Notes
+        -----
+            This will distribute the computation of the qmaps and cache them
+            by saving references to the futures (which distributed will
+            bookkeep)
+
     '''
     sin = sc.Stream()
     sout = scs.map(make_calibration, sin)
-    # this piece should be computed using Dask
-    #s_calib.map(streamdoc_viewer)
-    #s_calib.map(print)
 
+    # this piece should be computed using Dask
     def _generate_qxyz_maps(calibration):
         calibration.generate_maps()
         return dict(calibration=calibration)
@@ -146,16 +186,15 @@ def CalibrationStream():
     # TODO : change to use scatter/gather
     # (need to setup event loop for this etc)
 
-    # obtaining calibration
-    # this is an example using dask
-    #s_calib_obj = scatter(s_calib)
-    #s_calib_obj = s_calib_obj.map(_generate_qxyz_maps)
     sout = scs.map(lambda calibration:
                           client.submit(_generate_qxyz_maps, calibration),
                           sout)
 
+    # save the futures to a list (scheduler will ensure caching of result if
+    # any reference to a future is kept)
     sc.map(lambda calibration :
            streams_globals.futures_cache.append(calibration), sout)
+
     sout = scs.map(lambda calibration:
             client.gather(calibration), sout)
 
@@ -538,14 +577,14 @@ def ImageStitchingStream(return_intermediate=False):
 
     # TODO : remove the add_attributes part and just keep stream_name
     sin = Stream(name="Image Stitching Stream", stream_name="ImageStitch")
-    s2 = sin.map(validate)
+    sout = sc.map(validate, sin)
     # sin.map(lambda x : print("Beginning of stream data\n\n\n"))
     # TODO : remove compute requirement
-    s2 = s2.map(add_attributes, stream_name="ImageStitch")
+    # TODO : incomplete
+    sout = scs.add_attrbutes(sout, stream_name="ImageStitch")
 
-    s3 = s2.map(select, ('image', None), ('mask', None), ('origin', None),
-                ('stitchback', None))
-    sout = s3.map(psdm(pack))
+    sout = scs.select(sout, 'image', 'mask', 'origin', 'stitchback')
+    #sout = scs.map(s3.map(psdm(pack))
     sout = sout.accumulate(psda(_xystitch_accumulate))
 
     sout = sout.map(psdm(unpack))
@@ -624,11 +663,70 @@ def ThumbStream(blur=None, crop=None, resize=None):
 
     '''
     # TODO add flags to actually process into thumbs
-    sin = Stream(name="Thumbnail Stream")
-    s0 = sin.map((add_attributes), stream_name="Thumb")
+    sin = sc.Stream(name="Thumbnail Stream")
+    sout = scs.add_attributes(sin, stream_name="thumb")
     # s1 = sin.add_attributes(stream_name="ThumbStream")
-    s1 = s0.map(psdm(_blur))
-    s1 = s1.map(psdm(_crop))
-    sout = s1.map(psdm(_resize)).map(select, (0, 'thumb'))
+    sout = scs.map(_blur, sout, sigma=blur)
+    sout = scs.map(_crop, sout, crop=crop)
+    sout = scs.map(_resize, sout, resize=resize)
+    # change the key from image to thumb
+    sout = scs.select(sout, ('image', 'thumb'))
 
     return sin, sout
+
+
+#
+def PeakFindingStream():
+    '''
+        Stream Inputs
+        -------------
+
+        Stream Outputs
+        -------------
+    '''
+    sin = sc.Stream()
+    # pkfind stream
+    sout = scs.map(call_peak, scs.select(sin, 'sqy', 'sqx'))
+    sout = scs.add_attributes(sout, stream_name='peakfind')
+    return sin, sout
+
+# try peak finding code
+from processing.peak_finding import peak_finding
+def call_peak(sqx, sqy):
+    res = peak_finding(intensity=sqy,frac=0.0001).peak_position()
+
+    model = res[0]
+    y_origin = res[1]
+    inds_peak = res[2]
+    xdata = res[3]
+    ratio = res[4]
+    ydata = res[5]
+    wdata = res[6]
+    bkgd = res[7]
+    variance = res[8]
+    variance_mean = res[9]
+
+    peaksx = list()
+    peaksy = list()
+
+    for ind in inds_peak:
+        peaksx.append(sqx[ind])
+        peaksy.append(sqy[ind])
+
+    res_dict = dict(
+            model=model,
+            y_origin=y_origin,
+            inds_peak=inds_peak,
+            xdata=xdata,
+            ratio=ratio,
+            ydata=ydata,
+            wdata=wdata,
+            bkgd=bkgd,
+            variance=variance,
+            variance_mean=variance_mean,
+            peaksx=peaksx,
+            peaksy=peaksy,
+            )
+
+    return res_dict
+

@@ -197,61 +197,17 @@ s_stitch = scs.map(get_stitch, sout_attributes)
 
 # circular average
 from SciStreams.streams.XS_Streams import CircularAverageStream
-#from SciStreams.streams.XS_Streams import circavg_from_calibration
-#s_imgmaskcalib.map(print)
 sin_circavg, sout_circavg = CircularAverageStream()
 s_imgmaskcalib.connect(sin_circavg)
-#s_circavg = scs.map(circavg_from_calibration, s_imgmaskcalib)
-#s_circavg = scs.add_attributes(s_circavg, stream_name="circavg")
-#s_circavg.map(print)
 L_circavg = sout_circavg.sink_to_list()
 
-# try peak finding code
-from processing.peak_finding import peak_finding
-def call_peak(sqx, sqy):
-    res = peak_finding(intensity=sqy,frac=0.0001).peak_position()
-
-    model = res[0]
-    y_origin = res[1]
-    inds_peak = res[2]
-    xdata = res[3]
-    ratio = res[4]
-    ydata = res[5]
-    wdata = res[6]
-    bkgd = res[7]
-    variance = res[8]
-    variance_mean = res[9]
-
-    peaksx = list()
-    peaksy = list()
-
-    for ind in inds_peak:
-        peaksx.append(sqx[ind])
-        peaksy.append(sqy[ind])
-
-    res_dict = dict(
-            model=model,
-            y_origin=y_origin,
-            inds_peak=inds_peak,
-            xdata=xdata,
-            ratio=ratio,
-            ydata=ydata,
-            wdata=wdata,
-            bkgd=bkgd,
-            variance=variance,
-            variance_mean=variance_mean,
-            peaksx=peaksx,
-            peaksy=peaksy,
-            )
-
-    return res_dict
-
-# pkfind stream
-sout_pkfind = scs.map(call_peak, scs.select(sout_circavg, 'sqy', 'sqx'))
-sout_pkfind = scs.add_attributes(sout_pkfind, stream_name='peakfind')
+# peak finding
+from SciStreams.streams.XS_Streams import PeakFindingStream
+sin_peakfind, sout_peakfind = PeakFindingStream()
+sout_circavg.connect(sin_peakfind)
 
 # merge with sq
-sout_sqpeaks = scs.merge(sc.zip(sout_circavg, scs.select(sout_pkfind,
+sout_sqpeaks = scs.merge(sc.zip(sout_circavg, scs.select(sout_peakfind,
                                 'inds_peak', 'peaksx', 'peaksy')))
 
 
@@ -322,7 +278,7 @@ s_qphiavg = scs.add_attributes(s_qphiavg, stream_name="qphiavg")
 
 L_qphiavg = s_qphiavg.sink_to_list()
 
-sout_sqphipeaks = scs.merge(sc.zip(s_qphiavg, scs.select(sout_pkfind,
+sout_sqphipeaks = scs.merge(sc.zip(s_qphiavg, scs.select(sout_peakfind,
                                 'inds_peak', 'peaksx', 'peaksy')))
 
 def linecuts(sqphi, qs, phis, peaksx, peaksy, **kwargs):
@@ -341,6 +297,9 @@ sout_linecuts = scs.map(linecuts, sout_sqphipeaks)
 sout_linecuts = scs.add_attributes(sout_linecuts, stream_name='linecuts')
 L_linecuts = sout_linecuts.sink_to_list()
 
+from SciStreams.streams.XS_Streams import ThumbStream
+sin_thumb, sout_thumb = ThumbStream(blur=2, crop=None, resize=10)
+s_image.connect(sin_thumb)
 
 
 from SciStreams.tools.image import findLowHigh
@@ -380,6 +339,7 @@ if True:
     event_stream_maskedimg = scs.to_event_stream(s_maskedimg)
     event_stream_stitched = scs.to_event_stream(s_stitched)
     event_stream_linecuts = scs.to_event_stream(sout_linecuts)
+    event_stream_thumb = scs.to_event_stream(sout_thumb)
 
     if liveplots:
         from SciStreams.callbacks.live import LiveImage, LivePlot
@@ -410,14 +370,16 @@ if True:
     plot_storage_peaks = StorePlot_MPL(lines=[dict(x='sqx', y='sqy'),
                                        dict(x='peaksx', y='peaksy', marker='o',
                                            color='r', linewidth=0)])
-    plot_storage_linecuts = StorePlot_MPL(linecuts=[('phis', 'linecuts')],
-                                          )
+    plot_storage_linecuts = StorePlot_MPL(linecuts=[('phis', 'linecuts')])
+    plot_storage_thumb = StorePlot_MPL(images=['thumb'], img_norm=normalizer)
+
     scs.map(scs.star(plot_storage_img), event_stream_img)
     scs.map(scs.star(plot_storage_stitch), event_stream_stitched)
     scs.map(scs.star(plot_storage_sq), event_stream_sq)
     scs.map(scs.star(plot_storage_sqphi), event_stream_sqphi)
     scs.map(scs.star(plot_storage_peaks), event_stream_peaks)
     scs.map(scs.star(plot_storage_linecuts), event_stream_linecuts)
+    scs.map(scs.star(plot_storage_thumb), event_stream_thumb)
     #scs.map(print, event_stream_img)
 
 
@@ -467,7 +429,7 @@ elif True:
     x0, y0 = 743, 581.
     detx, dety = -65, -72
     peaks = [40, 80, 100, 120, 200, 300, 400, 700, 1000, 1300, 1500, 2000,
-            2500, 3000]
+            2500, 2600]
     peakamps = [.0003]*len(peaks)
     sigma = 6.
 

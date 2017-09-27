@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+'''
+The following code was authored by Jiliang Liu (jiliangliu@bnl.gov), and
+imported into this library for convenience.
+
+'''
 import time
 import numpy as np
 import statsmodels.api as sm

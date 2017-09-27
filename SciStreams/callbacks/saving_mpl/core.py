@@ -194,19 +194,15 @@ def store_results(data, attrs, **kwargs):
     fig.clf()
     ax = fig.gca()
 
-    plot_images(images, data, img_norm, plot_kws)
-
-    xlims, ylims = plot_lines(lines, data, img_norm,
-            plot_kws, xlims=xlims,ylims=ylims)
-
-    xlims, ylims = plot_linecuts(linecuts, data, img_norm, plot_kws,
-            xlims=xlims, ylims=ylims)
-
-
-    if xlims is not None:
-        plt.xlim(xlims[0], xlims[1])
-    if ylims is not None:
-        plt.ylim(ylims[0], ylims[1])
+    # only plot either of the three
+    if len(images) > 0:
+        plot_images(images, data, img_norm, plot_kws)
+    elif len(lines) > 0:
+        plot_lines(lines, data, img_norm,
+                plot_kws, xlims=xlims,ylims=ylims)
+    elif len(linecuts) > 0:
+        plot_linecuts(linecuts, data, img_norm, plot_kws,
+                xlims=xlims, ylims=ylims)
 
     # plotting the extra options
     if 'labelsize' in plot_kws:
@@ -262,44 +258,46 @@ def store_results(data, attrs, **kwargs):
     plt.close(fig)
 
 
-def plot_linecuts(linecuts, data, img_norm, plot_kws, xlims=None, ylims=None):
+def plot_linecuts(linecuts_keys, data, img_norm, plot_kws, xlims=None, ylims=None):
     ''' assume that each linecut is a 2d image meant to be plotted as 1d
         linecuts can be tuples or one key. if tuple, first index assumed x-axis
     '''
     import matplotlib.pyplot as plt
-    for linecut in linecuts:
-        if isinstance(linecut, tuple) and len(linecut) == 2:
-            if linecut[0] in data and linecut[1] in data:
-                x = data[linecut[0]]
-                y = data[linecut[1]]
+    # assumes plot has been cleared already
+    # and fig selected
+    for linecuts_key in linecuts_keys:
+        if isinstance(linecuts_key, tuple) and len(linecuts_key) == 2:
+            if linecuts_key[0] in data and linecuts_key[1] in data:
+                x = data[linecuts_key[0]]
+                y = data[linecuts_key[1]]
             else:
                 x, y = None, None
         else:
-            if line in data:
-                y = data[line]
+            if linecuts_key in data:
+                y = data[linecuts_key]
                 x = np.arange(len(y))
             else:
                 x, y = None, None
 
-        # only plot if there is data
-        if x is not None and y is not None:
-            for suby in y:
+        if xlims is None:
+            xlims = [np.nanmin(x), np.nanmax(x)]
+        else:
+            xlims[0] = np.nanmin([np.nanmin(x), xlims[0]])
+            xlims[1] = np.nanmax([np.nanmax(x), xlims[1]])
+
+        # assume y is an array of arrays...
+        gs = plt.GridSpec(len(y), 1)
+        gs.update(hspace=0.0, wspace=0.0)
+        for i, linecut in enumerate(y):
+            # only plot if there is data
+            if x is not None and linecut is not None:
+                ax = plt.subplot(gs[i, :])
+                plt.sca(ax)
                 # y should be 2d image
-                plt.plot(x, suby, **plot_kws)
-                if xlims is None:
-                    xlims = [np.nanmin(x), np.nanmax(x)]
-                else:
-                    xlims[0] = np.nanmin([np.nanmin(x), xlims[0]])
-                    xlims[1] = np.nanmax([np.nanmax(x), xlims[1]])
+                plt.plot(x, linecut, **plot_kws,label="peak {}".format(i))
+                plt.legend()
+                plt.xlim(*xlims)
 
-                # dont set ylim from for loop
-                if ylims is None:
-                    ylims = [np.nanmin(suby), np.nanmax(suby)]
-                else:
-                    ylims[0] = np.nanmin([np.nanmin(suby), ylims[0]])
-                    ylims[1] = np.nanmax([np.nanmax(suby), ylims[1]])
-
-    return xlims, ylims
 
 def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None):
     import matplotlib.pyplot as plt
@@ -360,7 +358,8 @@ def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None):
                 ylims[0] = np.nanmin([np.nanmin(y), ylims[0]])
                 ylims[1] = np.nanmax([np.nanmax(y), ylims[1]])
 
-    return xlims, ylims
+    plt.xlim(*xlims)
+    plt.ylim(*ylims)
 
 def plot_images(images, data, img_norm, plot_kws):
     import matplotlib.pyplot as plt

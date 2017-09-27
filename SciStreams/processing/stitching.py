@@ -43,8 +43,11 @@ def xystitch_accumulate(prevstate, newstate):
             (this requires interpolating pixels, maybe not
                 good for shot noise limited regime)
     '''
+    if newstate is None:
+        # clear the state by returning None
+        return newstate
     # If state lost, reset and recover
-    if len(prevstate) != 4:
+    if prevstate is None or len(prevstate) != 4:
         # print("Prevstate 0, returning newstate")
         return newstate
 
