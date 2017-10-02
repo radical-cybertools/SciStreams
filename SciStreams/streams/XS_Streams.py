@@ -70,7 +70,7 @@ def pick_allowed_detectors(sdoc):
         else:
             continue
         if hasattr(data, 'ndim') and data.ndim > 0:
-            # this picks data of dimensions 2 only 
+            # this picks data of dimensions 2 only
             # but also outputs some hints (in case we get a different
             # detector that outputs different data. for ex: time series etc)
             if data.ndim == 1:
@@ -422,10 +422,10 @@ def QPHIMapStream(bins=(400, 400)):
                 the image
             mask : 2d np.ndarray, optional
                 the mask
-            bins : 2 tuple, optional
-                the number of bins to divide into
             origin : 2 tuple
                 the beam center in the image
+            qmap : 2d np.ndarray
+                the qmap of the image
 
         Stream Outputs
         --------------
@@ -441,33 +441,101 @@ def QPHIMapStream(bins=(400, 400)):
         sin : the input stream (see Stream Inputs)
         sout : the output stream (see Stream Outputs)
     '''
-    sin = Stream(name="QPHI map Stream")
-    sout = sin.map(select, 0, 'mask', 'origin')\
-        .map((add_attributes), stream_name="QPHIMapStream")
-    sout = sout.map(psdm(qphiavg), bins=bins)
-    # from dask import compute
-    # sout.apply(compute).apply(print)
+    #
+
+    from SciStreams.processing.qphiavg import qphiavg
+    sin = sc.Stream(name="QPHI map Stream")
+    sout = scs.map(qphiavg, sin, bins=(800,360))
+    sout = scs.add_attributes(sout, stream_name="qphiavg")
+
+    return sin, sout
+
+def LineCutStream(axis=0, name=None):
+    ''' Obtain line cuts from a 2D image.
+        Just simple slicing. It's a stream mainly to make this more standard.
+
+        Parameters
+        ----------
+            axis : int, optional
+                the axis to obtain linecuts from.
+                Default is 0 (so we index rows A[i])
+                If 1, the index cols (A[:,i])
+
+        Stream Inputs
+        -------------
+        image : 2d np.ndarray
+            the image to obtain line cuts from
+        y : 1d np.ndarray
+            The y (row) values per pixel
+        x : The x (column) values per pixel
+        vals : list
+            the values to obtain the linecuts from
+
+        Stream Outputs
+        --------------
+        linecuts : a list of line cuts
+        linecuts_domain : the domain of the line cuts
+        linecuts_vals : the corresponding value for each line cut
+
+        Returns
+        -------
+        sin : the input stream (see Stream Inputs)
+        sout : the output stream (see Stream Outputs)
+    '''
+    def linecuts(image, y, x, vals, axis=0):
+        ''' Can potentially return an empty list of linecuts.'''
+
+        linecuts = list()
+        linecuts_vals = list()
+        if axis == 1:
+            # swap x y and transpose
+            tmp = y
+            y = x
+            x = tmp
+            img = img.T
+
+        linecuts_domain = x
+        for val in vals:
+            ind = np.argmin(np.abs(y-val))
+            linecuts.append(image[ind])
+            linecuts_vals.append(y[ind])
+
+
+        return dict(linecuts=linecuts, linecuts_domain=linecuts_domain,
+                    linecuts_vals=linecuts_vals)
+
+    # the string for the axis
+    axisstr = ['y', 'x'][axis]
+    sin = sc.Stream(name="Line Cuts")
+    sout = scs.map(linecuts, sin, axis=axis)
+    if name is None:
+        stream_name = 'linecuts-axis{}'.format(axisstr)
+    else:
+        stream_name = name + "-axis{}".format(axisstr)
+
+    sout = scs.add_attributes(sout,
+                              stream_name=stream_name)
     return sin, sout
 
 
-def AngularCorrelatorStream():
+from SciStreams.processing.angularcorr import angular_corr
+def AngularCorrelatorStream(bins=(800,360)):
     ''' Stream to run angular correlations.
 
         Stream Inputs
         -------------
-        shape : 2 tuple
-            the image shape
-        origin : 2 tuple
-            the beam center of the image
+        image : 2d np.ndarray
+            the image to run the angular correltions on
         mask : 2d np.ndarray
             the mask
-        rbins : number, optional
-            the number of bins in q
-        phibins : number, optional
-            the number of bins in phi
+        origin : 2 tuple
+            the beam center of the image
+        bins : tuple
+            the number of bins in q and phi
         method : string, optional
             the method to use for the angular correlations
             defaults to 'bgest'
+        q_map : the q_map to be used
 
         Stream Outputs
         --------------
@@ -476,12 +544,13 @@ def AngularCorrelatorStream():
 
         Incomplete
     '''
-    # from SciAnalysis.analyses.XSAnalysis import rdpc
-    # s = Stream()
-    # sout.
-
-    # return s, sout
-    return None
+    # TODO : Allow optional kwargs in streams
+    sin = sc.Stream(name="Angular Correlation")
+    sout = scs.select(sin, ('image', 'image'), ('mask', 'mask'), ('origin',
+                        'origin'), ('q_map', 'r_map'))
+    sout = scs.map(angular_corr, sout, bins=bins)
+    sout = scs.add_attributes(sout, stream_name="angular-corr")
+    return sin, sout
 
 
 def prepare_correlation(shape, origin, mask, rbins=800, phibins=360,
@@ -576,25 +645,25 @@ def ImageStitchingStream(return_intermediate=False):
         return x
 
     # TODO : remove the add_attributes part and just keep stream_name
-    sin = Stream(name="Image Stitching Stream", stream_name="ImageStitch")
+    sin = sc.Stream(name="Image Stitching Stream", stream_name="ImageStitch")
     sout = sc.map(validate, sin)
     # sin.map(lambda x : print("Beginning of stream data\n\n\n"))
     # TODO : remove compute requirement
     # TODO : incomplete
-    sout = scs.add_attrbutes(sout, stream_name="ImageStitch")
+    sout = scs.add_attributes(sout, stream_name="stitch")
 
-    sout = scs.select(sout, 'image', 'mask', 'origin', 'stitchback')
+    sout = scs.select(sout, ('image', None), ('mask', None), ('origin', None),
+                      ('stitchback', None))
+
+    # put all args into a tuple
+    def pack(*args):
+        return args
+
+    sout = scs.map(pack, sout)
     #sout = scs.map(s3.map(psdm(pack))
-    sout = sout.accumulate(psda(_xystitch_accumulate))
+    sout = scs.accumulate(_xystitch_accumulate, sout)
 
-    sout = sout.map(psdm(unpack))
-    sout = sout.map(psdm(_xystitch_result))
-    sout = sout.map(psdm(todict))
-
-    # now window the results and only output if stitchback from previous is
-    # nonzero
-    # save previous value, grab previous stitchback value
-    swin = sout.sliding_window(2)
+    sout = scs.map(scs.star(_xystitch_result), sout)
 
     def stitchbackcomplete(xtuple):
         ''' only plot images whose stitch is complete, and only involved more
@@ -619,18 +688,12 @@ def ImageStitchingStream(return_intermediate=False):
     # swin.emit(dict(attributes=dict(stitchback=0)))
 
     if not return_intermediate:
-        swinout = swin.filter(stitchbackcomplete)
-    else:
-        swinout = swin
+        # keep previous two results
+        sout = sout.sliding_window(2)
+        sout = sout.filter(stitchbackcomplete)
+        sout = sout.map(lambda x : x[0])
 
-    def getprevstitch(x):
-        x0 = x[0]
-        return x0
-
-    swinout = swinout.map(getprevstitch)
-    # swinout.map(lambda x : print("End of stream data\n\n\n"))
-
-    return sin, swinout
+    return sin, sout
 
 
 def ThumbStream(blur=None, crop=None, resize=None):

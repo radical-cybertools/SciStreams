@@ -217,6 +217,7 @@ L_sqpeaks = sout_sqpeaks.sink_to_list()
 def normexposure(image, exposure_time):
     return dict(image=image/exposure_time)
 
+
 # image stitching
 from SciStreams.processing.stitching import xystitch_accumulate, xystitch_result
 # normalize by exposure time
@@ -224,18 +225,11 @@ s_imagenorm = scs.map(normexposure, scs.merge(sc.zip(s_exposure, s_image)))
 # use this for image stitch
 s_imgmaskoriginstitch = scs.merge(sc.zip(s_imagenorm, s_mask, s_origin, s_stitch))
 
-s_stitched = scs.select(s_imgmaskoriginstitch,
-                        ('image', None), ('mask', None),
-                        ('origin', None), ('stitchback', None))
-# pack args into one
-s_stitched = scs.pack(s_stitched)
-s_stitched = scs.accumulate(xystitch_accumulate, s_stitched)
-# TODO : allow for keys to be returned?
-s_stitched = scs.map(scs.star(xystitch_result), s_stitched)
-# Need this to name streams for saving purposes
-s_stitched = scs.add_attributes(s_stitched, stream_name='stitch')
-#s_stitched.map(print)
-L_stitched = s_stitched.sink_to_list()
+from SciStreams.streams.XS_Streams import ImageStitchingStream
+sin_stitched, sout_stitched = ImageStitchingStream(return_intermediate=True)
+s_imgmaskoriginstitch.connect(sin_stitched)
+
+L_stitched = sout_stitched.sink_to_list()
 
 def get_shape(**kwargs):
     img = kwargs.get('image', None)
@@ -256,9 +250,9 @@ def get_shape(**kwargs):
 
     return dict(origin=origin, shape=img.shape)
 
-s_stitched_attributes = scs.map(get_shape, s_stitched)
-s_stitched_attributes = scs.merge(sc.zip(sout_attributes, s_stitched_attributes))
-s_calib_stitched = scs.map(make_calibration, s_stitched_attributes)
+sout_stitched_attributes = scs.map(get_shape, sout_stitched)
+sout_stitched_attributes = scs.merge(sc.zip(sout_attributes, sout_stitched_attributes))
+s_calib_stitched = scs.map(make_calibration, sout_stitched_attributes)
 
 # the masked image. sometimes useful to use
 def maskimg(image, mask):
@@ -267,64 +261,57 @@ def maskimg(image, mask):
 s_maskedimg = scs.map(maskimg, scs.select(s_imgmaskcalib, 'image', 'mask'))
 
 # make qphiavg image
-from SciStreams.processing.qphiavg import qphiavg
 #
 s_img_mask_origin = scs.merge(sc.zip(s_image, s_mask, s_origin))
 s_qmap = scs.map(lambda calibration : dict(q_map=calibration.q_map),
                  sout_calib)
 s_img_mask_origin_qmap = scs.merge(sc.zip(s_img_mask_origin, s_qmap))
-s_qphiavg = scs.map(qphiavg, s_img_mask_origin_qmap, bins=(800,360))
-s_qphiavg = scs.add_attributes(s_qphiavg, stream_name="qphiavg")
 
-L_qphiavg = s_qphiavg.sink_to_list()
+from SciStreams.streams.XS_Streams import QPHIMapStream
+sin_qphiavg, sout_qphiavg = QPHIMapStream()
+s_img_mask_origin_qmap.connect(sin_qphiavg)
 
-sout_sqphipeaks = scs.merge(sc.zip(s_qphiavg, scs.select(sout_peakfind,
+L_qphiavg = sout_qphiavg.sink_to_list()
+
+sout_sqphipeaks = scs.merge(sc.zip(sout_qphiavg, scs.select(sout_peakfind,
                                 'inds_peak', 'peaksx', 'peaksy')))
+sout_sqphipeaks = scs.select(sout_sqphipeaks, ('sqphi', 'image'), ('qs', 'y'),
+                              ('phis', 'x'), ('peaksx', 'vals'))
 
-def linecuts(sqphi, qs, phis, peaksx, peaksy, **kwargs):
-    ''' Can potentially return an empty list of linecuts.'''
 
-    linecuts = list()
-    linecut_qs = list()
-
-    for peakx in peaksx:
-        peakloc = np.argmin(np.abs(qs-peakx))
-        linecuts.append(sqphi[peakloc])
-
-    return dict(linecuts=linecuts, linecut_qs=peaksx, phis=phis)
-
-sout_linecuts = scs.map(linecuts, sout_sqphipeaks)
-sout_linecuts = scs.add_attributes(sout_linecuts, stream_name='linecuts')
+#sout_sqphipeaks.map(print)
+from SciStreams.streams.XS_Streams import LineCutStream
+sin_linecuts, sout_linecuts = LineCutStream(axis=0)
+sout_sqphipeaks.connect(sin_linecuts)
 L_linecuts = sout_linecuts.sink_to_list()
+
 
 from SciStreams.streams.XS_Streams import ThumbStream
 sin_thumb, sout_thumb = ThumbStream(blur=2, crop=None, resize=10)
 s_image.connect(sin_thumb)
 
+from SciStreams.streams.XS_Streams import AngularCorrelatorStream
+sin_angularcorr, sout_angularcorr = AngularCorrelatorStream(bins=(800, 360))
+s_img_mask_origin_qmap.connect(sin_angularcorr)
 
-from SciStreams.tools.image import findLowHigh
-def normalizer(image):
-    # normalizer for images before plotting
-    img = np.copy(image)
 
-    # set nan values to zero
-    wgood = np.where(~np.isnan(img)*~np.isinf(img))
-    wbad = np.where(np.isnan(img)+np.isinf(img))
-    # only if there are bad values
-    if len(wbad[0]) > 0:
-        img[wbad] = np.min(img[wgood])
+L_angularcorr = sout_angularcorr.sink_to_list()
 
-    # now find things out of bounds
-    low, high = findLowHigh(img)
-    wlow = np.where(img < low)
-    whigh = np.where(img > high)
+sout_angularcorrpeaks = scs.merge(sc.zip(sout_angularcorr, scs.select(sout_peakfind,
+                                'inds_peak', 'peaksx', 'peaksy')))
+sout_angularcorrpeaks = scs.select(sout_angularcorrpeaks,
+                            ('rdeltaphiavg_n', 'image'), ('qvals', 'y'),
+                            ('phivals', 'x'),
+                            ('peaksx', 'vals'))
 
-    # set them to the bound
-    img[wlow] = low
-    img[whigh] = high
+sin_linecuts_angularcorr, sout_linecuts_angularcorr = LineCutStream(axis=0,
+        name="angularcorr")
+sout_angularcorrpeaks.connect(sin_linecuts_angularcorr)
+L_linecuts_angularcorr = sout_linecuts_angularcorr.sink_to_list()
 
-    return img
 
+# useful image normalization tool for plotting
+from SciStreams.tools.image import normalizer
 
 # sample on how to plot to callback and file
 # (must make it an event stream again first)
@@ -333,13 +320,15 @@ liveplots = False
 if True:
     # make event streams for some sinks
     event_stream_img = scs.to_event_stream(s_image)
-    event_stream_sqphi = scs.to_event_stream(s_qphiavg)
+    event_stream_sqphi = scs.to_event_stream(sout_qphiavg)
     event_stream_sq = scs.to_event_stream(sout_circavg)
     event_stream_peaks = scs.to_event_stream(sout_sqpeaks)
     event_stream_maskedimg = scs.to_event_stream(s_maskedimg)
-    event_stream_stitched = scs.to_event_stream(s_stitched)
+    event_stream_stitched = scs.to_event_stream(sout_stitched)
     event_stream_linecuts = scs.to_event_stream(sout_linecuts)
     event_stream_thumb = scs.to_event_stream(sout_thumb)
+    event_stream_angularcorr = scs.to_event_stream(sout_angularcorr)
+    event_stream_linecuts_angularcorr = scs.to_event_stream(sout_linecuts_angularcorr)
 
     if liveplots:
         from SciStreams.callbacks.live import LiveImage, LivePlot
@@ -370,8 +359,17 @@ if True:
     plot_storage_peaks = StorePlot_MPL(lines=[dict(x='sqx', y='sqy'),
                                        dict(x='peaksx', y='peaksy', marker='o',
                                            color='r', linewidth=0)])
-    plot_storage_linecuts = StorePlot_MPL(linecuts=[('phis', 'linecuts')])
+    plot_storage_linecuts = StorePlot_MPL(linecuts=[('linecuts_domain', # x
+                                                     'linecuts', # y
+                                                     'linecuts_vals')]) # value
     plot_storage_thumb = StorePlot_MPL(images=['thumb'], img_norm=normalizer)
+    plot_storage_angularcorr = StorePlot_MPL(images=['rdeltaphiavg_n'],
+                                             img_norm=normalizer,
+                                             plot_kws=dict(vmin=0,vmax=1))
+
+    plot_storage_linecuts_angularcorr = StorePlot_MPL(linecuts=[('linecuts_domain', # x
+                                                     'linecuts', # y
+                                                     'linecuts_vals')]) # value
 
     scs.map(scs.star(plot_storage_img), event_stream_img)
     scs.map(scs.star(plot_storage_stitch), event_stream_stitched)
@@ -380,6 +378,9 @@ if True:
     scs.map(scs.star(plot_storage_peaks), event_stream_peaks)
     scs.map(scs.star(plot_storage_linecuts), event_stream_linecuts)
     scs.map(scs.star(plot_storage_thumb), event_stream_thumb)
+    scs.map(scs.star(plot_storage_angularcorr), event_stream_angularcorr)
+    scs.map(scs.star(plot_storage_linecuts_angularcorr),
+            event_stream_linecuts_angularcorr)
     #scs.map(print, event_stream_img)
 
 
@@ -405,6 +406,7 @@ class TiffHandler(AreaDetectorTiffHandler):
             print("File not found {}".format(next(self._fnames_for_point(0))))
             res = None
         return res
+
 
 if False:
     # patchy way to get stream for now, need to fix later
@@ -433,6 +435,7 @@ elif True:
     peakamps = [.0003]*len(peaks)
     sigma = 6.
 
+
     md = dict(sample_name="test",
               motor_bsx=-15.17,
               motor_bsy=-16.9,
@@ -455,6 +458,9 @@ elif True:
               sample_exposure_time=10.,
               stitchback=True)
 
+    from SciStreams.simulators.saxs import mkSAXS
+    from SciStreams.simulators.gisaxs import mkGISAXS
+
     from SciStreams.detectors.detectors2D import detectors2D
     shape = detectors2D['pilatus2M']['shape']['value']
     scl = detectors2D['pilatus2M']['pixel_size_x']['value']
@@ -467,33 +473,21 @@ elif True:
     phase = 2*np.pi*np.random.random()
     for shiftx in shiftsx:
         for shifty in shiftsy:
-            detx1, dety1 = detx+shiftx, dety+shifty
             x1 = x0 - shiftx*scl
             y1 = y0 - shifty*scl
-            x = np.arange(shape[1]) - x1
-            y = np.arange(shape[0]) - y1
-            X, Y = np.meshgrid(x, y)
-            R = np.hypot(X,Y)
-            PHI = np.arctan2(Y, X)
+            detx1, dety1 = detx+shiftx, dety+shifty
 
 
+            md = md.copy()
             md.update(detector_SAXS_x0_pix=x1)
             md.update(detector_SAXS_y0_pix=y1)
             md.update(motor_SAXSx=detx1)
             md.update(motor_SAXSy=dety1)
             md.update(scan_id=scan_id)
+            md.update(measurement_type="SAXS")
             md.update(sample_savename="sample_x{}_y{}".format(detx1, dety1))
 
-            data = 1./np.sqrt(X**2 + Y**2)
-            wbad = np.where(np.isinf(data)+np.isnan(data))
-            wgood = np.where(~np.isinf(data)*~np.isnan(data))
-            data[wbad] = np.min(data[wgood])
-            for peak, amp in zip(peaks, peakamps):
-                newpeak = amp*np.exp(-(R-peak)**2/2./sigma**2)
-                newpeak = newpeak*(np.cos(sym*(PHI-phase))**2)
-                # give peak some symmetry
-                data += newpeak
-
+            data = mkSAXS(shape, peaks, peakamps, phase, x1, y1, sigma, sym)
 
             plt.figure(1);plt.clf();plt.imshow(data);plt.pause(.1)
 
@@ -501,6 +495,22 @@ elif True:
             stream.extend(generate_event_stream(data_dict,
                                          md=md))
             scan_id += 1
+
+    # try some GISAXS patterns
+    shiftx, shifty = 0, 0
+    x1 = x0 - shiftx*scl
+    y1 = y0 - shifty*scl
+    detx1, dety1 = detx+shiftx, dety+shifty
+    r = 3
+    ld = 12
+    Narray = 5
+    md = md.copy()
+    md.update(measurement_type="GISAXS")
+    md.update(stitchback=False)
+    data = mkGISAXS(shape, r, ld, Narray, x1, y1)
+    data_dict = dict(pilatus2M_image=data)
+    stream.extend(generate_event_stream(data_dict,
+                  md=md))
 
 from tornado import gen
 

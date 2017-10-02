@@ -266,18 +266,23 @@ def plot_linecuts(linecuts_keys, data, img_norm, plot_kws, xlims=None, ylims=Non
     # assumes plot has been cleared already
     # and fig selected
     for linecuts_key in linecuts_keys:
-        if isinstance(linecuts_key, tuple) and len(linecuts_key) == 2:
+        if isinstance(linecuts_key, tuple) and len(linecuts_key) >1:
             if linecuts_key[0] in data and linecuts_key[1] in data:
                 x = data[linecuts_key[0]]
                 y = data[linecuts_key[1]]
+                if len(linecuts_key) > 2:
+                    ylabels = data[linecuts_key[2]]
+                else:
+                    ylabels = None
             else:
-                x, y = None, None
+                x, y, ylabels = None, None
         else:
             if linecuts_key in data:
                 y = data[linecuts_key]
                 x = np.arange(len(y))
+                ylabels = None
             else:
-                x, y = None, None
+                x, y, ylabels = None, None
 
         if xlims is None:
             xlims = [np.nanmin(x), np.nanmax(x)]
@@ -294,6 +299,10 @@ def plot_linecuts(linecuts_keys, data, img_norm, plot_kws, xlims=None, ylims=Non
                 ax = plt.subplot(gs[i, :])
                 plt.sca(ax)
                 # y should be 2d image
+                if ylabels is not None:
+                    tmplabel = "value : {}".format(ylabels[i])
+                else:
+                    tmplabel = "value : {}".format(i)
                 plt.plot(x, linecut, **plot_kws,label="peak {}".format(i))
                 plt.legend()
                 plt.xlim(*xlims)
@@ -371,13 +380,13 @@ def plot_images(images, data, img_norm, plot_kws):
                 print("normalizing image")
                 image = img_norm(image)
             vmin, vmax = findLowHigh(image)
-            if 'vmin' in plot_kws:
-                vmin = plot_kws['vmin']
-            if 'vmax' in plot_kws:
-                vmax = plot_kws['vmax']
+            if 'vmin' not in plot_kws:
+                plot_kws['vmin'] = vmin
+            if 'vmax' not in plot_kws:
+                plot_kws['vmax'] = vmax
             if image.ndim == 2:
                 if isinstance(image, np.ndarray):
-                    plt.imshow(image, vmin=vmin, vmax=vmax, **plot_kws)
+                    plt.imshow(image, **plot_kws)
                     plt.colorbar()
             elif image.ndim == 3:
                 nimgs = image.shape[0]

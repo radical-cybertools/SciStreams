@@ -12,7 +12,7 @@ def findLowHigh(img, maxcts=None, percentage=.05):
     w = np.where((~np.isnan(img.ravel()))*(~np.isinf(img.ravel())))
     minval, maxval = np.min(img.ravel()[w]), np.max(img.ravel()[w])
     # number of bins, make approx 100th of no pixels
-    nobins = img.shape[0]*img.shape[1]/100
+    nobins = img.shape[0]*img.shape[1]/1000
     bins = np.linspace(minval, maxval, nobins)
     hh, bb = np.histogram(img.ravel()[w], bins=bins, range=(1, maxcts))
     hhs = np.cumsum(hh)
@@ -45,3 +45,26 @@ def findLowHigh(img, maxcts=None, percentage=.05):
     # print("low: {}, high : {}".format(low, high))
 
     return low, high
+
+def normalizer(image):
+    # normalizer for images before plotting
+    img = np.copy(image)
+
+    # set nan values to zero
+    wgood = np.where(~np.isnan(img)*~np.isinf(img))
+    wbad = np.where(np.isnan(img)+np.isinf(img))
+    # only if there are bad values
+    if len(wbad[0]) > 0:
+        img[wbad] = np.min(img[wgood])
+
+    # now find things out of bounds
+    low, high = findLowHigh(img)
+    wlow = np.where(img < low)
+    whigh = np.where(img > high)
+
+    # set them to the bound
+    img[wlow] = low
+    img[whigh] = high
+
+    return img
+
