@@ -28,21 +28,21 @@ def store_results_hdf5(sdoc):
 
 
 def add_element(h5group, name, data):
-    dataset = h5group.create_dataset(name, data=data)
-#    if isinstance(data, dict):
-#        try:
-#            subgroup = h5group.create_group(name)
-#        except ValueError:
-#            subgroup = h5group[name]
-#        for key, val in data.items():
-#            add_element(subgroup, key, val)
-#    elif isinstance(data, list):
-#        try:
-#            subgroup = h5group.create_group(name)
-#        except ValueError:
-#            subgroup = h5group[name]
-#        for i, val in enumerate(data):
-#            key = "_arg{:03d}".format(i)
-#            add_element(subgroup, key, val)
-#    else:
-#       dataset = h5group.create_dataset(name, data=data)
+    if isinstance(data, dict):
+        try:
+            subgroup = h5group.create_group(name)
+        except ValueError:
+            subgroup = h5group[name]
+        for key, val in data.items():
+            add_element(subgroup, key, val)
+    # NOTE : numpy arrays should not give True here
+    elif isinstance(data, list):
+        try:
+            subgroup = h5group.create_group(name)
+        except ValueError:
+            subgroup = h5group[name]
+        for i, val in enumerate(data):
+            key = "item{:03d}".format(i)
+            add_element(subgroup, key, val)
+    else:
+       dataset = h5group.create_dataset(name, data=data)
