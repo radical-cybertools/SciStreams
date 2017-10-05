@@ -396,6 +396,9 @@ if True:
             event_stream_linecuts_angularcorr)
 
     from SciStreams.callbacks.core import SciStreamCallback
+    # save the peaks info
+    sc.sink(event_stream_peaks, scs.star(SciStreamCallback(store_results_hdf5)))
+
     sc.sink(event_stream_tag, scs.star(SciStreamCallback(store_results_xml)))
     sc.sink(event_stream_tag, scs.star(SciStreamCallback(store_results_hdf5)))
     #scs.map(print, event_stream_img)
