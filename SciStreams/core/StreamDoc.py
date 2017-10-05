@@ -14,7 +14,12 @@ from uuid import uuid4
 from dask.delayed import delayed
 from dask.base import normalize_token
 
+# decorator to add timeouts
+from .timeout import timeout
+
 import numpy as np
+
+from ..config import DEFAULT_TIMEOUT
 
 
 # this class is used to wrap outputs to inputs
@@ -487,6 +492,8 @@ def _is_streamdoc(doc):
         return False
 
 
+
+
 def parse_streamdoc(name):
     ''' Decorator to parse StreamDocs from functions
 
@@ -509,6 +516,8 @@ def parse_streamdoc(name):
     def streamdoc_dec(f):
         @wraps(f)
         def f_new(x, x2=None, **kwargs_additional):
+            # add a time out to f
+            f_timeout = timeout(10)(f)
             # print("Running in {}".format(f.__name__))
             if x2 is None:
                 if _is_streamdoc(x):
@@ -539,27 +548,28 @@ def parse_streamdoc(name):
             t1 = time.time()
             try:
                 # now run the function
-                result = f(*args, **kwargs)
+                result = f_timeout(*args, **kwargs)
                 # print("args : {}".format(args))
                 # print("kwargs : {}".format(kwargs))
                 statistics['status'] = "Success"
             except TypeError:
                 print("Error, inputs do not match function type")
                 import inspect
-                sig = inspect.signature(f)
-                ba = sig.bind_partial(*args, **kwargs)
+                sig = inspect.signature(f_timeout)
+                # don't know why I was using this? commented
+                #ba = sig.bind_partial(*args, **kwargs)
                 print("(StreamDoc) Error : Input mismatch on function")
                 print("This means there is an issue with "
                       "The stream architecture")
-                print("Got {} arguments".format(len(ba.args)))
-                print("Got kwargs : {}".format(list(ba.kwargs.keys())))
+                print("Got {} arguments".format(len(args)))
+                print("Got kwargs : {}".format(list(kwargs.keys())))
                 print("But expected : {}".format(sig))
                 print("Returning empty result, see error report below")
                 result = {}
-                _cleanexit(f, statistics)
+                _cleanexit(f_timeout, statistics)
             except Exception:
                 result = {}
-                _cleanexit(f, statistics)
+                _cleanexit(f_timeout, statistics)
 
             t2 = time.time()
             statistics['runtime'] = t1 - t2
@@ -572,7 +582,8 @@ def parse_streamdoc(name):
                     attributes['function_list'].copy()
             # print("updated function list:
             # {}".format(attributes['function_list']))
-            attributes['function_list'].append(f.__name__)
+            attributes['function_list'].append(getattr(f_timeout, '__name__',
+                                               'unnamed'))
             # print("Running function {}".format(f.__name__))
             # instantiate new stream doc
             streamdoc = StreamDoc(attributes=attributes)
@@ -614,7 +625,7 @@ def _cleanexit(f, statistics):
     errorstr += "##################\n"
     errorstr += "time : {}\n".format(time.ctime(time.time()))
     errorstr += "caught exception {}\n".format(value)
-    errorstr += "func name : {}\n".format(f.__name__)
+    errorstr += "func name : {}\n".format(getattr(f, '__name__', 'unnamed'))
     errorstr += "line number {}\n".format(err_lineno)
     errorstr += "in file {}\n".format(err_filename)
     errorstr += "####################"
@@ -630,14 +641,3 @@ def _cleanexit(f, statistics):
 @normalize_token.register(StreamDoc)
 def tokenize_sdoc(sdoc):
     return normalize_token((sdoc['args'], sdoc['kwargs']))
-
-
-def delayed_wrapper(name):
-    def decorator(f):
-        @delayed(pure=True)
-        @parse_streamdoc(name)
-        @wraps(f)
-        def f_new(*args, **kwargs):
-            return f(*args, **kwargs)
-        return f_new
-    return decorator

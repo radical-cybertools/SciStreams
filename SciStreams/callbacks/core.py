@@ -22,9 +22,12 @@ class CallbackBase:
 
 # callback to convert eventstream to a scistream
 class SciStreamCallback(CallbackBase):
+    ''' This will take a start document and events and output
+        each event to a function as a StreamDoc.
+    '''
     # dictionary of start documents
-    def __init__(self, sin, *args, **kwargs):
-        self.stream_input = sin
+    def __init__(self, func, *args, **kwargs):
+        self.func = func
         self.start_docs = dict()
         self.descriptors = dict()
         super(SciStreamCallback, self).__init__(*args, **kwargs)
@@ -57,15 +60,15 @@ class SciStreamCallback(CallbackBase):
         data = doc['data']
 
         # now make data
-        event = StreamDoc()
-        event.add(attributes=start_doc)
+        sdoc = StreamDoc()
+        sdoc.add(attributes=start_doc)
         # no args since each element in a doc is named
-        event.add(kwargs=data)
+        sdoc.add(kwargs=data)
         checkpoint = dict(parent_uids=[start_uid])
         provenance = dict(name="SciStreamCallback")
-        event.add(checkpoint=checkpoint)
-        event.add(provenance=provenance)
-        self.stream_input.emit(event)
+        sdoc.add(checkpoint=checkpoint)
+        sdoc.add(provenance=provenance)
+        self.func(sdoc)
 
     def stop(self, doc):
         ''' Stop is where the garbage collection happens.'''

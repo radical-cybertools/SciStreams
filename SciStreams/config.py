@@ -10,6 +10,9 @@ try:
 except FileNotFoundError:
     config = dict()
 
+# default time out in seconds
+DEFAULT_TIMEOUT = 100
+
 # read the mask conf file
 # ignore the mask yml now, just use mask_dir
 filename_masks = os.path.expanduser("~/.config/scistreams/masks.yml")

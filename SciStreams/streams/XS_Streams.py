@@ -128,7 +128,7 @@ def PrimaryFilteringStream():
                 Note this has unspecified behaviour.
     '''
     sin = sc.Stream()
-    sout = sc.map(pick_allowed_detectors, sin)
+    sout = sc.map(sin, pick_allowed_detectors)
     # turn list into individual streams
     # (if empty list, emits nothing, this is sort of like filter)
     sout = sout.concat()
@@ -192,8 +192,8 @@ def CalibrationStream():
 
     # save the futures to a list (scheduler will ensure caching of result if
     # any reference to a future is kept)
-    sc.map(lambda calibration :
-           streams_globals.futures_cache.append(calibration), sout)
+    sc.map(sout, lambda calibration :
+           streams_globals.futures_cache.append(calibration))
 
     sout = scs.map(lambda calibration:
             client.gather(calibration), sout)
@@ -646,7 +646,7 @@ def ImageStitchingStream(return_intermediate=False):
 
     # TODO : remove the add_attributes part and just keep stream_name
     sin = sc.Stream(name="Image Stitching Stream", stream_name="ImageStitch")
-    sout = sc.map(validate, sin)
+    sout = sc.map(sin, validate)
     # sin.map(lambda x : print("Beginning of stream data\n\n\n"))
     # TODO : remove compute requirement
     # TODO : incomplete
@@ -792,4 +792,25 @@ def call_peak(sqx, sqy):
             )
 
     return res_dict
+
+
+# these are all the nn steps
+from skimage.transform import resize
+from ..processing.nn_fbbenet import infer, normalize_img,\
+    inference_function
+def ImageTaggingStream():
+    ''' Creates an image taggint stream.
+
+        Stream Inputs
+        -------------
+        image : the image to be tagged
+
+        Stream Outputs
+        --------------
+        tag_name : the name of the tag for the image
+    '''
+    sin = sc.Stream()
+    sout = scs.map(infer, scs.select(sin, 'image'))
+    sout = scs.add_attributes(sout, stream_name="image-tag")
+    return sin, sout
 

@@ -122,7 +122,7 @@ def streamdoc_viewer(sdoc):
 # in our case, it's simpler to do this in the beginning
 sin = sc.Stream(stream_name="Input")
 #sin.map(streamdoc_viewer)
-stream_input = SciStreamCallback(sin)
+stream_input = SciStreamCallback(sin.emit)
 
 # these are abbreviations just to make streams access easier
 # this stream filters out data. only outputs data that will work in rest of
@@ -161,7 +161,7 @@ def grab_first_det(**kwargs):
 
 s_image = scs.map(grab_first_det, sout_primary)
 s_image = scs.add_attributes(s_image, stream_name="Image")
-#s_image.map(streamdoc_viewer)
+#s_image.sink(streamdoc_viewer)
 
 
 # TODO : fix and remove this is for pilatus300 should be in mask gen
@@ -309,9 +309,20 @@ sin_linecuts_angularcorr, sout_linecuts_angularcorr = LineCutStream(axis=0,
 sout_angularcorrpeaks.connect(sin_linecuts_angularcorr)
 L_linecuts_angularcorr = sout_linecuts_angularcorr.sink_to_list()
 
+from SciStreams.streams.XS_Streams import ImageTaggingStream
+
+sin_tag, sout_tag = ImageTaggingStream()
+s_maskedimg.connect(sin_tag)
+#s_maskedimg.sink(lambda x : print("masked img : {}".format(x)))
+L_tag = sout_tag.sink_to_list()
+
 
 # useful image normalization tool for plotting
 from SciStreams.tools.image import normalizer
+
+
+from SciStreams.interfaces.xml.xml import store_results_xml
+from SciStreams.interfaces.hdf5 import store_results_hdf5
 
 # sample on how to plot to callback and file
 # (must make it an event stream again first)
@@ -329,6 +340,7 @@ if True:
     event_stream_thumb = scs.to_event_stream(sout_thumb)
     event_stream_angularcorr = scs.to_event_stream(sout_angularcorr)
     event_stream_linecuts_angularcorr = scs.to_event_stream(sout_linecuts_angularcorr)
+    event_stream_tag = scs.to_event_stream(sout_tag)
 
     if liveplots:
         from SciStreams.callbacks.live import LiveImage, LivePlot
@@ -345,10 +357,10 @@ if True:
         # compatibility in the future)
 
         # output to plotting  callbacks
-        event_stream_img.map(scs.star(liveimage_img))
-        event_stream_sqphi.map(scs.star(liveimage_sqphi))
-        event_stream_sq.map(scs.star(liveplot_sq))
-        event_stream_maskedimg.map(scs.star(liveimage_maskedimg))
+        event_stream_img.sink(scs.star(liveimage_img))
+        event_stream_sqphi.sink(scs.star(liveimage_sqphi))
+        event_stream_sq.sink(scs.star(liveplot_sq))
+        event_stream_maskedimg.sink(scs.star(liveimage_maskedimg))
 
     # output to storing callbacks
     from SciStreams.callbacks.saving_mpl.core import StorePlot_MPL
@@ -371,16 +383,21 @@ if True:
                                                      'linecuts', # y
                                                      'linecuts_vals')]) # value
 
-    scs.map(scs.star(plot_storage_img), event_stream_img)
-    scs.map(scs.star(plot_storage_stitch), event_stream_stitched)
-    scs.map(scs.star(plot_storage_sq), event_stream_sq)
-    scs.map(scs.star(plot_storage_sqphi), event_stream_sqphi)
-    scs.map(scs.star(plot_storage_peaks), event_stream_peaks)
-    scs.map(scs.star(plot_storage_linecuts), event_stream_linecuts)
-    scs.map(scs.star(plot_storage_thumb), event_stream_thumb)
-    scs.map(scs.star(plot_storage_angularcorr), event_stream_angularcorr)
-    scs.map(scs.star(plot_storage_linecuts_angularcorr),
+    scs.sink(scs.star(plot_storage_img), event_stream_img)
+    scs.sink(scs.star(plot_storage_stitch), event_stream_stitched)
+    scs.sink(scs.star(plot_storage_sq), event_stream_sq)
+    scs.sink(scs.star(plot_storage_sqphi), event_stream_sqphi)
+    scs.sink(scs.star(plot_storage_peaks), event_stream_peaks)
+    sc.sink(event_stream_peaks, scs.star(SciStreamCallback(store_results_hdf5)))
+    scs.sink(scs.star(plot_storage_linecuts), event_stream_linecuts)
+    scs.sink(scs.star(plot_storage_thumb), event_stream_thumb)
+    scs.sink(scs.star(plot_storage_angularcorr), event_stream_angularcorr)
+    scs.sink(scs.star(plot_storage_linecuts_angularcorr),
             event_stream_linecuts_angularcorr)
+
+    from SciStreams.callbacks.core import SciStreamCallback
+    sc.sink(event_stream_tag, scs.star(SciStreamCallback(store_results_xml)))
+    sc.sink(event_stream_tag, scs.star(SciStreamCallback(store_results_hdf5)))
     #scs.map(print, event_stream_img)
 
 
