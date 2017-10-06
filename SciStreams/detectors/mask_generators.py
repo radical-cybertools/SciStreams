@@ -1,10 +1,9 @@
 from .detectors2D import detectors2D
 import numpy as np
-from functools import partial
 from PIL import Image
 
 from SciStreams.config import master_masks, mask_config
-from SciStreams.data.Mask import BeamstopXYPhi, MaskFrame, MaskGenerator, MasterMask
+from SciStreams.data.Mask import MaskGenerator, MasterMask
 
 
 # TODO : need to fix again...
@@ -20,13 +19,13 @@ def generate_mask(**md):
         blemish_kwargs = mask_config[detector_key]['blemish']
         blemish = np.array(Image.open(blemish_kwargs['filename']))
         if blemish.ndim == 3:
-            blemish = blemish[:,:,0]
+            blemish = blemish[:, :, 0]
 
         return dict(mask=mask*blemish)
 
     # get name from det key
     detector_key = md.get('detector_key', None)
-    detector_name = detector_key[::-1].split("_",1)[-1][::-1]
+    detector_name = detector_key[::-1].split("_", 1)[-1][::-1]
     md['detector_name'] = detector_name
 
     # ensure detector_name exists, else give no mask
@@ -61,8 +60,8 @@ def generate_mask_pilatus300(**md):
     # don't have time to resolve this now
 
     # required keys and confidences
-    #keys = [doc[0] for doc in pilatus_masks['motors']]
-    #confidences = [doc[1] for doc in pilatus_masks['motors']]
+    # keys = [doc[0] for doc in pilatus_masks['motors']]
+    # confidences = [doc[1] for doc in pilatus_masks['motors']]
     keys = ['motor_bsphi', 'motor_bsx', 'motor_bsy']
     # the errors tolerated in the positions
     confidences = [.1, .3, .3]
@@ -73,7 +72,7 @@ def generate_mask_pilatus300(**md):
     blemish_kwargs = mask_config[detector_key]['blemish']
     blemish = np.array(Image.open(blemish_kwargs['filename']))
     if blemish.ndim == 3:
-        blemish = blemish[:,:,0]
+        blemish = blemish[:, :, 0]
 
     if master_mask is not None:
         mmg = MaskGenerator(master_mask, blemish=blemish)
@@ -87,8 +86,10 @@ def generate_mask_pilatus300(**md):
         # get detector shape from det file and make empty mask
         detector_name = _make_detector_name_from_key(detector_key)
         shape = detectors2D[detector_name]['shape']['value']
-        print("No suitable mask found, generating ones with shape {}".format(shape))
-        motor_list = {key : md[key] for key in keys}
+        msg = "No suitable mask found, "
+        msg += "generating ones with shape {}".format(shape)
+        print(msg)
+        motor_list = {key: md[key] for key in keys}
         print("Motors : {}".format(motor_list))
 
         mask = np.ones(shape)
@@ -131,8 +132,8 @@ def generate_mask_pilatus2M(**md):
     # don't have time to resolve this now
 
     # required keys and confidences
-    #keys = [doc[0] for doc in pilatus_masks['motors']]
-    #confidences = [doc[1] for doc in pilatus_masks['motors']]
+    # keys = [doc[0] for doc in pilatus_masks['motors']]
+    # confidences = [doc[1] for doc in pilatus_masks['motors']]
     keys = ['motor_bsphi', 'motor_bsx', 'motor_bsy']
     # the errors tolerated in the positions
     confidences = [10, 1, 1]
@@ -143,7 +144,7 @@ def generate_mask_pilatus2M(**md):
     blemish_kwargs = mask_config[detector_key]['blemish']
     blemish = np.array(Image.open(blemish_kwargs['filename']))
     if blemish.ndim == 3:
-        blemish = blemish[:,:,0]
+        blemish = blemish[:, :, 0]
 
     if master_mask is not None:
         mmg = MaskGenerator(master_mask, blemish=blemish)
@@ -157,8 +158,10 @@ def generate_mask_pilatus2M(**md):
         # get detector shape from det file and make empty mask
         detector_name = _make_detector_name_from_key(detector_key)
         shape = detectors2D[detector_name]['shape']['value']
-        print("No suitable mask found, generating ones with shape {}".format(shape))
-        motor_list = {key : md[key] for key in keys}
+        msg = "No suitable mask found, "
+        msg += "generating ones with shape {}".format(shape)
+        print(msg)
+        motor_list = {key: md[key] for key in keys}
         print("Motors : {}".format(motor_list))
         print("Available masks : {}".format(pilatus_masks))
         mask = np.ones(shape)
@@ -199,8 +202,8 @@ def find_best_mask(masks, keys, confidences, md):
         found_mask = True
         for key, confidence in zip(keys, confidences):
             print("comparing {} with {}".format(mask_params[key], md[key]))
-            #err1 = np.abs(mask_params[key]-md[key])
-            #if err1 > confidence:
+            # err1 = np.abs(mask_params[key]-md[key])
+            # if err1 > confidence:
             a = mask_params[key]
             b = md[key]
             if not np.allclose(a, b, atol=confidence):
@@ -212,6 +215,7 @@ def find_best_mask(masks, keys, confidences, md):
     else:
         retrieved_mask = None
     return retrieved_mask
+
 
 # hard coded mask generators built into the library
 mask_generators = dict(pilatus300=generate_mask_pilatus300,
