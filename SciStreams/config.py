@@ -36,22 +36,23 @@ except FileNotFoundError:
 master_masks = dict()
 if 'maskdir' in config:
     maskdir = config['maskdir']
-    #print("Reading masks from : {}".format(maskdir))
+    # print("Reading masks from : {}".format(maskdir))
 
     # each dir is a key
     keys = os.listdir(maskdir)
     # only directories
     keys = [key for key in keys if os.path.isdir(maskdir + "/" + key)]
-    #print("directories : {}".format(keys))
+    # print("directories : {}".format(keys))
     for key in keys:
         master_masks[key] = list()
         # now populate each mask
         mask_subdir = maskdir + "/" + key
         # TODO : replace with file handlers
         filenames = os.listdir(mask_subdir)
-        #print('reading from subdir {}'.format(mask_subdir))
-        filenames = [filename for filename in filenames if os.path.isfile(mask_subdir + "/" + filename)]
-        #print("filenames : {}".format(filenames))
+        # print('reading from subdir {}'.format(mask_subdir))
+        filenames = [filename for filename in filenames
+                     if os.path.isfile(mask_subdir + "/" + filename)]
+        # print("filenames : {}".format(filenames))
         for filename in filenames:
             # look for npz files
             fname = mask_subdir + '/' + filename
