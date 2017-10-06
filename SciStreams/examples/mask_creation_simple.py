@@ -77,7 +77,13 @@ refpoint = 0, 0
 # pilatus pixel conversion
 scl = .172, .172
 # prepare the filename
-filename = os.path.expanduser("some_mask_name.npz")
+#filename = os.path.expanduser("mask_pilatus2M_master_1.npz")
+for i in range(1000):
+    fname = "~/research/projects/SciAnalysis-data"
+    fname = fname + "/masks/pilatus2M_image/mask_pilatus2M_master_{}.npz".format(i)
+    filename = os.path.expanduser(fname)
+    if not os.path.isfile(filename):
+        break
 kwargs = dict()
 # kwargs.update(startdoc)
 kwargs['mask'] = mask
@@ -105,7 +111,7 @@ blem_fname = mask_config[detector_key]['blemish']['filename']
 blemish = np.array(Image.open(blem_fname))
 
 mmg = MaskGenerator(master_mask, blemish)
-mask = mmg.generate([-72.99992548, -65.00001532])
+mask = mmg.generate(-72.99992548, -65.00001532)
 
 ''' As a further test, we can test that the SciStreams library is also reading
 it properly'''

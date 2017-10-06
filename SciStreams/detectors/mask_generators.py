@@ -59,14 +59,14 @@ def generate_mask_pilatus300(**md):
     # have to add .item() because I saved as npy file
     # don't have time to resolve this now
 
-    # required keys and confidences
+    # required keys and tolerances
     # keys = [doc[0] for doc in pilatus_masks['motors']]
-    # confidences = [doc[1] for doc in pilatus_masks['motors']]
+    # tolerances = [doc[1] for doc in pilatus_masks['motors']]
     keys = ['motor_bsphi', 'motor_bsx', 'motor_bsy']
     # the errors tolerated in the positions
-    confidences = [.1, .3, .3]
+    tolerances = [.1, .3, .3]
 
-    master_mask = find_best_mask(pilatus_masks, keys, confidences, md)
+    master_mask = find_best_mask(pilatus_masks, keys, tolerances, md)
 
     # now the blemish
     blemish_kwargs = mask_config[detector_key]['blemish']
@@ -81,7 +81,7 @@ def generate_mask_pilatus300(**md):
         # hard coded
         motory = md['motor_SAXSy']
         motorx = md['motor_SAXSx']
-        mask = mmg.generate([motory, motorx])
+        mask = mmg.generate(motory, motorx)
     else:
         # get detector shape from det file and make empty mask
         detector_name = _make_detector_name_from_key(detector_key)
@@ -131,14 +131,14 @@ def generate_mask_pilatus2M(**md):
     # have to add .item() because I saved as npy file
     # don't have time to resolve this now
 
-    # required keys and confidences
+    # required keys and tolerances
     # keys = [doc[0] for doc in pilatus_masks['motors']]
-    # confidences = [doc[1] for doc in pilatus_masks['motors']]
+    # tolerances = [doc[1] for doc in pilatus_masks['motors']]
     keys = ['motor_bsphi', 'motor_bsx', 'motor_bsy']
     # the errors tolerated in the positions
-    confidences = [10, 1, 1]
+    tolerances = [10, 1, 1]
 
-    master_mask = find_best_mask(pilatus_masks, keys, confidences, md)
+    master_mask = find_best_mask(pilatus_masks, keys, tolerances, md)
 
     # now the blemish
     blemish_kwargs = mask_config[detector_key]['blemish']
@@ -153,7 +153,7 @@ def generate_mask_pilatus2M(**md):
         # hard coded
         motory = md['motor_SAXSy']
         motorx = md['motor_SAXSx']
-        mask = mmg.generate([motory, motorx])
+        mask = mmg.generate(motory, motorx)
     else:
         # get detector shape from det file and make empty mask
         detector_name = _make_detector_name_from_key(detector_key)
@@ -174,9 +174,9 @@ def _make_detector_name_from_key(name):
     return name[::-1].split("_", maxsplit=1)[-1][::-1]
 
 
-def find_best_mask(masks, keys, confidences, md):
+def find_best_mask(masks, keys, tolerances, md):
     ''' Search file system for best mask that matches
-        the keys keys with errors smaller than confidences (tolerance).
+        the keys keys with errors smaller than tolerances (tolerance).
 
         masks:  a parameter tree of parameters for each mask
            it includes its filename. This allows more convenient lookup of
@@ -200,15 +200,15 @@ def find_best_mask(masks, keys, confidences, md):
             break
         filename = mask_params['filename']
         found_mask = True
-        for key, confidence in zip(keys, confidences):
+        for key, tolerance in zip(keys, tolerances):
             print("comparing {} with {}".format(mask_params[key], md[key]))
             # err1 = np.abs(mask_params[key]-md[key])
-            # if err1 > confidence:
+            # if err1 > tolerance:
             a = mask_params[key]
             b = md[key]
-            if not np.allclose(a, b, atol=confidence):
+            if not np.allclose(a, b, atol=tolerance):
                 print("Error too big : {} is not close to {}".format(a, b))
-                print("Tolerance : +/- {}".format(confidence))
+                print("Tolerance : +/- {}".format(tolerance))
                 found_mask = False
     if found_mask:
         retrieved_mask = MasterMask(filename)
