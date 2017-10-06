@@ -1,11 +1,26 @@
 # create the mask for the pilatus2M
 # import stuff to make plotting easier (NOT advised to do for actual
 # deployment)
-from pylab import *
-ion()
+import os.path
+import numpy as np
+
+from PIL import Image
+from matplotlib.pyplot import ion, imshow, figure, clf, clim
 
 # read some data via databroker
 from SciStreams.interfaces.databroker.databases import databases
+
+# this is a gui
+from SciStreams.tools.MaskCreator import MaskCreator
+
+from SciStreams.config import mask_config
+
+from SciStreams.data.Mask import MasterMask, MaskGenerator
+from SciStreams.detectors.mask_generators import generate_mask
+
+# interactive mode
+ion()
+
 cmsdb = databases['cms:data']
 
 # choose the detector key
@@ -13,7 +28,7 @@ detector_key = "pilatus2M_image"
 
 # some optional filters to limit searches
 cmsdb.add_filter(start_time="2017-09-13", stop_time="2017-09-14")
-hdrs = (list(cmsdb(sample_name = "AgBH_Sep13_2017_JH_test")))
+hdrs = (list(cmsdb(sample_name="AgBH_Sep13_2017_JH_test")))
 
 imgs = cmsdb.get_images(hdrs, detector_key)
 
@@ -22,10 +37,8 @@ ind = 0
 startdoc = hdrs[ind]['start']
 img = imgs[ind]
 
-# this is a gui
-from SciStreams.tools.MaskCreator import MaskCreator
 msk = MaskCreator(data=img)
-msk.set_clim(0,10)
+msk.set_clim(0, 10)
 
 msg = "Use the Mask GUI. Press Enter Here when done"
 msg += " and code will continue"
@@ -60,14 +73,13 @@ refmotory = startdoc['motor_SAXSy']
 
 refpoint_lab = refmotory, refmotorx
 # set this ref point to the 0, 0 coordinate
-refpoint = 0,0
+refpoint = 0, 0
 # pilatus pixel conversion
 scl = .172, .172
-import os.path
 # prepare the filename
 filename = os.path.expanduser("some_mask_name.npz")
 kwargs = dict()
-#kwargs.update(startdoc)
+# kwargs.update(startdoc)
 kwargs['mask'] = mask
 kwargs['refpoint'] = refpoint
 kwargs['refpoint_lab'] = refpoint_lab
@@ -84,12 +96,12 @@ np.savez(filename, **kwargs)
 ''' As a test, we can try reading the mask '''
 # now read
 detector_key = 'pilatus2M_image'
-filename = os.path.expanduser("~/research/projects/SciAnalysis-data/masks/pilatus2M_image/mask_pilatus2M_master_1.npz")
+fname = "~/research/projects/SciAnalysis-data"
+fname = fname + "/masks/pilatus2M_image/mask_pilatus2M_master_1.npz"
+filename = os.path.expanduser(fname)
 # test that it loads fine
-from SciStreams.data.Mask import MasterMask, MaskGenerator
 master_mask = MasterMask(filename)
 blem_fname = mask_config[detector_key]['blemish']['filename']
-from PIL import Image
 blemish = np.array(Image.open(blem_fname))
 
 mmg = MaskGenerator(master_mask, blemish)
@@ -98,7 +110,6 @@ mask = mmg.generate([-72.99992548, -65.00001532])
 ''' As a further test, we can test that the SciStreams library is also reading
 it properly'''
 # GISAXS
-from SciStreams.detectors.mask_generators import generate_mask
 md = dict()
 md.update(**startdoc)
 md.update(detector_key=detector_key)
@@ -106,8 +117,12 @@ md.update(detector_key=detector_key)
 mask = generate_mask(**md)['mask']
 
 # plot them to see they make sense
-figure(2);clf()
-imshow(mask);clim(0,1)
+figure(2)
+clf()
+imshow(mask)
+clim(0, 1)
 
-figure(3);clf()
-imshow(img);clim(0,100)
+figure(3)
+clf()
+imshow(img)
+clim(0, 100)
