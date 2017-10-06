@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def mkGISAXS(shape, r, ld, Narray, x1, y1):
     ''' make a simulated pattern for GISAXS.
 
@@ -13,14 +14,14 @@ def mkGISAXS(shape, r, ld, Narray, x1, y1):
     from SciStreams.data.StitchedImage import StitchedImage
     from shapesim.shapes import CubicLattice3Ellipses
 
-    #maxdim = np.max(shape)
-    #maxdim = np.max([maxdim//2, maxdim-x1, x1, maxdim-y1, y1])
+    # maxdim = np.max(shape)
+    # maxdim = np.max([maxdim//2, maxdim-x1, x1, maxdim-y1, y1])
     maxshape = np.max(shape)
     cenx, ceny = shape[1]//2, shape[0]//2
     dx = np.abs(cenx - x1)
     dy = np.abs(ceny - y1)
-    maxdim = np.max([int(2*maxshape), int(2*maxshape + 2*dx), int(2*maxshape +
-                         2*dy), shape[0], shape[1]])
+    maxdim = np.max([int(2*maxshape), int(2*maxshape + 2*dx),
+                     int(2*maxshape + 2*dy), shape[0], shape[1]])
     print('maxdim : {}'.format(maxdim))
 
     # make a GISAXS pattern, choose some values
@@ -33,40 +34,35 @@ def mkGISAXS(shape, r, ld, Narray, x1, y1):
     # the shift in pixels delta
     delta = 50
 
-    dims=[maxdim, maxdim, maxdim]
+    dims = [maxdim, maxdim, maxdim]
     # try the 4 terms in DWBA
     shp_1 = CubicLattice3Ellipses(r, r, 0, ld, Narray, dims=dims)
-    shp_1.addunits([0,0,0])
+    shp_1.addunits([0, 0, 0])
     shp_1.project()
-
 
     shp_2 = CubicLattice3Ellipses(r, r*np.cos(2*alphar_i), 0, ld, Narray,
                                   dims=dims)
-    shp_2.addunits([0,0,0])
+    shp_2.addunits([0, 0, 0])
     shp_2.project()
 
     shp_3 = CubicLattice3Ellipses(r, r*np.cos(alphar_i), 0, ld, Narray,
                                   dims=dims)
-    shp_3.addunits([0,0,0])
+    shp_3.addunits([0, 0, 0])
     shp_3.project()
 
     shp_4 = CubicLattice3Ellipses(r, r*np.cos(alphar_i), 0, ld, Narray,
                                   dims=dims)
-    shp_4.addunits([0,0,0])
+    shp_4.addunits([0, 0, 0])
     shp_4.project()
-
 
     img1 = shp_1.fimg2
     img2 = shp_2.fimg2
     img3 = shp_3.fimg2
-    img4 = shp_4.fimg2
-
+    # img4 = shp_4.fimg2
 
     mask = np.ones_like(img1)
 
-    real_image = shp_1.img.real
-
-
+    # real_image = shp_1.img.real
 
     # just add first three terms not fourth
     cen1 = np.array(img1.shape)//2
@@ -86,13 +82,12 @@ def mkGISAXS(shape, r, ld, Narray, x1, y1):
 
     scat = simg.image/mask.image
 
-    newcen = np.array([simg.refpoint[0] + y1-cen1[0], simg.refpoint[1] + x1-cen1[1]]).astype(int)
+    newcen = np.array([simg.refpoint[0] + y1-cen1[0],
+                       simg.refpoint[1] + x1-cen1[1]]).astype(int)
     # new det origin
-    oo = y1-shape[0]//2, x1-shape[1]//2
+    # oo = y1-shape[0]//2, x1-shape[1]//2
 
     newscat = scat[newcen[0]:newcen[0] + shape[0], newcen[1]:newcen[1] +
                    shape[1]]
 
     return newscat
-
-
