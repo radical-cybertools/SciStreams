@@ -3,7 +3,7 @@
     layer should reside. Conversions from other interfaces to StreamDoc are
     found in corresponding interface folders.
 '''
-from functools import wraps, singledispatch
+from functools import wraps
 import time
 import sys
 from uuid import uuid4
@@ -11,7 +11,6 @@ from uuid import uuid4
 
 # convenience routine to return a hash of the streamdoc
 # from dask.delayed import tokenize, delayed, Delayed
-from dask.delayed import delayed
 from dask.base import normalize_token
 
 # decorator to add timeouts
@@ -28,17 +27,19 @@ from ..config import DEFAULT_TIMEOUT
 # to some function (unless another streamdoc is merged etc)
 
 
+# This is an internal object that helps keep track of arguments
 class Arguments:
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
 
 
-# general idea : use single dispatch to act differently on different function
-# inputs. This allows one to change behaviour of how output args and kwargs are
-# sent
-#@singledispatch
 def parse_args(res, output_info=None):
+    ''' This is where the arguments are parsed
+        Main rules:
+            if output_info is not set then if dict, these are kwargs
+            if not, whatever the result is is an arg
+    '''
     if output_info is not None:
         # TODO :implement external output information
         return Arguments(res)
@@ -46,15 +47,6 @@ def parse_args(res, output_info=None):
         return Arguments(**res)
     else:
         return Arguments(res)
-
-
-
-
-# don't use Arguments, too complicated
-# will use an external flag for psdm instead
-#@parse_args.register(Arguments)
-#def parse_args_Arguments(res):
-#    return Arguments(*res.args, **res.kwargs)
 
 
 # routines that add on to stream doc functionality
@@ -87,10 +79,12 @@ def add_attributes(sdoc, attributes={}):
     newsdoc = newsdoc.add(attributes=attributes)
     return newsdoc
 
+
 def clear_attributes(sdoc):
     newsdoc = StreamDoc(sdoc)
     newsdoc['attributes'] = dict()
     return newsdoc
+
 
 def to_attributes(sdoc):
     # move kwargs to attributes
@@ -178,6 +172,7 @@ def make_descriptor(data):
 
     return desc
 
+
 def to_event_stream(sdoc, tolist=False):
     event_stream = _to_event_stream(sdoc)
     if tolist:
@@ -237,8 +232,7 @@ def _to_event_stream(sdoc):
     event['timestamps'] = dict()
     event['seq_num'] = 1
 
-
-    # I could fill descriptor and event at same time, 
+    # I could fill descriptor and event at same time,
     # but I worry about time stamps
     for key, data in sdoc.kwargs.items():
         event['data'][key] = data
@@ -258,7 +252,6 @@ def _to_event_stream(sdoc):
     yield "descriptor", descriptor
     yield "event", event
     yield "stop", stop
-
 
 
 class StreamDoc(dict):
@@ -307,7 +300,7 @@ class StreamDoc(dict):
         self._wrapper = streamdoc._wrapper
 
     def add(self, args=[], kwargs={}, attributes={}, statistics={},
-           provenance={}, checkpoint={}):
+            provenance={}, checkpoint={}):
         ''' add args and kwargs'''
         if not isinstance(args, list) and not isinstance(args, tuple):
             args = (args, )
@@ -492,8 +485,6 @@ def _is_streamdoc(doc):
         return False
 
 
-
-
 def parse_streamdoc(name):
     ''' Decorator to parse StreamDocs from functions
 
@@ -517,7 +508,8 @@ def parse_streamdoc(name):
         @wraps(f)
         def f_new(x, x2=None, **kwargs_additional):
             # add a time out to f
-            f_timeout = timeout(10)(f)
+            # TODO : replace with custom time out per stream
+            f_timeout = timeout(DEFAULT_TIMEOUT)(f)
             # print("Running in {}".format(f.__name__))
             if x2 is None:
                 if _is_streamdoc(x):
@@ -556,8 +548,6 @@ def parse_streamdoc(name):
                 print("Error, inputs do not match function type")
                 import inspect
                 sig = inspect.signature(f_timeout)
-                # don't know why I was using this? commented
-                #ba = sig.bind_partial(*args, **kwargs)
                 print("(StreamDoc) Error : Input mismatch on function")
                 print("This means there is an issue with "
                       "The stream architecture")
@@ -589,6 +579,7 @@ def parse_streamdoc(name):
             streamdoc = StreamDoc(attributes=attributes)
             # load in attributes
             # Save outputs to StreamDoc
+            # parse arguments to an object with args and kwargs members
             arguments_obj = parse_args(result)
             # print("StreamDoc, parse_streamdoc : parsed args :
             # {}".format(arguments_obj.args))

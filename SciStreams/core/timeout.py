@@ -6,6 +6,8 @@ import errno
 import os
 import signal
 
+from ..config import DEFAULT_TIMEOUT
+
 import sys
 if sys.platform.startswith('linux'):
     ON_UNIX = True
@@ -13,13 +15,15 @@ else:
     ON_UNIX = False
 
 # TODO : for tests, test both
-#ON_UNIX = False
+
 
 class TimeoutError(Exception):
     pass
 
+
 if ON_UNIX:
-    def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
+    def timeout(seconds=DEFAULT_TIMEOUT,
+                error_message=os.strerror(errno.ETIME)):
         def decorator(func):
             def _handle_timeout(signum, frame):
                 raise TimeoutError(error_message)
