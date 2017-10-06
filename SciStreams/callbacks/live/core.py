@@ -1,10 +1,12 @@
 # eventually we may want to override these
-from bluesky.callbacks import CallbackBase
 from collections import ChainMap
+import warnings
+from bluesky.callbacks import CallbackBase
 
-# these all assumed to depend on matplotlib. if not true, try to isolate 
+# these all assumed to depend on matplotlib. if not true, try to isolate
 # this dependency if possible
 import matplotlib.pyplot as plt
+
 
 # overridden default since it will try to fill results
 # from db. I assume results are always filled here.
@@ -131,7 +133,6 @@ class LivePlot(CallbackBase):
         self.logx = logx
         self.logy = logy
 
-
         if legend_keys is None:
             legend_keys = []
         self.legend_keys = ['scan_id'] + legend_keys
@@ -162,7 +163,7 @@ class LivePlot(CallbackBase):
             [str(doc.get(name, name)) for name in self.legend_keys])
         kwargs = ChainMap(self.kwargs, {'label': label})
         self.current_line, = self.ax.plot([], [], **kwargs)
-        #self.lines.append(self.current_line)
+        # self.lines.append(self.current_line)
         self.lines = [self.current_line]
         self.legend = self.ax.legend(
             loc=0, title=self.legend_title).draggable()
@@ -234,7 +235,6 @@ class LivePlot(CallbackBase):
             print('LivePlot has a different number of elements for x ({}) and'
                   'y ({})'.format(len(self.x_data), len(self.y_data)))
         super().stop(doc)
-
 
 
 # copied from bluesky callbacks core

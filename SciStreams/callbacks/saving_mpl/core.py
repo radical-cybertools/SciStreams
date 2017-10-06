@@ -5,7 +5,7 @@ import os.path
 
 from ...tools.image import findLowHigh
 
-from bluesky.callbacks import CallbackBase
+from .. import CallbackBase
 
 import numpy as np
 
@@ -82,7 +82,7 @@ def _make_fname_from_attrs(**attrs):
 
     return outfile
 
-from .. import CallbackBase
+
 class StorePlot_MPL(CallbackBase):
     def __init__(self, **kwargs):
         ''' kwargs are the options for store_results.
@@ -96,14 +96,14 @@ class StorePlot_MPL(CallbackBase):
 
     def start(self, doc):
         # for each new start save the metadata
-        #print("Got start: {}".format(doc))
+        # print("Got start: {}".format(doc))
         self.md = dict()
         self.start_uid = doc['uid']
         for key, val in doc.items():
             self.md[key] = val
 
     def descriptor(self, doc):
-        #print("Got descriptor: {}".format(doc))
+        # print("Got descriptor: {}".format(doc))
         if self.start_uid != doc['run_start']:
             errormsg = "Error, uid of descriptor and run start"
             errormsg += " do not match. Perhaps a run start"
@@ -115,14 +115,14 @@ class StorePlot_MPL(CallbackBase):
     # approach for now will be to assume all necessary data is in the event
     # itself
     def event(self, doc):
-        #print("Got event: {}".format(doc))
+        # print("Got event: {}".format(doc))
         data = doc['data']
         if doc['descriptor'] != self.descriptor_uid:
             errormsg = "Error, uid of event and run start"
             errormsg += " do not match. Perhaps a run start"
             errormsg += " and descriptor are out of sync"
             raise ValueError(errormsg)
-        #attrs = self.kwargs
+        # attrs = self.kwargs
         attrs = self.md
         # use the store_results function in this file
         # (i.e. don't include it in object)
@@ -152,8 +152,8 @@ def store_results(data, attrs, **kwargs):
                 plot_kws : plot options forwarded to matplotlib
                 images : keys of images
                 lines : keys of lines to plot (on top of images)
-                    if element is a tuple, assume (x,y) format, else assume it's
-                    just y
+                    if element is a tuple, assume (x,y) format, else assume
+                    it's just y
                    elabelsize
                 xlabel
                 ylabel
@@ -172,8 +172,6 @@ def store_results(data, attrs, **kwargs):
     images = kwargs.get('images', [])
     lines = kwargs.get('lines', [])
     linecuts = kwargs.get('linecuts', [])
-
-    stream_name = attrs.get("stream_name", "noname")
 
     xlims = None
     ylims = None
@@ -199,10 +197,10 @@ def store_results(data, attrs, **kwargs):
         plot_images(images, data, img_norm, plot_kws)
     elif len(lines) > 0:
         plot_lines(lines, data, img_norm,
-                plot_kws, xlims=xlims,ylims=ylims)
+                   plot_kws, xlims=xlims, ylims=ylims)
     elif len(linecuts) > 0:
         plot_linecuts(linecuts, data, img_norm, plot_kws,
-                xlims=xlims, ylims=ylims)
+                      xlims=xlims, ylims=ylims)
 
     # plotting the extra options
     if 'labelsize' in plot_kws:
@@ -258,7 +256,8 @@ def store_results(data, attrs, **kwargs):
     plt.close(fig)
 
 
-def plot_linecuts(linecuts_keys, data, img_norm, plot_kws, xlims=None, ylims=None):
+def plot_linecuts(linecuts_keys, data, img_norm, plot_kws, xlims=None,
+                  ylims=None):
     ''' assume that each linecut is a 2d image meant to be plotted as 1d
         linecuts can be tuples or one key. if tuple, first index assumed x-axis
     '''
@@ -266,7 +265,7 @@ def plot_linecuts(linecuts_keys, data, img_norm, plot_kws, xlims=None, ylims=Non
     # assumes plot has been cleared already
     # and fig selected
     for linecuts_key in linecuts_keys:
-        if isinstance(linecuts_key, tuple) and len(linecuts_key) >1:
+        if isinstance(linecuts_key, tuple) and len(linecuts_key) > 1:
             if linecuts_key[0] in data and linecuts_key[1] in data:
                 x = data[linecuts_key[0]]
                 y = data[linecuts_key[1]]
@@ -303,7 +302,7 @@ def plot_linecuts(linecuts_keys, data, img_norm, plot_kws, xlims=None, ylims=Non
                     tmplabel = "value : {}".format(ylabels[i])
                 else:
                     tmplabel = "value : {}".format(i)
-                plt.plot(x, linecut, **plot_kws,label="peak {}".format(i))
+                plt.plot(x, linecut, **plot_kws, label=tmplabel)
                 plt.legend()
                 plt.xlim(*xlims)
 
@@ -370,6 +369,7 @@ def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None):
     plt.xlim(*xlims)
     plt.ylim(*ylims)
 
+
 def plot_images(images, data, img_norm, plot_kws):
     import matplotlib.pyplot as plt
     for key in images:
@@ -399,6 +399,7 @@ def plot_images(images, data, img_norm, plot_kws):
         else:
             print("Warning : key {} not found ".format(key) +
                   "in data for plotting(mpl)")
+
 
 def correct_ylimits(ax):
     # correct for funky plots, mainly for loglog

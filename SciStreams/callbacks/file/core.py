@@ -1,43 +1,13 @@
 # file callbacks
 from collections import OrderedDict
 from ...interfaces.file.core import writers_dict
-import os
 from ... import config
 from ...interfaces.file.reading import FileDesc  # noqa
+from ...utils.file import make_dir, _cleanup_str
+
 
 _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
-
-# get from the upper directory (module)
-from ..core import SciStreamCallback
-
-def make_dir(directory):
-    ''' Creates directory if doesn't exist.'''
-    if not os.path.isdir(directory):
-        os.makedirs(directory)
-
-# store results decorator
-
-
-# store results decorator for file
-# as of now function that returns decorator takes no arguments
-def store_results(**options):
-    def store_results_decorator(f):
-        def f_new(*args, **kwargs):
-            res = f(*args, **kwargs)
-            store_results_file(res, **options)
-            return res
-        return f_new
-    return store_results_decorator
-
-
-def _cleanup_str(string):
-    string = string.replace(" ", "_")
-    string = string.replace("/", "_")
-    string = string.replace("(", "_")
-    string = string.replace(")", "_")
-    string = string.replace(":", "_")
-    return string
 
 
 def _make_fname_from_attrs(attrs):

@@ -10,6 +10,7 @@ def make_dir(directory):
     if not os.path.isdir(directory):
         os.makedirs(directory)
 
+
 def access_dir(base, extra=''):
     '''Returns a string which is the desired output directory.
     Creates the directory if it doesn't exist.'''
@@ -19,10 +20,12 @@ def access_dir(base, extra=''):
 
     return output_dir
 
+
 def get_filebase(name):
     basename = os.path.basename(name)
     basename, ext = os.path.splitext(basename)
     return basename
+
 
 def _cleanup_str(string):
     string = string.replace(" ", "_")
@@ -31,6 +34,7 @@ def _cleanup_str(string):
     string = string.replace(")", "_")
     string = string.replace(":", "_")
     return string
+
 
 def _make_fname_from_attrs(attrs, filetype="xml"):
     ''' make filename from attributes.

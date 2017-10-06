@@ -1,16 +1,12 @@
 # xml callbacks
 from collections import OrderedDict
 from ...interfaces.file.core import writers_dict
-import os
 from ... import config
 from ...interfaces.file.reading import FileDesc  # noqa
+from ...utils.file import _make_fname_from_attrs
 
 _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
-
-# get from the upper directory (module)
-from ..core import SciStreamCallback
-
 
 
 def store_results_file(results, writers={}):

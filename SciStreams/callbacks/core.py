@@ -1,5 +1,6 @@
 from SciStreams.core.StreamDoc import StreamDoc
 
+
 class CallbackBase:
     def __call__(self, name, doc):
         "Dispatch to methods expecting particular doc types."
@@ -19,6 +20,7 @@ class CallbackBase:
 
     def stop(self, doc):
         pass
+
 
 # callback to convert eventstream to a scistream
 class SciStreamCallback(CallbackBase):
