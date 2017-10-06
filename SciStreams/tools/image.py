@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def findLowHigh(img, maxcts=None, percentage=.05):
     ''' Find the reasonable low and high values of an image
             based on its histogram.
@@ -46,6 +47,7 @@ def findLowHigh(img, maxcts=None, percentage=.05):
 
     return low, high
 
+
 def normalizer(image):
     # normalizer for images before plotting
     img = np.copy(image)
@@ -67,4 +69,3 @@ def normalizer(image):
     img[whigh] = high
 
     return img
-
