@@ -1,11 +1,8 @@
-# import numpy as np
 from skbeam.core.accumulators.binned_statistic import BinnedStatistic2D
-#from ..core.StreamDoc import Arguments
 
 
-
-def qphiavg(image, q_map=None, phi_map=None, mask=None, bins=(800, 360), origin=None, range=None,
-            statistic='mean'):
+def qphiavg(image, q_map=None, phi_map=None, mask=None, bins=(800, 360),
+            origin=None, range=None, statistic='mean'):
     ''' quick qphi average calculator.
         ignores bins for now
     '''

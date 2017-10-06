@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def center2edge(centers, positive=True):
     ''' Transform a set of bin centers to edges
         This is useful for non-uniform bins.

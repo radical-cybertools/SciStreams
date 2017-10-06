@@ -18,6 +18,6 @@
 '''
 
 
-from sidl.nn_fbbenet.infer import infer,\
-    normalize_img, reduce_img,\
-    inference_function
+from sidl.nn_fbbenet.infer import infer  # noqa
+from sidl.nn_fbbenet.infer import normalize_img, reduce_img  # noqa
+from sidl.nn_fbbenet.infer import inference_function  # noqa

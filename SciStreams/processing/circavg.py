@@ -1,7 +1,7 @@
 import numpy as np
 from skbeam.core.accumulators.binned_statistic import BinnedStatistic1D
-#from ..core.StreamDoc import Arguments
 from .partitioning import center2edge
+
 
 def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
     ''' computes the circular average.'''
@@ -37,9 +37,9 @@ def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
     # now we use the real rbins, taking into account Ewald curvature
     # rbinstat = RadialBinnedStatistic(image.shape, bins=bins, rpix=q_map,
     # statistic='mean', mask=mask)
-    #print("qmap shape : {}".format(q_map.shape))
-    #print("number bins : {}".format(bins))
-    #print("mask shape : {}".format(mask.shape))
+    # print("qmap shape : {}".format(q_map.shape))
+    # print("number bins : {}".format(bins))
+    # print("mask shape : {}".format(mask.shape))
     rbinstat = BinnedStatistic1D(q_map.reshape(-1), statistic='mean',
                                  bins=bins, mask=mask.ravel())
     sqy = rbinstat(image.ravel())
