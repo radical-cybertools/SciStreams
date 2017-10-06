@@ -2,8 +2,11 @@ from functools import wraps
 
 from streamz import Stream
 import streamz
-from SciStreams.core.StreamDoc import psdm, psda, StreamDoc
+from SciStreams.core.StreamDoc import psdm, psda, StreamDoc, squash
 import SciStreams.core.StreamDoc as StreamDoc_core
+
+def squash(child):
+    return streamz.map(child, squash)
 
 def map(func, child, args=(), input_info=None,
         output_info=None, **kwargs):
@@ -64,3 +67,15 @@ def istar(f):
     def f_new(*args):
         return f(args)
     return f_new
+
+# viewer convenience routine
+
+def streamdoc_viewer(sdoc):
+    print("StreamDoc : {}".format(sdoc['uid']))
+    nargs = len(sdoc.args)
+    nkwargs = len(sdoc.kwargs)
+    kwargs_keys = list(sdoc.kwargs.keys())
+    md_keys = list(sdoc.attributes.keys())
+    print("number of args: {}".format(nargs))
+    print("kwargs keys: {}".format(kwargs_keys))
+    print("attribute keys: {}".format(md_keys))

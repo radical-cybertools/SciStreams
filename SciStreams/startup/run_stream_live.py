@@ -28,7 +28,6 @@ from tornado import gen
 
 from SciStreams.callbacks import CallbackBase, SciStreamCallback
 
-from SciStreams.detectors import detectors2D
 from SciStreams.detectors.mask_generators import generate_mask
 
 from SciStreams.core.StreamDoc import StreamDoc
@@ -39,6 +38,22 @@ import SciStreams.core.StreamDoc as sd
 # the differen streams libs
 import streamz.core as sc
 import SciStreams.core.scistreams as scs
+
+
+# import the different streams
+from SciStreams.streams.XS_Streams import PrimaryFilteringStream
+from SciStreams.streams.XS_Streams import AttributeNormalizingStream
+from SciStreams.streams.XS_Streams import CalibrationStream
+from SciStreams.streams.XS_Streams import CircularAverageStream
+from SciStreams.streams.XS_Streams import PeakFindingStream
+from SciStreams.streams.XS_Streams import ImageStitchingStream
+
+
+# TODO : move these out and put in stream folder
+# use reg stream mapping
+from SciStreams.streams.XS_Streams import normalize_calib_dict,\
+        add_detector_info, make_calibration
+
 
 class LivePlot_Custom(CallbackBase):
     def start(self, doc):
@@ -63,71 +78,15 @@ class LivePlot_Custom(CallbackBase):
             plt.plot(x0, y0, 'ro')
 
 
-
-def safelog10(img):
-    img_out = np.zeros_like(img)
-    w = np.where(img > 0)
-    img_out[w] = np.log10(img[w])
-    return img_out
-
-
-# sample custom written function
-def PCA_fit(data, n_components=10):
-    ''' Run principle component analysis on data.
-        n_components : num components (default 10)
-    '''
-    # first reshape data if needed
-    if data.ndim > 2:
-        datashape = data.shape[1:]
-        data = data.reshape((data.shape[0], -1))
-
-    from sklearn.decomposition import PCA
-    pca = PCA(n_components=n_components)
-    pca.fit(data)
-    components = pca.components_.copy()
-    components = components.reshape((n_components, *datashape))
-    return dict(components=components)
-
-
-def isSAXS(sdoc):
-    ''' return true only if a SAXS expt.'''
-    attr = sdoc['attributes']
-    if 'experiment_type' in attr:
-        # print("experiment type : {}".format(attr['experiment_type']))
-        expttype = attr['experiment_type']
-        if expttype == 'SAXS' or expttype == 'TSAXS':
-            return True
-    return False
-
-
-# use map to take no input info
-#
-
-globaldict = dict()
-
-
-def streamdoc_viewer(sdoc):
-    print("StreamDoc : {}".format(sdoc['uid']))
-    nargs = len(sdoc.args)
-    nkwargs = len(sdoc.kwargs)
-    kwargs_keys = list(sdoc.kwargs.keys())
-    md_keys = list(sdoc.attributes.keys())
-    print("number of args: {}".format(nargs))
-    print("kwargs keys: {}".format(kwargs_keys))
-    print("attribute keys: {}".format(md_keys))
-
-
-
 # We need to normalize metadata, which is used for saving, somewhere
 # in our case, it's simpler to do this in the beginning
 sin = sc.Stream(stream_name="Input")
-#sin.map(streamdoc_viewer)
+#sin.map(scs.streamdoc_viewer)
 stream_input = SciStreamCallback(sin.emit)
 
 # these are abbreviations just to make streams access easier
 # this stream filters out data. only outputs data that will work in rest of
 # stream
-from SciStreams.streams.XS_Streams import PrimaryFilteringStream
 sin_primary, sout_primary = PrimaryFilteringStream()
 sin.connect(sin_primary)
 
@@ -137,38 +96,27 @@ L_primary = sout_primary.sink_to_list()
 
 # get the attributes, clean them up and return 
 # new sout_primary
-from SciStreams.streams.XS_Streams import AttributeNormalizingStream
 sin_attributes, sout_attributes = AttributeNormalizingStream()
 sout_primary.connect(sin_attributes)
 
-# use reg stream mapping
-from SciStreams.streams.XS_Streams import normalize_calib_dict,\
-        add_detector_info, make_calibration
 
 sout_primary = scs.merge(sc.zip(sout_primary, scs.to_attributes(sout_attributes)))
 
-from SciStreams.streams.XS_Streams import CalibrationStream
 sin_calib, sout_calib = CalibrationStream()
 sout_attributes.connect(sin_calib)
 L_calib = sout_calib.sink_to_list()
 
-def grab_first_det(**kwargs):
-    ''' take first det and make it image key
-        cludge for now
-    '''
-    key = list(kwargs.keys())[0]
-    return dict(image=kwargs[key])#, detector_key=key)
-
-s_image = scs.map(grab_first_det, sout_primary)
-s_image = scs.add_attributes(s_image, stream_name="Image")
-#s_image.sink(streamdoc_viewer)
+# the PrimaryFilteringStream already split the detectors
+s_image = scs.add_attributes(sout_primary, stream_name="image")
 
 
 # TODO : fix and remove this is for pilatus300 should be in mask gen
-s_mask = scs.map(generate_mask, sout_attributes)#, override="masktmp.npy")
-#s_mask.map(lambda x : print(x.kwargs['mask'].shape))
-#s_mask.map(streamdoc_viewer)
+s_mask = scs.map(generate_mask, sout_attributes)
 
+
+s_imgmaskcalib = scs.merge(sc.zip(s_image, sout_calib, s_mask))
+
+# some small streams
 def get_origin(**kwargs):
     ''' get the origin from the attributes.'''
     x = kwargs.get('beamx0', None)
@@ -186,7 +134,6 @@ def get_exposure(**kwargs):
 def get_stitch(**kwargs):
     return dict(stitchback=kwargs.get('stitchback', False))
 
-s_imgmaskcalib = scs.merge(sc.zip(s_image, sout_calib, s_mask))
 
 s_origin = scs.map(get_origin, sout_attributes)
 
@@ -196,20 +143,17 @@ s_stitch = scs.map(get_stitch, sout_attributes)
 # name the stream for proper output
 
 # circular average
-from SciStreams.streams.XS_Streams import CircularAverageStream
 sin_circavg, sout_circavg = CircularAverageStream()
 s_imgmaskcalib.connect(sin_circavg)
 L_circavg = sout_circavg.sink_to_list()
 
 # peak finding
-from SciStreams.streams.XS_Streams import PeakFindingStream
 sin_peakfind, sout_peakfind = PeakFindingStream()
 sout_circavg.connect(sin_peakfind)
 
 # merge with sq
 sout_sqpeaks = scs.merge(sc.zip(sout_circavg, scs.select(sout_peakfind,
                                 'inds_peak', 'peaksx', 'peaksy')))
-
 
 L_sqpeaks = sout_sqpeaks.sink_to_list()
 
@@ -219,13 +163,11 @@ def normexposure(image, exposure_time):
 
 
 # image stitching
-from SciStreams.processing.stitching import xystitch_accumulate, xystitch_result
 # normalize by exposure time
 s_imagenorm = scs.map(normexposure, scs.merge(sc.zip(s_exposure, s_image)))
 # use this for image stitch
 s_imgmaskoriginstitch = scs.merge(sc.zip(s_imagenorm, s_mask, s_origin, s_stitch))
 
-from SciStreams.streams.XS_Streams import ImageStitchingStream
 sin_stitched, sout_stitched = ImageStitchingStream(return_intermediate=True)
 s_imgmaskoriginstitch.connect(sin_stitched)
 
@@ -398,6 +340,8 @@ if True:
     from SciStreams.callbacks.core import SciStreamCallback
     # save the peaks info
     sc.sink(event_stream_peaks, scs.star(SciStreamCallback(store_results_hdf5)))
+
+    sc.sink(event_stream_img, scs.star(SciStreamCallback(store_results_hdf5)))
 
     sc.sink(event_stream_tag, scs.star(SciStreamCallback(store_results_xml)))
     sc.sink(event_stream_tag, scs.star(SciStreamCallback(store_results_hdf5)))

@@ -1,33 +1,26 @@
 # TODO : add pixel procesing/thresholding threshold_pixels((2**32-1)-1) # Eiger
 # inter-module gaps
-# TODO : add thumb
 
 from .. import globals as streams_globals
-
 
 from dask import set_options
 set_options(delayed_pure=True)  # noqa
 
 import numpy as np
 
-from collections import ChainMap
-from ..data.Singlet import Singlet
-
-# Sources
+# Detector information
 from ..detectors import detectors2D
-
-# wrappers for parsing streamdocs
-#from ..core.StreamDoc import select, pack, unpack, todict,\
-        #add_attributes, psdm, psda
 
 from ..processing.stitching import xystitch_accumulate, xystitch_result
 from ..processing.circavg import circavg
 from ..processing.qphiavg import qphiavg
 from ..processing.image import blur as _blur, crop as _crop, resize as _resize
 from ..processing import rdpc
+from ..processing.angularcorr import angular_corr
+from ..processing.nn_fbbenet import infer
+from ..processing.peak_finding import peak_finding
 
 from ..config import config
-keymaps = config['keymaps']
 
 
 '''
@@ -41,21 +34,14 @@ import streamz as sc
 import SciStreams.core.scistreams as scs
 import SciStreams.core.StreamDoc as sd
 
-#from ..core.streams import Stream
-
-# cache for qmaps
-# TODO : clean this up
+keymaps = config['keymaps']
 
 # NOTE : When defining streams, make sure to place the expected inputs
 # and outputs in the docstrings! See stream below for a good example.
 
-
-# CALIBRATION STREAM CREATION DELETED: put in startup/run_stream_live_shed.py
-# for now
 allowed_detector_keys = ['pilatus2M_image', 'pilatus300_image']
 
-# use map to take no input info
-#
+
 def pick_allowed_detectors(sdoc):
     ''' Only pass through 2d array events, ignore rest.
 
@@ -88,22 +74,14 @@ def pick_allowed_detectors(sdoc):
         # everything is good, output this in list
         new_md = dict(md)
         new_md.update(detector_key=key)
-        new_kwargs = dict(key=kwargs[key])
+        new_kwargs = dict(image=data)
         sdoc_new = sd.StreamDoc(kwargs=new_kwargs, attributes=new_md)
         sdocs.append(sdoc_new)
 
     return sdocs
 
 
-def check_data(sdoc):
-    ''' Check that the data contains a detector_key key.
-        If it does not, then ignore it.
-    '''
-    truth_value = sdoc.attributes['detector_key'] is not None
-    return truth_value
-
-
-### Streams : These return an sin and sout
+# Streams : These return an sin and sout
 def PrimaryFilteringStream():
     ''' Filter the stream for just primary results.
         Stream Inputs
@@ -127,13 +105,14 @@ def PrimaryFilteringStream():
                 if there was more than one, it selects one of them
                 Note this has unspecified behaviour.
     '''
-    sin = sc.Stream()
+    sin = sc.Stream(stream_name="Primary Filter")
     sout = sc.map(sin, pick_allowed_detectors)
     # turn list into individual streams
     # (if empty list, emits nothing, this is sort of like filter)
     sout = sout.concat()
     # just some checks to see if it's good data, else ignore
     return sin, sout
+
 
 def AttributeNormalizingStream():
     sin = sc.Stream()
@@ -171,7 +150,7 @@ def CalibrationStream():
             bookkeep)
 
     '''
-    sin = sc.Stream()
+    sin = sc.Stream(stream_name="Calibration")
     sout = scs.map(make_calibration, sin)
 
     # this piece should be computed using Dask
@@ -179,27 +158,26 @@ def CalibrationStream():
         calibration.generate_maps()
         return dict(calibration=calibration)
 
-    from streamz.dask import scatter, gather
-    import SciStreams.globals as streams_globals
+    # from streamz.dask import scatter, gather
     from SciStreams.globals import client
 
     # TODO : change to use scatter/gather
     # (need to setup event loop for this etc)
 
     sout = scs.map(lambda calibration:
-                          client.submit(_generate_qxyz_maps, calibration),
-                          sout)
+                   client.submit(_generate_qxyz_maps, calibration),
+                   sout)
 
     # save the futures to a list (scheduler will ensure caching of result if
     # any reference to a future is kept)
-    sc.map(sout, lambda calibration :
+    sc.map(sout, lambda calibration:
            streams_globals.futures_cache.append(calibration))
 
     sout = scs.map(lambda calibration:
-            client.gather(calibration), sout)
+                   client.gather(calibration), sout)
 
     return sin, sout
-#####
+
 
 def normalize_calib_dict(**md):
     ''' Normalize the calibration parameters to a set of parameters that the
@@ -214,7 +192,7 @@ def normalize_calib_dict(**md):
         name = val['name']
         if name is not None:
             # for debugging
-            #print("setting {} to {}".format(name, key))
+            # print("setting {} to {}".format(name, key))
             # swap out temp vals
             tmpval = md.pop(name, val['default_value'])
             default_unit = val['default_unit']
@@ -316,8 +294,8 @@ def make_calibration(**md):
     calib_object.set_image_size(width, height)
     calib_object.set_beam_position(md['beamx0']['value'],
                                    md['beamy0']['value'])
-    #print("calibration object: {}".format(calib_object))
-    #print("calibration object members: {}".format(calib_object.__dict__))
+    # print("calibration object: {}".format(calib_object))
+    # print("calibration object members: {}".format(calib_object.__dict__))
 
     return dict(calibration=calib_object)
 
@@ -394,7 +372,7 @@ def CircularAverageStream():
         # kwargs are optional so don't validate them
         return x
 
-    sin = sc.Stream(name="Circular Average Stream")
+    sin = sc.Stream(stream_name="Circular Average")
     sout = scs.add_attributes(sin, stream_name="circavg")
     sout = sout.map(validate)
     sout = scs.map(circavg_from_calibration, sout)
@@ -443,12 +421,12 @@ def QPHIMapStream(bins=(400, 400)):
     '''
     #
 
-    from SciStreams.processing.qphiavg import qphiavg
-    sin = sc.Stream(name="QPHI map Stream")
-    sout = scs.map(qphiavg, sin, bins=(800,360))
+    sin = sc.Stream(stream_name="QPHI map Stream")
+    sout = scs.map(qphiavg, sin, bins=(800, 360))
     sout = scs.add_attributes(sout, stream_name="qphiavg")
 
     return sin, sout
+
 
 def LineCutStream(axis=0, name=None):
     ''' Obtain line cuts from a 2D image.
@@ -492,7 +470,6 @@ def LineCutStream(axis=0, name=None):
             tmp = y
             y = x
             x = tmp
-            img = img.T
 
         linecuts_domain = x
         for val in vals:
@@ -500,13 +477,12 @@ def LineCutStream(axis=0, name=None):
             linecuts.append(image[ind])
             linecuts_vals.append(y[ind])
 
-
         return dict(linecuts=linecuts, linecuts_domain=linecuts_domain,
                     linecuts_vals=linecuts_vals)
 
     # the string for the axis
     axisstr = ['y', 'x'][axis]
-    sin = sc.Stream(name="Line Cuts")
+    sin = sc.Stream(stream_name="Line Cuts")
     sout = scs.map(linecuts, sin, axis=axis)
     if name is None:
         stream_name = 'linecuts-axis{}'.format(axisstr)
@@ -518,8 +494,7 @@ def LineCutStream(axis=0, name=None):
     return sin, sout
 
 
-from SciStreams.processing.angularcorr import angular_corr
-def AngularCorrelatorStream(bins=(800,360)):
+def AngularCorrelatorStream(bins=(800, 360)):
     ''' Stream to run angular correlations.
 
         Stream Inputs
@@ -545,9 +520,9 @@ def AngularCorrelatorStream(bins=(800,360)):
         Incomplete
     '''
     # TODO : Allow optional kwargs in streams
-    sin = sc.Stream(name="Angular Correlation")
-    sout = scs.select(sin, ('image', 'image'), ('mask', 'mask'), ('origin',
-                        'origin'), ('q_map', 'r_map'))
+    sin = sc.Stream(stream_name="Angular Correlation")
+    sout = scs.select(sin, ('image', 'image'), ('mask', 'mask'),
+                      ('origin', 'origin'), ('q_map', 'r_map'))
     sout = scs.map(angular_corr, sout, bins=bins)
     sout = scs.add_attributes(sout, stream_name="angular-corr")
     return sin, sout
@@ -645,7 +620,7 @@ def ImageStitchingStream(return_intermediate=False):
         return x
 
     # TODO : remove the add_attributes part and just keep stream_name
-    sin = sc.Stream(name="Image Stitching Stream", stream_name="ImageStitch")
+    sin = sc.Stream(stream_name="Image Stitching Stream")
     sout = sc.map(sin, validate)
     # sin.map(lambda x : print("Beginning of stream data\n\n\n"))
     # TODO : remove compute requirement
@@ -660,7 +635,7 @@ def ImageStitchingStream(return_intermediate=False):
         return args
 
     sout = scs.map(pack, sout)
-    #sout = scs.map(s3.map(psdm(pack))
+    # sout = scs.map(s3.map(psdm(pack))
     sout = scs.accumulate(_xystitch_accumulate, sout)
 
     sout = scs.map(scs.star(_xystitch_result), sout)
@@ -691,7 +666,7 @@ def ImageStitchingStream(return_intermediate=False):
         # keep previous two results
         sout = sout.sliding_window(2)
         sout = sout.filter(stitchbackcomplete)
-        sout = sout.map(lambda x : x[0])
+        sout = sout.map(lambda x: x[0])
 
     return sin, sout
 
@@ -726,7 +701,7 @@ def ThumbStream(blur=None, crop=None, resize=None):
 
     '''
     # TODO add flags to actually process into thumbs
-    sin = sc.Stream(name="Thumbnail Stream")
+    sin = sc.Stream(stream_name="Thumbnail Stream")
     sout = scs.add_attributes(sin, stream_name="thumb")
     # s1 = sin.add_attributes(stream_name="ThumbStream")
     sout = scs.map(_blur, sout, sigma=blur)
@@ -747,16 +722,16 @@ def PeakFindingStream():
         Stream Outputs
         -------------
     '''
-    sin = sc.Stream()
+    sin = sc.Stream(stream_name="Peak Finder")
     # pkfind stream
     sout = scs.map(call_peak, scs.select(sin, 'sqy', 'sqx'))
     sout = scs.add_attributes(sout, stream_name='peakfind')
     return sin, sout
 
+
 # try peak finding code
-from processing.peak_finding import peak_finding
 def call_peak(sqx, sqy):
-    res = peak_finding(intensity=sqy,frac=0.0001).peak_position()
+    res = peak_finding(intensity=sqy, frac=0.0001).peak_position()
 
     model = res[0]
     y_origin = res[1]
@@ -795,9 +770,6 @@ def call_peak(sqx, sqy):
 
 
 # these are all the nn steps
-from skimage.transform import resize
-from ..processing.nn_fbbenet import infer, normalize_img,\
-    inference_function
 def ImageTaggingStream():
     ''' Creates an image taggint stream.
 
@@ -809,8 +781,53 @@ def ImageTaggingStream():
         --------------
         tag_name : the name of the tag for the image
     '''
-    sin = sc.Stream()
+    sin = sc.Stream(stream_name="Image Tagger")
     sout = scs.map(infer, scs.select(sin, 'image'))
     sout = scs.add_attributes(sout, stream_name="image-tag")
     return sin, sout
 
+
+def PCAStream(Nimgs=100, n_components=16):
+    '''
+        This runs principle component analysis on the last Nimgs
+
+        Stream Inputs
+        -------------
+        'image' : the nth image
+
+        Stream Outputs
+        --------------
+        components : the components
+
+        Returns
+        -------
+        sin : the input stream
+        sout : the output stream
+
+        you need to connect these streams for them to be useful
+    '''
+    sin = sc.Stream(stream_name="PCA Stream")
+    sout = sin.sliding_window(Nimgs)
+    sout = scs.select(sin, ('image', 'data'))
+    sout = scs.squash(sin)
+    sout = scs.map(sout, PCA_fit, n_components=n_components)
+
+    return sin, sout
+
+
+# sample custom written function
+def PCA_fit(data, n_components=10):
+    ''' Run principle component analysis on data.
+        n_components : num components (default 10)
+    '''
+    # first reshape data if needed
+    if data.ndim > 2:
+        datashape = data.shape[1:]
+        data = data.reshape((data.shape[0], -1))
+
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=n_components)
+    pca.fit(data)
+    components = pca.components_.copy()
+    components = components.reshape((n_components, *datashape))
+    return dict(components=components)
