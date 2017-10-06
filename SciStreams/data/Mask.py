@@ -42,7 +42,6 @@ class MasterMask:
         self.scl = res['scl']
 
 
-
 # TODO add decorators for sciresults
 # for now, can't make into a sciresult
 # @run_default("XSAnalysis_MaskGenerator", False, False, False, True)
@@ -90,7 +89,7 @@ class MaskGenerator:
         self.refpoint_lab = master_mask.refpoint_lab
 
         self.scl = master_mask.scl
-        #self.masterrefpoint = obstruction.refpoint
+        # self.masterrefpoint = obstruction.refpoint
         self.blemish = blemish
         self.usermask = usermask
 
@@ -149,7 +148,8 @@ def make_submask(master_mask, refpoint, shape, blemish=None):
 class MaskFrame(Obstruction):
     def __init__(self, filename):
         # rotation_center not needed here
-        self.mmask_frame, self.origin_frame, rotation_center = load_master_mask(filename)
+        self.mmask_frame, self.origin_frame, rotation_center =\
+            load_master_mask(filename)
         super(MaskFrame, self).__init__(self.mmask_frame, self.origin_frame)
 
 
@@ -195,7 +195,7 @@ class BeamstopXYPhi(Obstruction):
         print("orig rot center : {}".format(rotation_center))
 
         # 1. Given image (from filename) where ref motor positions recorded
-        # are (need to list *all* motors for any components involved, 
+        # are (need to list *all* motors for any components involved,
         # for now, just beamstop and detector), in *lab frame*:
         # bsx_ref_lab, bsy_ref_lab
         # SAXSx_ref_lab, SAXSy_ref_lab
@@ -214,7 +214,7 @@ class BeamstopXYPhi(Obstruction):
         bstop_shifty_detp = bstop_shifty_lab/scly
 
         print("shift refpoint by {}, {}".format(bstop_shiftx_detp,
-            bstop_shifty_detp))
+              bstop_shifty_detp))
         # 4. the ref point now needs to be updated according to this shift
         refpointy, refpointx = refpoint
         refpointx = (refpointx + bstop_shiftx_detp)
@@ -225,17 +225,16 @@ class BeamstopXYPhi(Obstruction):
         # now figure out the rotation
         dphi_bstop_lab = bsphi_lab - bsphi_ref_lab
 
-        super(BeamstopXYPhi, self).__init__((mask==0).astype(np.float),
+        super(BeamstopXYPhi, self).__init__((mask == 0).astype(np.float),
                                             refpoint=refpoint,
                                             rotation_center=rotation_center)
         # now rotate
         print("rotate by {}".format(-dphi_bstop_lab))
         self.rotate(-dphi_bstop_lab)
 
-
     def _generate_beamstop_mask(self, bsphi, bsx, bsy):
         # change origin
-        #obs.origin = 786, 669
+        # obs.origin = 786, 669
         rotangle = -(bsphi - self.ref_bsphi)
         shftx = -(bsx - self.ref_bsx)
         shfty = -(bsy - self.ref_bsy)
@@ -246,5 +245,5 @@ class BeamstopXYPhi(Obstruction):
         self.rotate(rotangle)
         self.shiftx(shftx)
         self.shifty(shfty)
-        #self.shiftx(-(bsx - self.ref_bsx)/self.dx)
-        #self.shifty(-(bsy - self.ref_bsy)/self.dy)
+        # self.shiftx(-(bsx - self.ref_bsx)/self.dx)
+        # self.shifty(-(bsy - self.ref_bsy)/self.dy)

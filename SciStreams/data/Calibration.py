@@ -72,36 +72,34 @@ class CalibrationBase(object):
         wavelength_m = (h*c)/energy_J
         self.wavelength_A = wavelength_m*1e+10
 
-
     def get_energy(self):
         '''Get the x-ray beam energy (in keV) for this setup.'''
 
-        h = 6.626068e-34 # m^2 kg / s
-        c = 299792458 # m/s
+        h = 6.626068e-34  # m^2 kg / s
+        c = 299792458  # m/s
 
-        wavelength_m = self.wavelength_A*1e-10 # m
-        E = h*c/wavelength_m # Joules
+        wavelength_m = self.wavelength_A*1e-10  # m
+        E = h*c/wavelength_m  # Joules
 
-        E *= 6.24150974e18 # electron volts
+        E *= 6.24150974e18  # electron volts
 
-        E /= 1000.0 # keV
+        E /= 1000.0  # keV
 
         return E
 
-
     def get_k(self):
-        '''Get k = 2*pi/lambda for this setup, in units of inverse Angstroms.'''
+        '''Get k = 2*pi/lambda for this setup, in units of inverse
+        Angstroms.'''
 
         return 2.0*np.pi/self.wavelength_A
-
 
     def set_distance(self, distance_m):
         '''Sets the experimental detector distance (in meters).'''
 
         self.distance_m = distance_m
 
-
-    def set_pixel_size(self, pixel_size_um=None, width_mm=None, num_pixels=None):
+    def set_pixel_size(self, pixel_size_um=None, width_mm=None,
+                       num_pixels=None):
         '''Sets the pixel size (in microns) for the detector. Pixels are assumed
         to be square.'''
 
@@ -113,7 +111,6 @@ class CalibrationBase(object):
                 num_pixels = self.width
             pixel_size_mm = width_mm*1./num_pixels
             self.pixel_size_um = pixel_size_mm*1000.0
-
 
     def set_beam_position(self, x0, y0):
         '''Sets the direct beam position in the detector images (in pixel
@@ -130,7 +127,6 @@ class CalibrationBase(object):
         else:
             return self.x0, self.y0
 
-
     def set_image_size(self, width, height=None):
         '''Sets the size of the detector image, in pixels.'''
 
@@ -140,7 +136,6 @@ class CalibrationBase(object):
             self.height = width
         else:
             self.height = height
-
 
     @property
     def q_per_pixel(self):
@@ -153,16 +148,14 @@ class CalibrationBase(object):
             return self._q_per_pixel
 
         c = (self.pixel_size_um/1e6)/self.distance_m
-        twotheta = np.arctan(c) # radians
+        twotheta = np.arctan(c)  # radians
 
         self._q_per_pixel = 2.0*self.get_k()*np.sin(twotheta/2.0)
 
         return self._q_per_pixel
 
-
     # Maps
     ########################################
-
     def clear_maps(self):
         self.r_map_data = None
         self._q_per_pixel = None
@@ -173,7 +166,6 @@ class CalibrationBase(object):
         self.qy_map_data = None
         self.qz_map_data = None
         self.qr_map_data = None
-
 
     @property
     def r_map(self):
@@ -192,30 +184,29 @@ class CalibrationBase(object):
 
         return self.r_map_data
 
-
-
     def q_map(self):
-        raise NotImplementedError("Error : subclass this class and implement this")
-
+        msg = "Error : subclass this class and implement this"
+        raise NotImplementedError(msg)
 
     def angle_map(self):
-        raise NotImplementedError("Error : subclass this class and implement this")
-
+        msg = "Error : subclass this class and implement this"
+        raise NotImplementedError(msg)
 
     def qx_map(self):
-        raise NotImplementedError("Error : subclass this class and implement this")
-
+        msg = "Error : subclass this class and implement this"
+        raise NotImplementedError(msg)
 
     def qy_map(self):
-        raise NotImplementedError("Error : subclass this class and implement this")
-
+        msg = "Error : subclass this class and implement this"
+        raise NotImplementedError(msg)
 
     def qz_map(self):
-        raise NotImplementedError("Error : subclass this class and implement this")
+        msg = "Error : subclass this class and implement this"
+        raise NotImplementedError(msg)
 
     def qr_map(self):
-        raise NotImplementedError("Error : subclass this class and implement this")
-
+        msg = "Error : subclass this class and implement this"
+        raise NotImplementedError(msg)
 
 
 @normalize_token.register(CalibrationBase)
@@ -251,12 +242,10 @@ def tokenize_calibration_base(self):
     return normalize_token(args)
 
 
-
-# Calibration
-################################################################################
 class Calibration(CalibrationBase):
     """
-    The geometric claculations used here are described in Yang, J Synch Rad (2013) 20, 211–218
+    The geometric claculations used here are described in Yang, J Synch Rad
+    (2013) 20, 211–218
     http://dx.doi.org/10.1107/S0909049512048984
     (See Appendix A)
 
@@ -302,7 +291,6 @@ class Calibration(CalibrationBase):
         self.incident_angle = incident_angle
         self.sample_normal = sample_normal
 
-
         self.rot_matrix = None
         super(Calibration, self).__init__(wavelength_A=wavelength_A,
                                           distance_m=distance_m,
@@ -310,11 +298,9 @@ class Calibration(CalibrationBase):
                                           height=height, width=width, x0=x0,
                                           y0=y0)
 
-
     # Experimental parameters
-    ########################################
-
-    def set_angles(self, det_orient=0, det_tilt=0, det_phi=0, incident_angle=0., sample_normal=0.):
+    def set_angles(self, det_orient=0, det_tilt=0, det_phi=0,
+                   incident_angle=0., sample_normal=0.):
         self.det_orient = det_orient
         self.det_tilt = det_tilt
         self.det_phi = det_phi
@@ -380,22 +366,23 @@ class Calibration(CalibrationBase):
 
     # r_map already defined in parent object
 
-
     def generate_maps(self):
         """
-        calculate all coordinates (pixel position as well as various derived values)
-        all coordinates are stored in 2D arrays, as is the data itself in Data2D
+        calculate all coordinates (pixel position as well as various derived
+        values) all coordinates are stored in 2D arrays, as is the data itself
+        in Data2D
         """
         print("Generating qmaps (expensive computation)")
         self.calc_rot_matrix()
 
-        (w,h) = (self.width, self.height)
+        (w, h) = (self.width, self.height)
         # y is columnds, x is rows
         self.Y, self.X = np.meshgrid(np.arange(h), np.arange(w), indexing='ij')
         X = self.X.ravel()
         Y = self.Y.ravel()
 
-        (Q, Phi, Qx, Qy, Qz, Qr, Qn, FPol, FSA) = self.calc_from_XY(X, Y, calc_cor_factors=True)
+        (Q, Phi, Qx, Qy, Qz, Qr, Qn, FPol, FSA) = \
+            self.calc_from_XY(X, Y, calc_cor_factors=True)
 
         self.q_map_data = Q.reshape((h, w))
 
@@ -405,30 +392,26 @@ class Calibration(CalibrationBase):
 
         self.qr_map_data = Qr.reshape((h, w))
         self.qz_map_data = Qn.reshape((h, w))
-        self.angle_map_data = np.degrees( Phi.reshape((h, w)) )
+        self.angle_map_data = np.degrees(Phi.reshape((h, w)))
         self.FPol_map_data = FPol.reshape((h, w))
         self.FSA_map_data = FSA.reshape((h, w))
 
-
-
-
     # q calculation
-    ########################################
-
     def calc_from_XY(self, X, Y, calc_cor_factors=False):
         """
         calculate Q values from pixel positions X and Y
         X and Y are 1D arrays
         returns reciprocal/angular coordinates, optionally returns
         always calculates Qr and Qn, therefore incident_angle needs to be set
-        Note that Phi is saved in radians; but the angles in ExpPara are in degrees
+        Note that Phi is saved in radians; but the angles in ExpPara are in
+        degrees
         """
         if self.rot_matrix is None:
             raise ValueError('the rotation matrix is not yet set.')
 
-        # the position vectors for each pixel, origin at the postion of beam impact
-        # R.shape should be (3, w*h), but R.T is more convinient for matrix calculation
-        # RT.T[i] is a vector
+        # the position vectors for each pixel, origin at the postion of beam
+        # impact R.shape should be (3, w*h), but R.T is more convinient for
+        # matrix calculation RT.T[i] is a vector
         # x0, y0 is considerence the origin, which is also beam center
         RT = np.vstack((X - self.x0, -(Y - self.y0), 0.*X))
 
@@ -457,39 +440,34 @@ class Calibration(CalibrationBase):
         Qn = Qy*np.cos(alpha) + Qz*np.sin(alpha)
         Qr = np.sqrt(Q*Q-Qn*Qn)*np.sign(Qx)
 
-        if calc_cor_factors==True:
+        if calc_cor_factors is True:
             FPol = (Y1*Y1+Z1*Z1)/r3sq
             FSA = np.power(np.fabs(Z1)/r3, 3)
             return (Q, Phi, Qx, Qy, Qz, Qr, Qn, FPol, FSA)
         else:
             return (Q, Phi, Qx, Qy, Qz, Qr, Qn)
 
-
     # Rotation calculation
-    ########################################
-
-
     def RotationMatrix(self, axis, angle):
-        if axis=='x' or axis=='X':
+        if axis == 'x' or axis == 'X':
             rot = np.asarray(
-                [[1., 0., 0.],
-                [0., np.cos(angle), -np.sin(angle)],
-                [0., np.sin(angle),  np.cos(angle)]])
-        elif axis=='y' or axis=='Y':
+                             [[1., 0., 0.],
+                              [0., np.cos(angle), -np.sin(angle)],
+                              [0., np.sin(angle),  np.cos(angle)]])
+        elif axis == 'y' or axis == 'Y':
             rot = np.asarray(
-                [[ np.cos(angle), 0., np.sin(angle)],
-                [0., 1., 0.],
-                [-np.sin(angle), 0., np.cos(angle)]])
-        elif axis=='z' or axis=='Z':
+                             [[np.cos(angle), 0., np.sin(angle)],
+                              [0., 1., 0.],
+                              [-np.sin(angle), 0., np.cos(angle)]])
+        elif axis == 'z' or axis == 'Z':
             rot = np.asarray(
-                [[np.cos(angle), -np.sin(angle), 0.],
-                [np.sin(angle),  np.cos(angle), 0.],
-                [0., 0., 1.]])
+                             [[np.cos(angle), -np.sin(angle), 0.],
+                              [np.sin(angle),  np.cos(angle), 0.],
+                              [0., 0., 1.]])
         else:
             raise ValueError('unknown axis %s' % axis)
 
         return rot
-
 
     def calc_rot_matrix(self):
 
@@ -500,12 +478,13 @@ class Calibration(CalibrationBase):
         tm2 = self.RotationMatrix('y', np.radians(self.det_tilt))
 
         # Rotate detector about x-ray beam
-        tm3 = self.RotationMatrix('z', np.radians(self.det_orient+self.det_phi))
+        tm3 = self.RotationMatrix('z',
+                                  np.radians(self.det_orient+self.det_phi))
         self.rot_matrix = np.dot(np.dot(tm3, tm2), tm1)
-
 
     # End class CalibrationRQconv(Calibration)
     ########################################
+
 
 @normalize_token.register(Calibration)
 def tokenize_calibration(self):
@@ -519,8 +498,8 @@ def tokenize_calibration(self):
             it looks messy but at least it is hashable
     '''
     # inherit dispatch from Calibration object
-    #calib_norm = normalize_token.dispatch(Calibration)
-    #args = calib_norm(self)
+    # calib_norm = normalize_token.dispatch(Calibration)
+    # args = calib_norm(self)
     args = tokenize_calibration_base(self)
     # finally now tokenize the rest
     newargs = list()

@@ -2,6 +2,7 @@ import numpy as np
 from scipy.ndimage.interpolation import rotate as scipy_rotate
 from ..processing.stitching import xystitch_accumulate
 
+
 def rotate_custom(image, phi, reshape=True, **kwargs):
     # need to fill in holes from scipy
     return scipy_rotate(image, phi, reshape=reshape, **kwargs)
@@ -19,7 +20,8 @@ class StitchedImage:
     refpoint : the refpoint of the image
     rotation_center : the rotation_center, in absolute pixel coordinates
     '''
-    def __init__(self, image, refpoint, rotation_center=None, parentclass=None):
+    def __init__(self, image, refpoint, rotation_center=None,
+                 parentclass=None):
         # invert image
         self.image = image.astype(np.float32)
         self.refpoint = np.array(refpoint)
@@ -45,7 +47,8 @@ class StitchedImage:
         '''
         prevstate = self.image.copy(), np.ones_like(self.image),\
             self.refpoint, True
-        nextstate = newob.image, np.ones_like(newob.image), newob.refpoint, True
+        nextstate = newob.image, np.ones_like(newob.image),\
+            newob.refpoint, True
         newstate = xystitch_accumulate(prevstate, nextstate)
 
         image, mask, refpoint, stitch = newstate
@@ -54,7 +57,7 @@ class StitchedImage:
         rotation_center = self.rotation_center + drefpoint
         rotation_center2 = newob.rotation_center + (refpoint - newob.refpoint)
         print("new obj rotation centers: {} and {}".format(rotation_center,
-            rotation_center2))
+              rotation_center2))
 
         # less than because obstruction expects a mask, not image (image has 1
         # where obsstruction present)
@@ -71,7 +74,7 @@ class StitchedImage:
         nextstate = -1*newob.image, np.ones_like(newob.image),\
             newob.refpoint, True
         newstate = xystitch_accumulate(prevstate, nextstate)
-        img, mask, refpoint, stitch = newstate
+        image, mask, refpoint, stitch = newstate
 
         # update the rotation center
         drefpoint = refpoint - self.refpoint
@@ -81,7 +84,6 @@ class StitchedImage:
         # where obsstruction present)
         retobj = self.parentclass(image, rotation_center=rotation_center,
                                   refpoint=refpoint)
-
 
         return retobj
 
@@ -152,16 +154,13 @@ class StitchedImage:
         new_refpoint = new_rotation_center - rotation_offset
 
         # OLD API (don't update the object anymore, create new)
-        #self.rotation_center = new_rotation_center
-        #self.refpoint = new_refpoint
-        #self.image = rotimg
+        # self.rotation_center = new_rotation_center
+        # self.refpoint = new_refpoint
+        # self.image = rotimg
 
         self.rotation_center = new_rotation_center
         self.refpoint = new_refpoint
         self.image = rotimg
-        #retobj = self.parentclass(rotimg, rotation_center=new_rotation_center,
-                                  #refpoint=new_refpoint)
-        #return retobj
 
     def _center(self, img, refpoint):
         ''' center an image to array center.'''

@@ -1,6 +1,3 @@
-import numpy as np
-from scipy.ndimage.interpolation import rotate as scipy_rotate
-from ..processing.stitching import xystitch_accumulate
 from .StitchedImage import StitchedImage
 
 
