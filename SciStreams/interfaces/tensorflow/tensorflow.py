@@ -7,6 +7,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
+
 class MasterRecord:
     ''' This is the object that defines a set of records.'''
 
@@ -225,19 +226,19 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32,
         raise ValueError(errormsg)
 
     # force it to have the required data type
-    plt.figure(2);plt.clf()
-    plt.subplot(2,2,1)
+    plt.figure(2)
+    plt.clf()
+    plt.subplot(2, 2, 1)
     plt.imshow(image)
     image = image.astype(dtype)
-    plt.subplot(2,2,2)
+    plt.subplot(2, 2, 2)
     plt.imshow(image)
-
 
     # make image and label data
     data = np.concatenate((labelbin, image.ravel()))
 
-    plt.subplot(2,2,3)
-    plt.imshow(data[1:].reshape((48,48)))
+    plt.subplot(2, 2, 3)
+    plt.imshow(data[1:].reshape((48, 48)))
 
     plt.pause(.1)
     expected_size = image.shape[0]*image.shape[1] + num_elems_label
@@ -294,8 +295,8 @@ def store_result_tensorflow(result, dataset=None, dtype=np.uint32,
         # arr = np.fromfile(curfilename, dtype=dtype)
         arr = _read_batch(numrecs, dataset=dataset, dtype=dtype)
         print(arr.shape)
-        plt.subplot(2,2,4)
-        plt.imshow(arr[1:48**2+1].reshape((48,48)))
+        plt.subplot(2, 2, 4)
+        plt.imshow(arr[1:48**2+1].reshape((48, 48)))
         plt.pause(.1)
 
         array_size = len(arr)

@@ -1,8 +1,9 @@
 import h5py
 from ...utils.file import _make_fname_from_attrs
 
-#TODO : right now, overwrites file, should we check and maybe backup
+# TODO : right now, overwrites file, should we check and maybe backup
 # old file?
+
 
 def store_results_hdf5(sdoc):
     # store a streamdoc to hdf5
@@ -45,4 +46,4 @@ def add_element(h5group, name, data):
             key = "item{:03d}".format(i)
             add_element(subgroup, key, val)
     else:
-       dataset = h5group.create_dataset(name, data=data)
+        h5group.create_dataset(name, data=data)

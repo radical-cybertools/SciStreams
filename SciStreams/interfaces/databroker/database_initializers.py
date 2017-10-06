@@ -58,7 +58,6 @@ def init_db(host, port, mdsname, fsname, handlers=None):
     mds = MDSRO(mds_conf)
     reg = RegistryRO(reg_conf)
 
-
     if handlers is not None:
         for handler_key, handler_function in handlers.items():
             reg.register_handler(handler_key, handler_function, overwrite=True)

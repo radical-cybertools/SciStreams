@@ -2,10 +2,8 @@
 import os.path
 import numpy as np
 from lxml import etree
-import json
 
-from ...utils.file import _make_fname_from_attrs, make_dir, access_dir,\
-    get_filebase
+from ...utils.file import _make_fname_from_attrs
 
 from ... import config
 _ROOTDIR = config.resultsroot
@@ -51,13 +49,13 @@ def sdoc_to_xml(sdoc, root):
     data_dict = sdoc['kwargs'].copy()
     args = sdoc['args']
     for i, arg in enumerate(args):
-        data_dict.update({'_arg{:02d}'.format(i) : arg})
-
+        data_dict.update({'_arg{:02d}'.format(i): arg})
 
     add_element(root, 'attributes', attrs)
     add_element(root, 'data', data_dict)
 
     return etree.ElementTree(root)
+
 
 def add_element(root, name, data):
     from lxml import etree
@@ -72,7 +70,7 @@ def add_element(root, name, data):
             add_element(subel, k, element)
     else:
         # make whatever it is into a string (safe)
-        tag = {name : str(data)}
+        tag = {name: str(data)}
         etree.SubElement(root, 'element', **tag)
 
 

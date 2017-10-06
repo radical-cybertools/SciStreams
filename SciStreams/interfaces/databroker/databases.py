@@ -9,9 +9,9 @@ from .database_initializers import init_db
 from ... import config
 
 # some handlers
-from filestore.handlers import DATHandler, NpyHandler
+# from filestore.handlers import DATHandler, NpyHandler
 from .handlers_custom import PNGHandler
-from .handlers_custom import AreaDetectorTiffHandler
+# from .handlers_custom import AreaDetectorTiffHandler
 
 '''
     # register some handlers
@@ -27,12 +27,12 @@ from .handlers_custom import AreaDetectorTiffHandler
 analysis_handlers = {
     'PNG': PNGHandler,
     'JPG': PNGHandler,
-    #'DAT': DATHandler,
-    #'npy': NpyHandler,
+    # 'DAT': DATHandler,
+    # 'npy': NpyHandler,
 }
 
 data_handlers = {
-    #'AD_TIFF': AreaDetectorTiffHandler,
+    # 'AD_TIFF': AreaDetectorTiffHandler,
 }
 
 
