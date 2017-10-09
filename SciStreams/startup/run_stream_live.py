@@ -370,7 +370,7 @@ class TiffHandler(AreaDetectorTiffHandler):
         return res
 
 
-if False:
+if True:
     # patchy way to get stream for now, need to fix later
     from SciStreams.interfaces.databroker.databases import databases
 
@@ -387,7 +387,7 @@ if False:
     hdrs = cmsdb(start_time="2017-07-15", stop_time="2017-07-17")
     stream = cmsdb.restream(hdrs, fill=True)
 
-elif True:
+elif False:
     print("Creating simulated stream")
     from SciStreams.tests.simulators import generate_event_stream
     x0, y0 = 743, 581.
