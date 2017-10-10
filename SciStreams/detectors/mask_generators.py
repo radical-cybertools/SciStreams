@@ -50,6 +50,11 @@ def generate_mask_pilatus300(**md):
             should contain `motor_bsphi`, `motor_bsx`, `motor_bsy`
             `detector_SAXS_x0_pix` and `detector_SAXS_y0_pix`
             which are the degrees of freedom for the beamstop and beam center
+
+        Notes
+        -----
+        The mask generator takes the position pair as y, x as input, and *not*
+        x, y
     '''
     detector_key = 'pilatus300_image'
 

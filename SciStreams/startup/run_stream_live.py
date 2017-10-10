@@ -117,6 +117,7 @@ s_mask = scs.map(generate_mask, sout_attributes)
 
 
 s_imgmaskcalib = scs.merge(sc.zip(s_image, sout_calib, s_mask))
+L_imgmaskcalib = s_imgmaskcalib.sink_to_list()
 
 
 # some small streams
@@ -384,7 +385,10 @@ if True:
     # so origin : 598, 718 (y, x)
     # need to add in motor positions
     # hdrs = cmsdb(start_time="2017-09-08", stop_time="2017-09-09")
-    hdrs = cmsdb(start_time="2017-07-15", stop_time="2017-07-17")
+    # Oleg data 2017
+    # hdrs = cmsdb(start_time="2017-07-15", stop_time="2017-07-17")
+    # some recent saxs data
+    hdrs = cmsdb(start_time="2017-10-10", stop_time="2017-10-11")
     stream = cmsdb.restream(hdrs, fill=True)
 
 elif False:

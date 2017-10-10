@@ -18,7 +18,7 @@ from .timeout import timeout
 
 import numpy as np
 
-from ..config import DEFAULT_TIMEOUT
+from ..config import default_timeout as DEFAULT_TIMEOUT
 
 
 # this class is used to wrap outputs to inputs
@@ -386,6 +386,18 @@ class StreamDoc(dict):
         return streamdoc
 
     def select(self, *mapping):
+        try:
+            sdoc = self._select(*mapping)
+            return sdoc
+        except Exception:
+            statistics = dict()
+            _cleanexit(self.select, statistics)
+            new_sdoc = StreamDoc(attributes=self['attributes'])
+            new_sdoc['statistics'] = statistics
+            return new_sdoc
+
+
+    def _select(self, *mapping):
         ''' remap args and kwargs
             combinations can be any one of the following:
 
@@ -509,7 +521,7 @@ def parse_streamdoc(name):
         def f_new(x, x2=None, **kwargs_additional):
             # add a time out to f
             # TODO : replace with custom time out per stream
-            f_timeout = timeout(DEFAULT_TIMEOUT)(f)
+            f_timeout = timeout(seconds=DEFAULT_TIMEOUT)(f)
             # print("Running in {}".format(f.__name__))
             if x2 is None:
                 if _is_streamdoc(x):
@@ -577,6 +589,7 @@ def parse_streamdoc(name):
             # print("Running function {}".format(f.__name__))
             # instantiate new stream doc
             streamdoc = StreamDoc(attributes=attributes)
+            streamdoc['statistics'] = statistics
             # load in attributes
             # Save outputs to StreamDoc
             # parse arguments to an object with args and kwargs members

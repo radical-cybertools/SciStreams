@@ -82,6 +82,8 @@ class peak_finding:
             This is the input to the Locally Weighted Scatterplot Smoothing on
             the smoothed data.
             The number of residual-based reweightings to perform.
+        max_peaks : int, optional
+            The maximum number of peaks to try to fit to
 
         Returns
         -------
@@ -106,7 +108,7 @@ class peak_finding:
     '''
     def __init__(self, intensity=None, limit_fev=False, beam_stop_effect=0,
                  end=None, adjust_coefficient=2, frac=0.06/3, it=5, delta=0,
-                 frac_over_smooth=1.8/3, it_over_smooth=5):
+                 frac_over_smooth=1.8/3, it_over_smooth=5, max_peaks=10):
         # this was not used so I comment it out
         # , bkgd_span=20):
         self.limit_fev = limit_fev
@@ -138,6 +140,7 @@ class peak_finding:
         self.frac_over_smooth = frac_over_smooth
         # set iteration for over smooth
         self.it_over_smooth = it_over_smooth
+        self.max_peaks = max_peaks
         # set the span used for background fitting, the span too small may
         # introduce noise, but too large may lead to not efficient background
         # estimation
@@ -379,6 +382,12 @@ class peak_finding:
         # 1 pixel
 
         xdata = x_origin[beam_stop_effect:end]
+
+        if len(inds_peak) > self.max_peaks:
+            print("Maximum number of peaks exceed. Choosing")
+            print(" first {} peaks".format(self.max_peaks))
+            inds_peak = inds_peak[:self.max_peaks]
+
         for num11 in range(len(inds_peak)):
             # print num11
             pre_name = "g%d_" % (num11+1)
@@ -420,8 +429,12 @@ class peak_finding:
         else:
             fit_kws = dict()
 
-        out = mod.fit(variance, pars, x=xdata, method='leastsq',
+        from ..core.timeout import timeout
+        try:
+            out = timeout(seconds=2)(mod.fit)(variance, pars, x=xdata, method='leastsq',
                       fit_kws=fit_kws)
+        except Exception:
+            out = None
 
         # return inds_peak,out,turn,x,xdata,y
         wvar, = np.where(variance > variance_mean)

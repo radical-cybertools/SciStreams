@@ -10,8 +10,6 @@ try:
 except FileNotFoundError:
     config = dict()
 
-# default time out in seconds
-DEFAULT_TIMEOUT = 100
 
 # read the mask conf file
 # ignore the mask yml now, just use mask_dir
@@ -81,6 +79,7 @@ default_databases = {}
 
 _DEFAULTS = {
     'delayed': True,
+    'default_timeout': None,
     'storagedir': os.path.expanduser("~/storage"),
     'maskdir': os.path.expanduser("~/storage/masks"),
     'resultsroot': os.path.expanduser("/GPFS/pipeline"),
@@ -94,6 +93,7 @@ _DEFAULTS = {
 }
 
 
+default_timeout = config.get('default_timeout', _DEFAULTS['default_timeout'])
 delayed = config.get('delayed', _DEFAULTS['delayed'])
 storagedir = config.get('storagedir', _DEFAULTS['storagedir'])
 maskdir = config.get('maskdir', _DEFAULTS['maskdir'])

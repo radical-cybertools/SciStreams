@@ -16,7 +16,7 @@ from PIL import Image
 cmsdb = databases['cms:data']
 ion()
 
-# CMS stuf
+# CMS stuff
 det_key = "pilatus300_image"
 
 maskdir = config['maskdir'] + "/" + det_key

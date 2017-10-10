@@ -9,7 +9,8 @@ set_options(delayed_pure=True)  # noqa
 import numpy as np
 
 # Detector information
-from ..detectors import detectors2D
+from ..detectors.detectors2D import detectors2D
+from ..detectors.detectors2D import _make_detector_name_from_key
 
 from ..processing.stitching import xystitch_accumulate, xystitch_result
 from ..processing.circavg import circavg
@@ -19,6 +20,7 @@ from ..processing import rdpc
 from ..processing.angularcorr import angular_corr
 from ..processing.nn_fbbenet import infer
 from ..processing.peak_finding import peak_finding
+
 
 from ..config import config
 
@@ -200,10 +202,6 @@ def normalize_calib_dict(**md):
 
     return md
 
-
-def _make_detector_name_from_key(name):
-    # remove last "_" character
-    return name[::-1].split("_", maxsplit=1)[-1][::-1]
 
 
 def add_detector_info(**md):

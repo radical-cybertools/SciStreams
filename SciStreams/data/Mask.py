@@ -4,6 +4,10 @@ from .CoordinateTransform import CoordinateTransform
 
 
 class MasterMask:
+    ''' This loads a master mask from file
+    '''
+    # TODO : Perhaps file loading and master mask should be separated?
+    # (note : may not be practical)
     def __init__(self, filename):
         ''' Create a master mask.
             Loads from numpy file
@@ -41,6 +45,7 @@ class MaskGenerator:
         So it must be described by an x, y position in lab coordinates for the
         dtector and a px, py position for the first pixel in the detector in
         this mask
+
     '''
     def __init__(self, master_mask, blemish, usermask=None, **kwargs):
         ''' Generate mask from known master mask.
@@ -91,22 +96,25 @@ class MaskGenerator:
         # NOTE : for detectors that rotate or do anything other than
         # translation this will not be sufficient. However, it the "to_lab"
         # and "from_lab" terminology will likely make this code extendable
-        def to_lab(px, py):
+        def to_lab(py, px):
             ''' Note : returns y,x
                 The scaling is inverted (-1) when going from lab to pix and
                 vice versa.
             '''
-            lx = (-1)*(px-self.refpoint[1])/self.scl[1] + self.refpoint_lab[1]
-            ly = (-1)*(py-self.refpoint[0])/self.scl[0] + self.refpoint_lab[0]
+            lx = (-1)*(px-self.refpoint[1])*self.scl[1] + self.refpoint_lab[1]
+            ly = (-1)*(py-self.refpoint[0])*self.scl[0] + self.refpoint_lab[0]
             return ly, lx
 
-        def from_lab(lx, ly):
+        def from_lab(ly, lx):
             ''' Note : returns y,x
+                lx, ly : position in lab coordinates
                 The scaling is inverted (-1) when going from lab to pix and
                 vice versa.
             '''
-            px = (-1)*(lx-self.refpoint_lab[1])*self.scl[1] + self.refpoint[1]
-            py = (-1)*(ly-self.refpoint_lab[0])*self.scl[0] + self.refpoint[0]
+            #print("moving from {} to {}".format((ly, lx), self.refpoint_lab))
+            px = (-1)*(lx-self.refpoint_lab[1])/self.scl[1] + self.refpoint[1]
+            py = (-1)*(ly-self.refpoint_lab[0])/self.scl[0] + self.refpoint[0]
+            #print("new refpoint : {}".format((px,py)))
             return py, px
 
         self.trans = CoordinateTransform(to_lab, from_lab)
@@ -116,9 +124,13 @@ class MaskGenerator:
         self.usermask = usermask
 
     def generate(self, *pos_lab):
+        #print("lab coordinates requested : {}".format(pos_lab))
+        #print("original lab coordinates for lab ref point : {}".format(self.refpoint_lab))
         # get the reference point according to the new positions
         refpoint = self.trans.from_lab(*pos_lab)
 
+        #print("generating mask with refpoint {}".format(refpoint))
+        #print("Mask refpoint is {}".format(self.refpoint))
         # give master mask, the reference point, blemish file
         mask = make_submask(self.mastermask, refpoint,
                             shape=self.blemish.shape,
@@ -135,7 +147,10 @@ def make_submask(master_mask, refpoint, shape, blemish=None):
             This is the reference point that should register
                 masks together
         # using interpolation for subpixel shifts
+
+        NOTE : Internally, all reference points refer as y, x
     '''
+    print("refpoint is {}".format(refpoint))
     x_master = np.arange(master_mask.shape[1]) - refpoint[1]
     y_master = np.arange(master_mask.shape[0]) - refpoint[0]
 
@@ -152,5 +167,8 @@ def make_submask(master_mask, refpoint, shape, blemish=None):
     submask = interpolator(points).reshape(shape).astype(int)
     if blemish is not None:
         submask = submask*blemish
+
+    import matplotlib.pyplot as plt
+    plt.figure(6);plt.clf();plt.imshow(submask);plt.clim(0,2)
 
     return submask*(submask > 0.5)
