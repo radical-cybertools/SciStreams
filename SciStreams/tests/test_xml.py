@@ -2,6 +2,7 @@ from SciStreams.interfaces.xml.xml import sdoc_to_xml
 from SciStreams.core.StreamDoc import StreamDoc
 
 def test_sdoc():
+    ''' Just make sure it converts fine'''
     attributes = dict(name='foo',
                         sample_savename='bar')
     kwargs = dict(a=1)

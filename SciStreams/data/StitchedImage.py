@@ -8,6 +8,8 @@ def rotate_custom(image, phi, reshape=True, **kwargs):
     return scipy_rotate(image, phi, reshape=reshape, **kwargs)
 
 
+# TODO : Make this work for subpixel resolution images
+# (Not needed yet)
 # Stitched image copied from Obstruction object
 class StitchedImage:
     ''' General stitched image

@@ -1,11 +1,14 @@
 # test passing an object
-from dask import delayed, compute, get
+from dask import delayed, compute, get, set_options
 # for testing the caching
 from dask.base import normalize_token
 
-from SciStreams.core.streams import Stream
-from SciStreams.core.StreamDoc import StreamDoc, psdm
-import SciStreams.globals  # noqa
+from streamz import Stream
+import SciStreams.core.scistreams as scs
+from SciStreams.core.StreamDoc import StreamDoc
+import SciStreams.globals
+
+set_options(delayed_pure=True)
 
 
 def test_object_hash():
@@ -24,19 +27,29 @@ def test_object_hash():
         global_list.append(1)
         return foo.a + foo.b
 
-    myobj = Foo()
 
+    # first, verify the hashes are the same
+    myobj = Foo()
+    first = delayed(add)(myobj)
+    myobj2 = Foo()
+    second = delayed(add)(myobj2)
+    assert first.key == second.key
+
+    # next, check it also works in simple streams (use scistreams)
     s = Stream()
-    # when delayed, should cache
-    s.map(delayed(psdm(add))).map(compute, get=get)
+    # when delayed, should cache, the second map is in streams not SciStreams
+    sout = scs.map(delayed(add), s)
+    sout = scs.map(lambda x : compute(x['args'][0], get=get), sout)
+    lout = sout.sink_to_list()
 
     s2 = Stream()
-    s2.map(psdm(add))
+    s2out = scs.map(add, s2)
+    l2out = s2out.sink_to_list()
 
-    s.emit(StreamDoc(args=myobj))
-    s.emit(StreamDoc(args=myobj))
+    s.emit(StreamDoc(args=(myobj)))
+    s.emit(StreamDoc(args=(myobj)))
     assert global_list == [1]
 
-    s2.emit(StreamDoc(args=myobj))
-    s2.emit(StreamDoc(args=myobj))
+    s2.emit(StreamDoc(args=(myobj)))
+    s2.emit(StreamDoc(args=(myobj)))
     assert global_list == [1, 1, 1]

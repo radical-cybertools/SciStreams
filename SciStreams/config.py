@@ -79,6 +79,7 @@ default_databases = {}
 
 _DEFAULTS = {
     'delayed': True,
+    'required_attributes': dict(main=dict()),
     'default_timeout': None,
     'storagedir': os.path.expanduser("~/storage"),
     'maskdir': os.path.expanduser("~/storage/masks"),
@@ -98,6 +99,49 @@ delayed = config.get('delayed', _DEFAULTS['delayed'])
 storagedir = config.get('storagedir', _DEFAULTS['storagedir'])
 maskdir = config.get('maskdir', _DEFAULTS['maskdir'])
 resultsroot = config.get('resultsroot', _DEFAULTS['resultsroot'])
+required_attributes = config.get('required_attributes',
+                                 _DEFAULTS['required_attributes'])
+
+
+# TODO : formalize this with some global existing python structure?
+# currently used for metadata validation
+import numbers
+typesdict = {'int' : int,
+             'float' : float,
+             'str' : str,
+             'number': numbers.Number,
+             }
+
+def validate_md(md, name="main", validate_dict=None):
+    ''' This just validates metadata
+        Cycles through internal dictionary of key : typestr
+        pairs where typestr is either 'int', 'float', 'str' or something else
+        etc.
+
+        name : the name from validation dictionary to pull from
+        validate_dict : an external validation dictionary to use
+    '''
+    # first check kwarg, then define if not
+    if validate_dict is None:
+        validate_dict = required_attributes.get(name, None)
+    if validate_dict is None:
+        return True
+    for key, val in validate_dict.items():
+        if key not in md:
+            errormsg = "Error, key {} not in metadata".format(key)
+            raise KeyError(errormsg)
+        valtype = typesdict.get(val, None)
+        if valtype is None:
+            errormsg = "Error, type not understood for validation"
+            errormsg += "\n Please check your validation definitions for "
+            errormsg += "the class {}".format(name)
+            raise ValueError(errormsg)
+
+        if not isinstance(md[key], typesdict[val]):
+            errormsg = "Error, key {} is not an instance of {}".format(key, val)
+            raise TypeError(errormsg)
+
+    return True
 
 TFLAGS_tmp = dict()
 TFLAGS_tmpin = config.get("TFLAGS", _DEFAULTS['TFLAGS'])

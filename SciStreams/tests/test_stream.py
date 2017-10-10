@@ -1,5 +1,6 @@
 # tests the stream library
-from SciStreams.core.streams import Stream
+# it's an internal test just to be sure it's doing what's expected
+from streamz import Stream
 
 
 def test_stream_map():
@@ -51,11 +52,9 @@ def test_stream_accumulate():
 
     # check the start keyword
     sacc2 = s.accumulate(myacc, start=1)
-    L = list()
-    sacc.map(L.append)
+    L = sacc.sink_to_list()
 
-    L2 = list()
-    sacc2.map(L2.append)
+    L2 = sacc2.sink_to_list()
 
     s.emit(1)
     s.emit(1)

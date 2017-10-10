@@ -6,17 +6,19 @@ from numpy.testing import assert_array_almost_equal
 def test_obstruction():
     mask = np.ones((10, 10))
     mask[4:5, 6:9] = 0
+    # invert
+    image = (mask==0).astype(int)
     origin = 4, 5
-    obs = Obstruction(mask, origin)
+    obs = Obstruction(image, origin)
     # this should not change...
-    assert_array_almost_equal(obs.origin, [4, 5])
+    assert_array_almost_equal(obs.refpoint, [4, 5])
 
     assert np.all(obs.mask[4:5, 6:9] == 0)
 
     obs2 = Obstruction(mask, origin)
     obs2.rotate(180, rotation_offset=(10, 10))
     # the coordinates should shift this way, tested
-    assert_array_almost_equal(obs2.origin, [-16, -17])
+    assert_array_almost_equal(obs2.refpoint, [-16, -17])
 
     # if this yields an error, try plotting combinations
     # of obs, obs.origin, obs.origin-offset

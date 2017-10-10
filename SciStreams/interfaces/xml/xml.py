@@ -39,11 +39,13 @@ def store_results_xml(sdoc):
     tree.write(outfile, pretty_print=True)
 
 
-def sdoc_to_xml(sdoc, root):
+def sdoc_to_xml(sdoc, root=None):
     ''' make xml tree from a StreamDoc.
         Start from the root given in the xml tree.
     '''
     from lxml import etree
+    if root is None:
+        root = etree.Element('DataFile')
 
     attrs = sdoc['attributes']
     data_dict = sdoc['kwargs'].copy()

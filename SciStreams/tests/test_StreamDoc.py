@@ -1,4 +1,4 @@
-from SciStreams.core.streams import Stream
+from streamz import Stream
 from SciStreams.core.StreamDoc import StreamDoc
 from SciStreams.core.StreamDoc import merge, psdm, psda
 
@@ -17,8 +17,7 @@ def test_stream_map():
     sout = sout.map(lambda x: x['args'][0])
 
     # save to list
-    L = list()
-    sout.map(L.append)
+    L = sout.sink_to_list()
 
     s.emit(StreamDoc(args=[1], kwargs=dict(foo="bar"),
                      attributes=dict(name="john")))
@@ -38,8 +37,7 @@ def test_stream_accumulate():
     s = Stream()
     sout = s.accumulate(psdm(myacc))
 
-    L = list()
-    sout.map(L.append)
+    L = sout.sink_to_list()
 
     sout.emit(StreamDoc(args=[1]))
     sout.emit(StreamDoc(args=[2]))
@@ -55,8 +53,7 @@ def test_merge():
 
     stot = s1.zip(s2).map(merge)
 
-    L = list()
-    stot.map(L.append)
+    L = stot.sink_to_list()
 
     sdoc1 = StreamDoc(args=[1, 2], kwargs={'a': 1, 'c': 3})
     sdoc2 = StreamDoc(args=[3, 4], kwargs={'b': 2, 'c': 4})
@@ -73,3 +70,14 @@ def test_merge():
     assert result_kwargs['b'] == 2
     assert result_kwargs['c'] == 4
     assert result_args == [1, 2, 3, 4]
+
+def test_new_streamdoc():
+
+    # test initialization
+    data = dict(a=1, b=2)
+    sdoc = StreamDoc(kwargs=data)
+    assert sdoc['kwargs']['a'] == 1
+
+    # update from another sdoc
+    sdoc2 = StreamDoc(streamdoc=sdoc)
+    assert sdoc2['kwargs']['a'] == 1
