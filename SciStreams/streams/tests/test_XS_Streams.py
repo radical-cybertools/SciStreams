@@ -5,7 +5,7 @@ from SciStreams.streams.XS_Streams import ImageStitchingStream,\
         ThumbStream
 
 
-from SciStreams.data.detectors import detectors2D
+from SciStreams.detectors.detectors2D import detectors2D
 
 import numpy as np
 

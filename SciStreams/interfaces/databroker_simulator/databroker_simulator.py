@@ -9,7 +9,7 @@ import matplotlib
 from ...core.StreamDoc import StreamDoc
 # TODO : Replace this with more complex image simulators
 from .generate_images import gen_image
-from ...data.detectors import detectors2D
+from ...detectors.detectors2D import detectors2D
 
 matplotlib.use("Agg")
 
