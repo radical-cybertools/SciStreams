@@ -302,7 +302,7 @@ def plot_linecuts(linecuts_keys, data, img_norm, plot_kws, xlims=None,
                     tmplabel = "value : {}".format(ylabels[i])
                 else:
                     tmplabel = "value : {}".format(i)
-                plt.plot(x, linecut, **plot_kws, label=tmplabel)
+                plt.plot(x, linecut, label=tmplabel, **plot_kws)
                 plt.legend()
                 plt.xlim(*xlims)
 
