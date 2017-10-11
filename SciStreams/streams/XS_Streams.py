@@ -116,12 +116,81 @@ def PrimaryFilteringStream():
     return sin, sout
 
 
-def AttributeNormalizingStream():
+def AttributeNormalizingStream(external_keymap=None):
     sin = sc.Stream()
     sout = scs.get_attributes(sin)
-    sout = scs.map(normalize_calib_dict, sout)
+    sout = scs.map(normalize_calib_dict, sout, external_keymap=external_keymap)
     sout = scs.map(add_detector_info, sout)
     return sin, sout
+
+
+def normalize_calib_dict(external_keymap=None, **md):
+    ''' Normalize the calibration parameters to a set of parameters that the
+    analysis expects.
+
+        Parameters
+        ----------
+        external_keymap : dict, optional
+            external keymap to use to override
+            (useful for testing mainly)
+
+        It gives entries like:
+            beamx0 : dict(value=a, unit=b)
+        etc...
+    '''
+    if external_keymap is None:
+        keymap_name = md.get("keymap_name", "cms")
+        keymap = keymaps[keymap_name]
+    else:
+        keymap = external_keymap
+    for key, val in keymap.items():
+        name = val['name']
+        if name is not None:
+            # for debugging
+            # print("setting {} to {}".format(name, key))
+            # swap out temp vals
+            tmpval = md.pop(name, val['default_value'])
+            default_unit = val['default_unit']
+            md[key] = dict(value=tmpval, unit=default_unit)
+
+    return md
+
+
+def add_detector_info(**md):
+    '''
+        Add detector information to the metadata, like shape etc.
+        This is a useful step for 2D SAXS analysis, before making the
+        calibration parameters.
+
+    Expects:
+
+        detector_name : the detector name
+        img_shape : tuple, optional
+            force the image shape. This is useful when the detector image
+                has been transformed (i.e. image stitching)
+    '''
+    detector_key = md.get('detector_key', None)
+
+    # only do something is there is a detector key
+    if detector_key is not None:
+        detector_name = _make_detector_name_from_key(detector_key)
+
+        md['detector_name'] = detector_name
+
+        # use the detector info supplied
+        # look up in local library
+        md['pixel_size_x'] = detectors2D[detector_name]['pixel_size_x']
+        md['pixel_size_y'] = detectors2D[detector_name]['pixel_size_y']
+
+        # shape is just a tuple, not a dict(value=...,unit=...)
+        if 'shape' not in md:
+            md['shape'] = detectors2D[detector_name]['shape']['value']
+    else:
+        msg = "Warning : no detector key found,"
+        msg += " not adding detector information"
+        print(msg)
+
+    return md
 
 
 def CalibrationStream():
@@ -181,65 +250,6 @@ def CalibrationStream():
     return sin, sout
 
 
-def normalize_calib_dict(**md):
-    ''' Normalize the calibration parameters to a set of parameters that the
-    analysis expects.
-        It gives entries like:
-            beamx0 : dict(value=a, unit=b)
-        etc...
-    '''
-    keymap_name = md.get("keymap_name", "cms")
-    keymap = keymaps[keymap_name]
-    for key, val in keymap.items():
-        name = val['name']
-        if name is not None:
-            # for debugging
-            # print("setting {} to {}".format(name, key))
-            # swap out temp vals
-            tmpval = md.pop(name, val['default_value'])
-            default_unit = val['default_unit']
-            md[key] = dict(value=tmpval, unit=default_unit)
-
-    return md
-
-
-def add_detector_info(**md):
-    '''
-        Add detector information to the metadata, like shape etc.
-        This is a useful step for 2D SAXS analysis, before making the
-        calibration parameters.
-
-    Expects:
-
-        detector_name : the detector name
-        img_shape : tuple, optional
-            force the image shape. This is useful when the detector image
-                has been transformed (i.e. image stitching)
-    '''
-    detector_key = md.get('detector_key', None)
-
-    # only do something is there is a detector key
-    if detector_key is not None:
-        detector_name = _make_detector_name_from_key(detector_key)
-
-        md['detector_name'] = detector_name
-
-        # use the detector info supplied
-        # look up in local library
-        md['pixel_size_x'] = detectors2D[detector_name]['pixel_size_x']
-        md['pixel_size_y'] = detectors2D[detector_name]['pixel_size_y']
-
-        # shape is just a tuple, not a dict(value=...,unit=...)
-        if 'shape' not in md:
-            md['shape'] = detectors2D[detector_name]['shape']['value']
-    else:
-        msg = "Warning : no detector key found,"
-        msg += " not adding detector information"
-        print(msg)
-
-    return md
-
-
 def make_calibration(**md):
     '''
         Update calibration with all keyword arguments fill in the defaults
@@ -287,7 +297,11 @@ def make_calibration(**md):
                                distance_m=distance_m,
                                pixel_size_um=pixel_size_um)
     # NOTE : width, height reversed in calibration
-    height, width = md['shape']
+    try:
+        height, width = md['shape']
+    except Exception:
+        msg = "Error in the shape element of metadata"
+        raise ValueError(msg)
     calib_object.set_image_size(width, height)
     calib_object.set_beam_position(md['beamx0']['value'],
                                    md['beamy0']['value'])
@@ -384,7 +398,7 @@ def circavg_from_calibration(image, calibration, mask=None, bins=None):
                    mask=mask, bins=bins)
 
 
-def QPHIMapStream(bins=(400, 400)):
+def QPHIMapStream(bins=(800, 360)):
     '''
         Parameters
         ----------
@@ -419,7 +433,7 @@ def QPHIMapStream(bins=(400, 400)):
     #
 
     sin = sc.Stream(stream_name="QPHI map Stream")
-    sout = scs.map(qphiavg, sin, bins=(800, 360))
+    sout = scs.map(qphiavg, sin, bins=bins)
     sout = scs.add_attributes(sout, stream_name="qphiavg")
 
     return sin, sout

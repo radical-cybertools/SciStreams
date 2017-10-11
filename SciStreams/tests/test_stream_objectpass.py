@@ -1,12 +1,11 @@
 # test passing an object
-from dask import delayed, compute, get, set_options
+from dask import delayed, compute, set_options, get
 # for testing the caching
 from dask.base import normalize_token
+# need this to make sure cache is registered
+import SciStreams.globals  # noqa
 
-from streamz import Stream
-import SciStreams.core.scistreams as scs
-from SciStreams.core.StreamDoc import StreamDoc
-
+# make everything pure by default
 set_options(delayed_pure=True)
 
 
@@ -33,23 +32,8 @@ def test_object_hash():
     second = delayed(add)(myobj2)
     assert first.key == second.key
 
-    # next, check it also works in simple streams (use scistreams)
-    s = Stream()
-    # when delayed, should cache, the second map is in streams not SciStreams
-    sout = scs.map(delayed(add), s)
-    sout = scs.map(lambda x: compute(x['args'][0], get=get), sout)
-    lout = sout.sink_to_list()
-
-    s2 = Stream()
-    s2out = scs.map(add, s2)
-    l2out = s2out.sink_to_list()
-
-    s.emit(StreamDoc(args=(myobj)))
-    s.emit(StreamDoc(args=(myobj)))
+    # don't test with streams since it should be the same result
+    # this better highlights the problem
+    compute(first, get=get)
+    compute(second, get=get)
     assert global_list == [1]
-    assert lout == [1, 1]
-
-    s2.emit(StreamDoc(args=(myobj)))
-    s2.emit(StreamDoc(args=(myobj)))
-    assert global_list == [1, 1, 1]
-    assert l2out == [1, 1]

@@ -354,7 +354,9 @@ def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None):
                 x, y = None, None
 
         if x is not None and y is not None:
-            plt.plot(x, y, **opts, **plot_kws)
+            new_opts = opts.copy()
+            new_opts.update(plot_kws)
+            plt.plot(x, y, **new_opts)
             if xlims is None:
                 xlims = [np.nanmin(x), np.nanmax(x)]
             else:

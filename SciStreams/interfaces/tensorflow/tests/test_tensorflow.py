@@ -56,7 +56,7 @@ def _test_store_result(image, labels=None):
     image = image.reshape(image_shape)
 
     fnames = get_filenames(dataset="test", fpath=tmp_path)
-    assert fnames[1] == tmp_path + "/test/{:08d}.bin".format(0)
+    assert fnames[1] == tmp_path + "/test/{:08d}.bin".format(1)
 
 
 def test_store_results():
