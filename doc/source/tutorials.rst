@@ -54,8 +54,8 @@ that the computations are separated from the data.
 For example, here is a setup of a simple stream, which takes in a
 number, multiplies it by two, and finally prints the result to screen::
 
-  # This originally comes from http://www.github.com/mrocklin/streams
-  from SciStreams.interfaces.streams import Stream
+  # http://www.github.com/mrocklin/streamz
+  from streamz import Stream
   
   # functions
   def mtimes2(a): 
@@ -96,7 +96,7 @@ conventional outputs. This is resolved in two steps:
 1. We need a way to normalize data. This is done with an object called
 ``StreamDoc``. It is defined as follows::
 
-  from SciStreams.interfaces.StreamDoc import StreamDoc
+  from SciStreams.core.StreamDoc import StreamDoc
   # define a StreamDoc
   sdoc = StreamDoc(args=(2,3), kwargs=dict(c=1))
 
@@ -112,7 +112,7 @@ function that handles the data specifically). This is done with the
   def multiply(a,b, c=1): 
       return a*b*c
 
-  from SciStreams.interfaces.StreamDoc import psdm
+  from SciStreams.core.scistreams import psdm
   new_multiply = psdm(multiply)
 
   sdoc_result = new_multiply(sdoc)
@@ -141,10 +141,10 @@ one to handle multiple inputs.
 Finally, we can tie this into streams again by simply ``mapping`` the
 new function, and the ``StreamDoc`` generated::
 
-  from SciStreams.interfaces.streams import Stream
-  from SciStreams.interfaces.StreamDoc import StreamDoc
+  from streamz import Stream
+  from SciStreams.core.StreamDoc import StreamDoc
   # wrapper for the StreamDoc
-  from SciStreams.interfaces.StreamDoc import psdm
+  from SciStreams.core.scistreams import psdm
   
   def multiply(a,b, c=1): 
       return a*b*c
@@ -230,7 +230,7 @@ Re-mapping is as easy as specifying a tuple, where the first element is
 the key name (or arg number), and the second element is either another
 key name, or ``None`` (to specify that it is an arg)::
 
-  from SciStreams.interfaces.StreamDoc import select
+  from SciStreams.core.StreamDoc import select
 
   sin = Stream()
   # swap arg1 and arg2
@@ -259,7 +259,7 @@ StreamDocs::
 Let's say we wanted to combine them all together. Combining them is as
 simple as instantiaing three streams and calling ``merge``::
 
-  from SciStreams.interfaces.StreamDoc import merge
+  from SciStreams.core.StreamDoc import merge
 
   # instantiate the three streams for sdoc1, sdoc2, and sdoc3,
   respectively
@@ -308,10 +308,10 @@ computations.
 Let's look at the following example. Let's say that we wanted to mask an
 image, and then look at the counts at the beam center.::
 
-  from SciStreams.interfaces.StreamDoc import merge, select,
-  get_attributes, psdm, StreamDoc
-  from SciStreams.interfaces.streams import Stream
   import numpy as np
+  from streamz import Stream
+  from SciStreams.core.StreamDoc import merge, select,
+  get_attributes, psdm, StreamDoc
   
   def multiply(img, mask):
       return img*mask
@@ -326,7 +326,7 @@ image, and then look at the counts at the beam center.::
   s_attr = sin.map(get_attributes).map(select, ('beam_origin', None))
   s3 = s2.zip(s_attr).map(merge)
   s4 = s3.map(psdm(ctsatcenter))
-  s4.map(psdm(print)) # sink to printing the result
+  s4.sink(psdm(print)) # sink to printing the result
   
   img1 = np.random.random((100,100))
   mask1 = np.ones((100,100))
@@ -344,7 +344,44 @@ Note there is a general rule for attributes. They are always passed
 through, and for a ``merge`` operation, they follow the same conflict
 rules that ``kwargs`` follow.
 
-Tutorial 7 : Submitting to Cluster
+Tutorial 7 : Shortcuts
+----------------------
+Generally, it is cumbersome to write out the stream wrapper ``psdm`` for
+every mapping. Some shortcuts are added into the ``SciStreams`` library.
+Here is an example from the previous code::
+
+  import numpy as np
+  from streamz import Stream
+  from SciStreams.core.StreamDoc import merge, select,
+  get_attributes, psdm, StreamDoc
+  # import scs module
+  import SciStreams.core.scistreams as scs
+  
+  def multiply(img, mask):
+      return img*mask
+  
+  def ctsatcenter(img, center):
+      return img[center]
+  
+  
+  sin = Stream()
+  s2 = scs.select(sin, ('image', None), ('mask', None))
+  s2 = scs.map(multiply, s2)
+  s_attr = scs.get_attributes(sin)
+  s_attr = scs.select(s_attr, ('beam_origin', None))
+  s3 = s2.zip(s_attr)
+  s3 = scs.merge(s3)
+  s4 = scs.map(ctsatcenter, s3)
+  s5 = scs.map(print, s4) # sink to printing the result
+  
+  img1 = np.random.random((100,100))
+  mask1 = np.ones((100,100))
+  sdoc = StreamDoc(kwargs=(dict(image=img1, mask=mask1)),
+  attributes=dict(name="Bob", beam_origin=(10,10)))
+  sin.emit(sdoc)
+
+
+Tutorial 8 : Submitting to Cluster
 ----------------------------------
 It is possible to submit some computations to a distributed scheduler
 and have them gathered back.
@@ -383,7 +420,7 @@ There are two things happening here:
    the stream, turning it into a concrete result once again.
 
 
-Advanced Tutorial 8 : Submitting to Cluster and Caching
+Advanced Tutorial 9 : Submitting to Cluster and Caching
 -------------------------------------------------------
 Sometimes redundant computations are sent to the cluster. It would be
 nice to have these computations cached so that they aren't computed over

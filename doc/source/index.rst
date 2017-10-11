@@ -12,8 +12,11 @@ Welcome to SciAnalysis's documentation!
 
  installation
  streams
+ visualizing_streams
+ masking
  tutorials
  debugging
+ tips
 
 .. currentmodule::
   intro

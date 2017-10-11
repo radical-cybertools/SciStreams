@@ -11,8 +11,8 @@ The Stream
 When running computations, there are a number of approaches that may be taken.
 Since computation pipelines can run complex very quickly, we try to modularize
 as much as we can. We decide to then take a streaming approach, which abstracts
-away the input/output data from the computations. We use the new `stream
-library <https://github.com/mrocklin/streams>`_.
+away the input/output data from the computations. We use the new `streamz
+library <https://github.com/mrocklin/streamz>`_.
 
 Since the library is fairly new, we have constructed upon it a framework that
 meets our needs. 
@@ -20,20 +20,21 @@ meets our needs.
 A general workflow would look as follows::
 
   # import the streams library
-  from SciStreams.interfaces.streams import Stream 
+  from streamz import Stream
   # import the necessary tools to parse the incoming data
-  from SciStreams.interfaces.StreamDoc import StreamDoc, psdm
+  from SciStreams.core.StreamDoc import StreamDoc
+  import SciStreams.core.scistreams as scs
 
   # define the stream here
   sin = Stream()
   # use arbitrary function get_attributes to extract data
-  sout = sin.map(get_attributes)
+  sout = scs.get_attributes(sin)
   # apply a scientific function circavg to data
   # but first wrap it with a parser, psdm in order to map inputs/outputs
   # (explained later)
-  sout = sout.map(psdm(circavg))
+  sout = scs.map(circavg, sout)
   # finally add saving
-  sout.map(save_to_file)
+  sout.sink(save_to_file)
   # etc...
 
   # finally, send the data through the stream

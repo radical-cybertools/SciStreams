@@ -37,4 +37,76 @@ use. It is to be located in the home directory
               port : xxxxx
               mdsname : 'datastore'
               fsname : 'filestore'
-  
+  keymaps:
+      cms:
+          wavelength:
+              name: calibration_wavelength_A
+              default_value: None
+              default_unit: Angstrom
+          beamx0:
+              name: detector_SAXS_x0_pix
+              default_value: null
+              default_unit: pixel
+          beamy0:
+              name: detector_SAXS_y0_pix
+              default_value: null
+              default_unit: pixel
+          sample_det_distance:
+              name: detector_SAXS_distance_m
+              default_value: null
+              default_unit: m
+          pixel_size_x:
+              name:
+              default_value: null
+              default_unit: pixel
+              default_value: um
+          pixel_size_y:
+              name:
+              default_value: null
+              default_unit: pixel
+              default_value: um
+  required_attributes:
+      # can optionally choose more categories
+      main:
+          # name, type
+          detector_SAXS_x0_pix: number 
+          detector_SAXS_y0_pix: number 
+          motor_SAXSx: number
+          motor_SAXSy: number
+          scan_id: int
+          measurement_type: str
+          sample_savename: str 
+          sample_name: str
+          motor_bsx: number
+          motor_bsy: number
+          motor_bsphi: number
+          detector_SAXS_distance_m: number
+          calibration_energy_keV: number
+          calibration_wavelength_A: number
+          experiment_alias_directory: str
+          experiment_cycle: str
+          experiment_group: str
+          filename: str
+          sample_exposure_time: number
+          stitchback: int
+
+
+There are a few elements to this file worth mentioning.
+
+* ``storagedir`` : the Storage directory where intermediate data can be found
+
+* ``maskdir`` : the directory for the masks
+
+* ``delayed`` : whether or not delayed elements are pure (True by default)
+
+* ``client`` : the location to the dask distributed client. If not set, no
+  cluster will be used.
+
+* ``databases`` : Relevant information to set up the ``databroker`` databases
+
+* ``keymaps`` : These are the keymaps that translate incoming metadata to key
+  metadata needed for various elements in the ``SciStreams``.
+
+* ``required_attributes`` : A dictionary outlining the general schema of the
+  attributes of incoming data.
+
