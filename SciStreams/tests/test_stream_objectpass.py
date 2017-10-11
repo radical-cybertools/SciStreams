@@ -1,13 +1,10 @@
 # test passing an object
-from dask import delayed, compute, get, set_options
+from dask import delayed, compute, set_options, get
 # for testing the caching
 from dask.base import normalize_token
-from dask.cache import Cache
+# need this to make sure cache is registered
+import SciStreams.globals  # noqa
 
-
-# set up the cache
-cache_tmp = Cache(1e9)
-cache_tmp.register()
 # make everything pure by default
 set_options(delayed_pure=True)
 
@@ -37,6 +34,6 @@ def test_object_hash():
 
     # don't test with streams since it should be the same result
     # this better highlights the problem
-    compute(first)
-    compute(second)
+    compute(first, get=get)
+    compute(second, get=get)
     assert global_list == [1]
