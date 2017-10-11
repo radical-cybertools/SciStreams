@@ -25,7 +25,7 @@ install:
   - conda create -n testenv pip nose python=$TRAVIS_PYTHON_VERSION numpy=$NUMPY coverage cython flake8 scipy
   - source activate testenv
   - python setup.py install build_ext -i
-  - pip install codecov pillow matplotlib cachey pyyaml pytest
+  - pip install codecov pillow matplotlib cachey pyyaml pytest databroker
   - pushd ..
   - git clone http://www.github.com/scikit-beam/scikit-beam.git
   - cd scikit-beam
