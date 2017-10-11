@@ -25,10 +25,9 @@ def test_circavg():
 
     # if these are not true the data format has changed
     # this is likely okay, but need to reflect in test...
-    assert hasattr(res, 'args')
-    assert hasattr(res, 'kwargs')
+    assert isinstance(res, dict)
 
-    assert 'sqx' in res.kwargs
-    assert 'sqxerr' in res.kwargs
-    assert 'sqy' in res.kwargs
-    assert 'sqyerr' in res.kwargs
+    assert 'sqx' in res
+    assert 'sqxerr' in res
+    assert 'sqy' in res
+    assert 'sqyerr' in res
