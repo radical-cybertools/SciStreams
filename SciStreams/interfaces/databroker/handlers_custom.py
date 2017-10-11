@@ -1,4 +1,4 @@
-from filestore.handlers import AreaDetectorTiffHandler  # noqa
+from databroker.assets.handlers import AreaDetectorTiffHandler  # noqa
 from PIL import Image
 import re
 import os
