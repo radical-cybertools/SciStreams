@@ -101,11 +101,11 @@ def test_AttributeNormalizingStream():
         detector_key='pilatus300_image',
     )
     # array shape doesn't matter here
-    data = dict(image=np.ones((10,10)))
+    data = dict(image=np.ones((10, 10)))
 
     sdoc = StreamDoc(kwargs=data, attributes=attr)
 
-    # now emit data    
+    # now emit data
     sin.emit(sdoc)
 
     assert len(L) == 1
@@ -125,9 +125,7 @@ def test_CalibrationStream():
             so it's beam line independent
         # TODO : test other qmaps (not just qmap)
     '''
-    keymap_name = 'cms'
     detector_name = 'pilatus300'
-    detector_key = detector_name + "_image"
     img_shape = detectors2D[detector_name]['shape']['value']
 
     sin, sout = CalibrationStream()
@@ -145,8 +143,6 @@ def test_CalibrationStream():
         # this has to be m for now
         sample_det_distance=dict(value=5.0),
     )
-    img = np.random.random(img_shape)
-    data = {detector_key: img}
     sdoc = StreamDoc(kwargs=attr)
     sin.emit(sdoc)
 
@@ -203,6 +199,7 @@ def test_CircularAverageStream():
     assert len(L) == 1
     data = L[0]['kwargs']
     assert len(data['sqx'] == bins)
+
 
 def test_QPHIMapStream():
     ''' Test the qphimap stream'''
