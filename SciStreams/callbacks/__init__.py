@@ -1,1 +1,1 @@
-from .core import CallbackBase, SciStreamCallback
+from .core import CallbackBase, SciStreamCallback  # noqa

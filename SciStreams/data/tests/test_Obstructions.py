@@ -7,7 +7,7 @@ def test_obstruction():
     mask = np.ones((10, 10))
     mask[4:5, 6:9] = 0
     # invert
-    image = (mask==0).astype(int)
+    image = (mask == 0).astype(int)
     origin = 4, 5
     obs = Obstruction(image, origin)
     # this should not change...

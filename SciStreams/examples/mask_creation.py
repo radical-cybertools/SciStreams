@@ -36,6 +36,7 @@ Instructions:
 
 '''
 
+
 def start_mask(uids, detector_key, plot_intermediate=True):
     ''' start masking.
 
@@ -65,7 +66,7 @@ def start_mask(uids, detector_key, plot_intermediate=True):
 
     # CMS stuff
     det_key = detector_key
-    #det_key = "pilatus300_image"
+    # det_key = "pilatus300_image"
 
     maskdir = config['maskdir'] + "/" + det_key
     detector_name = _make_detector_name_from_key(det_key)
@@ -90,13 +91,12 @@ def start_mask(uids, detector_key, plot_intermediate=True):
 
     mask = blemish
 
-
     hdrs = list(cmsdb[uids])
 
     Nhdrs = len(hdrs)
     # for pilatus300
     # must be y, x
-    #pixel_scl = .172, .172
+    # pixel_scl = .172, .172
     dpx = det_conf['pixel_size_x']['value']
     dpy = det_conf['pixel_size_y']['value']
     pixel_scl = dpy, dpx
@@ -146,9 +146,9 @@ def start_mask(uids, detector_key, plot_intermediate=True):
     # finally for all these images, record the motors that didn't move
     # approximate positions from this measurement
     # (normally you'll want to have this in metadata and pull...)
-    motor_bsphi = md['motor_bsphi']
-    motor_bsx = md['motor_bsx']
-    motor_bsy = md['motor_bsy']
+    motor_bsphi = md['motor_bsphi'] # noqa
+    motor_bsx = md['motor_bsx'] # noqa
+    motor_bsy = md['motor_bsy'] # noqa
     detector_SAXS_distance_m = md['detector_SAXS_distance_m']
 
 

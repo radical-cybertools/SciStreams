@@ -253,7 +253,7 @@ def store_results(data, attrs, **kwargs):
     except Exception:
         print("Error in fig saving, ignoring... file : {}".format(outfile))
     # make sure no mem leaks, just close
-    #plt.close(fig)
+    # plt.close(fig)
 
 
 def plot_linecuts(linecuts_keys, data, img_norm, plot_kws, xlims=None,

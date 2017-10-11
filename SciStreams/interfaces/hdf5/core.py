@@ -4,6 +4,7 @@ from ...utils.file import _make_fname_from_attrs
 # TODO : right now, overwrites file, should we check and maybe backup
 # old file?
 
+
 def _clean_attrs(attrs):
     ''' attrs is a dict. clean for hdf5 writing.
         This was mostly used to replace None with "None"
@@ -17,6 +18,7 @@ def _clean_attrs(attrs):
         else:
             # do nothing
             pass
+
 
 def store_results_hdf5(sdoc):
     # store a streamdoc to hdf5

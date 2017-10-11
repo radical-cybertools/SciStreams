@@ -1,6 +1,7 @@
 from SciStreams.processing.rdpc import RDeltaPhiCorrelator
 import numpy as np
 
+
 def test_rdpc():
 
     img = np.ones((100, 100))

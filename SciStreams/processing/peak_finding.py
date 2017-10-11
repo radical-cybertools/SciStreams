@@ -431,8 +431,9 @@ class peak_finding:
 
         from ..core.timeout import timeout
         try:
-            out = timeout(seconds=2)(mod.fit)(variance, pars, x=xdata, method='leastsq',
-                      fit_kws=fit_kws)
+            out = timeout(seconds=2)(mod.fit)(variance, pars, x=xdata,
+                                              method='leastsq',
+                                              fit_kws=fit_kws)
         except Exception:
             out = None
 

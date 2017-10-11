@@ -1,1 +1,1 @@
-from .core import store_results_hdf5
+from .core import store_results_hdf5  # noqa

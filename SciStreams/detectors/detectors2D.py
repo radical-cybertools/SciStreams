@@ -7,9 +7,11 @@ import os.path
 import SciStreams
 filename = SciStreams.__file__
 
+
 def _make_detector_name_from_key(name):
     # remove last "_" character
     return name[::-1].split("_", maxsplit=1)[-1][::-1]
+
 
 dirname = os.path.dirname(filename) + "/detectors"
 

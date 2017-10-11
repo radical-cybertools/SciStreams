@@ -396,7 +396,6 @@ class StreamDoc(dict):
             new_sdoc['statistics'] = statistics
             return new_sdoc
 
-
     def _select(self, *mapping):
         ''' remap args and kwargs
             combinations can be any one of the following:

@@ -1,5 +1,3 @@
-
-
 class CoordinateTransform:
     '''
         A coordinate transform object.
@@ -30,14 +28,14 @@ class CoordinateTransform:
     def to_lab(self, *coord, **kwargs):
         return self._to_lab(*coord, **kwargs)
 
-# testing quickly
 
+# testing quickly
 def to_lab(x, y):
     return 2*x, 2*y
+
 
 def from_lab(x, y):
     return x/2., y/2.
 
+
 cc = CoordinateTransform(to_lab, from_lab)
-
-

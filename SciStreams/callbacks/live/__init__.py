@@ -1,1 +1,1 @@
-from .core import LivePlot, LiveImage
+from .core import LivePlot, LiveImage  # noqa

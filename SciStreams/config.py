@@ -2,6 +2,8 @@
 import yaml
 import os.path
 import numpy as np
+import numbers
+
 # reads yaml file from user directory
 filename = os.path.expanduser("~/.config/scistreams/scistreams.yml")
 try:
@@ -105,12 +107,12 @@ required_attributes = config.get('required_attributes',
 
 # TODO : formalize this with some global existing python structure?
 # currently used for metadata validation
-import numbers
-typesdict = {'int' : int,
-             'float' : float,
-             'str' : str,
+typesdict = {'int': int,
+             'float': float,
+             'str': str,
              'number': numbers.Number,
              }
+
 
 def validate_md(md, name="main", validate_dict=None):
     ''' This just validates metadata
@@ -123,9 +125,7 @@ def validate_md(md, name="main", validate_dict=None):
     '''
     # first check kwarg, then define if not
     if validate_dict is None:
-        validate_dict = required_attributes.get(name, None)
-    if validate_dict is None:
-        return True
+        validate_dict = required_attributes.get(name, {})
     for key, val in validate_dict.items():
         if key not in md:
             errormsg = "Error, key {} not in metadata".format(key)
@@ -135,13 +135,17 @@ def validate_md(md, name="main", validate_dict=None):
             errormsg = "Error, type not understood for validation"
             errormsg += "\n Please check your validation definitions for "
             errormsg += "the class {}".format(name)
+            errormsg += "\nThe value type is '{}'".format(val)
+            errormsg += "\nPlease ensure it looks correct."
             raise ValueError(errormsg)
 
         if not isinstance(md[key], typesdict[val]):
-            errormsg = "Error, key {} is not an instance of {}".format(key, val)
+            errormsg = "Error, key {}".format(key)
+            errormsg += " is not an instance of {}".format(key, val)
             raise TypeError(errormsg)
 
     return True
+
 
 TFLAGS_tmp = dict()
 TFLAGS_tmpin = config.get("TFLAGS", _DEFAULTS['TFLAGS'])

@@ -203,7 +203,6 @@ def normalize_calib_dict(**md):
     return md
 
 
-
 def add_detector_info(**md):
     '''
         Add detector information to the metadata, like shape etc.

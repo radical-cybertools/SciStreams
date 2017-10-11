@@ -6,6 +6,7 @@ import SciStreams.core.StreamDoc as StreamDoc_core
 
 # TODO : Need to have each of these methods safely return a streamdoc
 
+
 def squash(child):
     return streamz.map(child, StreamDoc_core.squash)
 

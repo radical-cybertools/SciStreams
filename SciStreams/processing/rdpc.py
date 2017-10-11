@@ -31,7 +31,8 @@ class RDeltaPhiCorrelator:
 
         You need to specify:
             - imgs : a sequence of images, needs to be an iterable, which
-            - imgsb : (optional) if specified, will compute angular correlations for different sets of frames
+            - imgsb : (optional) if specified, will compute angular
+              correlations for different sets of frames
                 NOTE : these will be randomly offset. This is really either
                 meant for comparison of two images (run(imga, imgb)) or
                 comparison between images where the offset is known to be
@@ -46,8 +47,9 @@ class RDeltaPhiCorrelator:
         It is recommended to use some background subtraction method for the
         correlations to reduce error.
     '''
-    def __init__(self, shape,  origin=None, mask=None, maskb=None, rbins=800, phibins=360,
-                 method='bgsub', saverphis=None, PF=True, sigma=None):
+    def __init__(self, shape,  origin=None, mask=None, maskb=None, rbins=800,
+                 phibins=360, method='bgsub', saverphis=None, PF=True,
+                 sigma=None):
         ''' The initialization routine for the delta phi correlation object
         You need to specify:
             -shape : the shape of the images
@@ -134,7 +136,6 @@ class RDeltaPhiCorrelator:
             self.rphibinstatb = self.rphibinstat
             self.rphimaskb = self.rphimask
 
-
         # need this to properly count pixels
         self.rdeltaphimask = _convol1d(self.rphimask, axis=-1)
         if maskb is not None:
@@ -155,7 +156,6 @@ class RDeltaPhiCorrelator:
             self._removenans(self.rphimaskcntsb)
             self.rphibinstatb.statistic = 'mean'
 
-
         # where the first moment's number per bin is nonzero
         self.wsel1 = np.where(self.rphimaskcnts > .1)
 
@@ -167,7 +167,6 @@ class RDeltaPhiCorrelator:
         # everything) allow for numerical errors here from convolution (i.e.
         # using an FFT)
         self.wsel2 = np.where(self.rdeltaphimask*self.rdeltaphimaskb > .1)
-
 
         # number of radii and phi
         self.numrs = len(self.rphibinstat.bin_centers[0])
@@ -218,9 +217,10 @@ class RDeltaPhiCorrelator:
             wsel2 : the non zero pixels from the mask in the 2nd moment
                 Using this speeds up recurrent calls to this function
         '''
-        # this speeds up by not having to recalculate nonzero entries due to mask
+        # this speeds up by not having to recalculate nonzero entries due to
+        # mask
         if rphimask is None:
-            rphimask = np.ones_like(I)
+            rphimask = np.ones_like(rphi)
         if rphimaskb is None:
             rphimaskb = np.ones_like(rphimask)
 
@@ -235,12 +235,13 @@ class RDeltaPhiCorrelator:
         MMK = _convol1d(rphi*rphimask, rphimaskb, axis=-1)
         # in the case of same I same M this is just the reverse of MMK
         MMKp = _convol1d(rphimask, rphib*rphimaskb, axis=-1)
-        II = _convol1d(rphi*rphimask, rphib*rphimaskb,axis=-1)
+        II = _convol1d(rphi*rphimask, rphib*rphimaskb, axis=-1)
         MM = _convol1d(rphimask, rphimaskb, axis=-1)
         # w = np.where((MM != 0)*(MMK!=0)*(MMKp !=0))
         II[wsel2] *= MM[wsel2]/MMK[wsel2]/MMKp[wsel2]
         # since this is a normalization approach, multiply by S(q) as well
-        II[wsel2[0]] *= self.Ir[wsel2[0]][:,np.newaxis]*self.Irb[wsel2[0]][:,np.newaxis]
+        II[wsel2[0]] *= self.Ir[wsel2[0]][:, np.newaxis] * \
+            self.Irb[wsel2[0]][:, np.newaxis]
 
         return II
 
@@ -263,17 +264,17 @@ class RDeltaPhiCorrelator:
             rphib = rphi
 
         if bgest:
-            bgestvals = np.sum(rphi,axis=-1) /\
-                    np.sum(self.rphimask,axis=-1)
+            bgestvals = np.sum(rphi, axis=-1) /\
+                    np.sum(self.rphimask, axis=-1)
             self._removeinfs(bgestvals)
-            rphi = (rphi - bgestvals[:,np.newaxis])*rphimask
+            rphi = (rphi - bgestvals[:, np.newaxis])*rphimask
             if rphib is None:
                 rphib = rphi
             else:
-                bgestvals = np.sum(rphib,axis=-1) /\
-                        np.sum(self.rphimask,axis=-1)
+                bgestvals = np.sum(rphib, axis=-1) /\
+                        np.sum(self.rphimask, axis=-1)
                 self._removeinfs(bgestvals)
-                rphib = (rphib - bgestvals[:,np.newaxis])*rphimask
+                rphib = (rphib - bgestvals[:, np.newaxis])*rphimask
 
         rdeltaphi = _convol1d(rphi, rphib, axis=-1)
         rdeltaphi[wsel2] = \
@@ -289,7 +290,8 @@ class RDeltaPhiCorrelator:
             Parameters
             ----------
             rphi : the rphi map to correlate
-            rphib : the rphi map to correlate against (if None, sets equal to rphi)
+            rphib : the rphi map to correlate against (if None, sets equal to
+            rphi)
 
             rphimask : the mask of the correlation map
                 if set to None, none is used
@@ -336,7 +338,7 @@ class RDeltaPhiCorrelator:
         if 'bgest' in self.method:
             self.saverphis = True
 
-        # convention: 
+        # convention:
         # b (ex: imgsb) means the second image batch to compare to
         # 2 (ex: avgimg2 = <img^2>) means the square of the image
         if imgs[0].ndim == 1:
@@ -348,7 +350,7 @@ class RDeltaPhiCorrelator:
 
         if imgsb is None:
             compute_imgb = False
-            self.imgsb = imgs # just a reference, no copy
+            self.imgsb = imgs  # just a reference, no copy
         else:
             if imgsb[0].ndim == 1:
                 # it's just one image
@@ -356,17 +358,14 @@ class RDeltaPhiCorrelator:
             compute_imgb = True
             self.imgsb = imgsb
 
-
         # compute average image
-        self.avgimg, self.avgimg2, self.ivsn = _runningaverage(imgs,
-                                                               PF=self.PF,
-                                                               mask=self.mask,
-                                                               sigma=self.sigma)
+        self.avgimg, self.avgimg2, self.ivsn = \
+            _runningaverage(imgs, PF=self.PF, mask=self.mask, sigma=self.sigma)
+
         if compute_imgb:
-            self.avgimgb, self.avgimg2b, self.ivsnb = _runningaverage(imgs,
-                                                                   PF=self.PF,
-                                                                   mask=self.mask,
-                                                                   sigma=self.sigma)
+            self.avgimgb, self.avgimg2b, self.ivsnb = \
+                _runningaverage(imgs, PF=self.PF, mask=self.mask,
+                                sigma=self.sigma)
         else:
             self.avgimgb = self.avgimg
             self.avgimg2b = self.avgimg2
@@ -399,8 +398,6 @@ class RDeltaPhiCorrelator:
             self.rphiavgb = self.rphiavg
             self.rphiavg2b = self.rphiavg2
 
-
-
         # mostly for debuggins, save the rphi images
         if self.saverphis:
             self.rphis = np.zeros((self.nimgs, self.numrs, self.numphis))
@@ -408,7 +405,6 @@ class RDeltaPhiCorrelator:
             if compute_imgb is not None:
                 self.rphisb = np.zeros((self.nimgs, self.numrs, self.numphis))
                 self.rphis2b = np.zeros((self.nimgs, self.numrs, self.numphis))
-
 
         self.rdeltaphiavg = np.zeros((self.numrs, self.numphis))
         self.rdeltaphiavg2 = np.zeros((self.numrs, self.numphis))
@@ -429,7 +425,6 @@ class RDeltaPhiCorrelator:
                 print("Computing rphi and rdeltaphi, "
                       "{} of {}".format(i+1, self.nimgs))
 
-
             img = self.imgs[i]
             imgb = self.imgsb[i]
             # only bg sub if more than one image, else it's ignored
@@ -439,15 +434,14 @@ class RDeltaPhiCorrelator:
                 img2 = (self.imgs[i] - self.avgimg)**2
                 if compute_imgb:
                     imgb = np.copy(imgb) - self.avgimgb
-                    img2b = (self.imgsb[i] - self.avgimg2b)**2
+                    # img2b = (self.imgsb[i] - self.avgimg2b)**2
                 else:
                     # since img, img2 were copied, need to redfine imgb
                     imgb = img
-                    img2b = img2
+                    # img2b = img2
             else:
                 img2 = img**2
-                img2b = imgb**2
-
+                # img2b = imgb**2
 
             rphi = self.rphibinstat(img)
             rphi2 = self.rphibinstat(img2)
@@ -462,7 +456,6 @@ class RDeltaPhiCorrelator:
                 rphib = rphi
                 rphi2b = rphi2
 
-
             if self.saverphis:
                 self.rphis[i] = rphi
                 self.rphis2[i] = rphi2
@@ -471,15 +464,15 @@ class RDeltaPhiCorrelator:
                     self.rphis2b[i] = rphi2b
 
             # before correlating, also estimate bg and subtract if option set
-            #if 'bgest' in self.method:
-                #self.rphis = self.estbgsub(self.rphis,self.rphimask)
-                #self.rphis2 = self.estbgsub(self.rphis2,self.rphimask)
-                #if imgsb is None:
-                    #self.rphisb = rphi
-                    #self.rphis2b = rphi
-                #else:
-                    #self.rphisb = self.estbgsub(self.rphisb,self.rphimask)
-                    #self.rphis2b = self.estbgsub(self.rphis2b,self.rphimask)
+            # if 'bgest' in self.method:
+                # self.rphis = self.estbgsub(self.rphis,self.rphimask)
+                # self.rphis2 = self.estbgsub(self.rphis2,self.rphimask)
+                # if imgsb is None:
+                    # self.rphisb = rphi
+                    # self.rphis2b = rphi
+                # else:
+                    # self.rphisb = self.estbgsub(self.rphisb,self.rphimask)
+                    # self.rphis2b = self.estbgsub(self.rphis2b,self.rphimask)
 
             # this is the delta phi convolution piece
 
@@ -503,11 +496,11 @@ class RDeltaPhiCorrelator:
                                                   wsel1=None, wsel2=None)
             # variance of 2nd order correlation
             rdeltaphivar2 = self.deltaphicorrelate(rphi**4,
-                                                  rphimask=self.rphimask,
-                                                  rphib=rphib**4,
-                                                  rphimaskb=self.rphimaskb,
-                                                  method=self.method,
-                                                  wsel1=None, wsel2=None)
+                                                   rphimask=self.rphimask,
+                                                   rphib=rphib**4,
+                                                   rphimaskb=self.rphimaskb,
+                                                   method=self.method,
+                                                   wsel1=None, wsel2=None)
 
             self.rdeltaphiavg[self.wsel2] += rdeltaphi[self.wsel2]
             self.rdeltaphiavg2[self.wsel2] += rdeltaphi2[self.wsel2]
@@ -525,26 +518,33 @@ class RDeltaPhiCorrelator:
         self.rdeltaphiavg /= self.nimgs
         self.rdeltaphiavg2 /= self.nimgs
 
-
         # compute the normalized version (for better viewing)
-        self.rdeltaphiavg_n = self.safe_norm(self.rdeltaphiavg,self.rdeltaphiavg[:,1][:,np.newaxis])
-        self.rdeltaphiavg2_n = self.safe_norm(self.rdeltaphiavg2,self.rdeltaphiavg2[:,1][:,np.newaxis])
-        self.rdeltaphivar_n = self.safe_norm(self.rdeltaphivar,self.rdeltaphivar[:,1][:,np.newaxis])
-        self.rdeltaphivar2_n = self.safe_norm(self.rdeltaphivar2,self.rdeltaphivar2[:,1][:,np.newaxis])
+        self.rdeltaphiavg_n = \
+            self.safe_norm(self.rdeltaphiavg,
+                           self.rdeltaphiavg[:, 1][:, np.newaxis])
+        self.rdeltaphiavg2_n = \
+            self.safe_norm(self.rdeltaphiavg2,
+                           self.rdeltaphiavg2[:, 1][:, np.newaxis])
+        self.rdeltaphivar_n = \
+            self.safe_norm(self.rdeltaphivar,
+                           self.rdeltaphivar[:, 1][:, np.newaxis])
+        self.rdeltaphivar2_n = \
+            self.safe_norm(self.rdeltaphivar2,
+                           self.rdeltaphivar2[:, 1][:, np.newaxis])
 
         print("Done. Computed rphi, rdeltaphi")
 
     def estbgsub(self, rphis, rphimask):
         # estimate background and subtract from rphis using mask
-        bgestvals = np.sum(rphis,axis=-1) /\
-                np.sum(rphimask,axis=-1)[np.newaxis,:]
+        bgestvals = np.sum(rphis, axis=-1) / \
+                np.sum(rphimask, axis=-1)[np.newaxis, :]
         self._removeinfs(bgestvals)
 
         # make a copy, don't subtract from array
-        rphis = (rphis - bgestvals[:,:,np.newaxis])*rphimask[np.newaxis,:,:]
+        rphis = (rphis - bgestvals[:, :, np.newaxis]) * \
+            rphimask[np.newaxis, :, :]
 
         return rphis
-
 
     def safe_norm(self, rdeltaphi, norm):
         ''' Normalize the rdeltaphi function by row,

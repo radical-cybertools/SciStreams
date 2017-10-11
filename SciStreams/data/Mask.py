@@ -82,10 +82,10 @@ class MaskGenerator:
 
         self.scl = master_mask.scl
 
-        print("scale {}".format(self.scl))
+        # print("scale {}".format(self.scl))
         # TODO : scl should be positive, not checked here
         try:
-            Nscl = len(self.scl)
+            len(self.scl)
         except TypeError:
             self.scl = [self.scl]
 
@@ -111,10 +111,10 @@ class MaskGenerator:
                 The scaling is inverted (-1) when going from lab to pix and
                 vice versa.
             '''
-            #print("moving from {} to {}".format((ly, lx), self.refpoint_lab))
+            # print("moving from {} to {}".format((ly, lx), self.refpoint_lab))
             px = (-1)*(lx-self.refpoint_lab[1])/self.scl[1] + self.refpoint[1]
             py = (-1)*(ly-self.refpoint_lab[0])/self.scl[0] + self.refpoint[0]
-            #print("new refpoint : {}".format((px,py)))
+            # print("new refpoint : {}".format((px,py)))
             return py, px
 
         self.trans = CoordinateTransform(to_lab, from_lab)
@@ -124,13 +124,14 @@ class MaskGenerator:
         self.usermask = usermask
 
     def generate(self, *pos_lab):
-        #print("lab coordinates requested : {}".format(pos_lab))
-        #print("original lab coordinates for lab ref point : {}".format(self.refpoint_lab))
+        # print("lab coordinates requested : {}".format(pos_lab))
+        # print("original lab coordinates for lab ref point :
+        #       {}".format(self.refpoint_lab))
         # get the reference point according to the new positions
         refpoint = self.trans.from_lab(*pos_lab)
 
-        #print("generating mask with refpoint {}".format(refpoint))
-        #print("Mask refpoint is {}".format(self.refpoint))
+        # print("generating mask with refpoint {}".format(refpoint))
+        # print("Mask refpoint is {}".format(self.refpoint))
         # give master mask, the reference point, blemish file
         mask = make_submask(self.mastermask, refpoint,
                             shape=self.blemish.shape,
@@ -150,7 +151,7 @@ def make_submask(master_mask, refpoint, shape, blemish=None):
 
         NOTE : Internally, all reference points refer as y, x
     '''
-    print("refpoint is {}".format(refpoint))
+    # print("refpoint is {}".format(refpoint))
     x_master = np.arange(master_mask.shape[1]) - refpoint[1]
     y_master = np.arange(master_mask.shape[0]) - refpoint[0]
 
@@ -169,6 +170,9 @@ def make_submask(master_mask, refpoint, shape, blemish=None):
         submask = submask*blemish
 
     import matplotlib.pyplot as plt
-    plt.figure(6);plt.clf();plt.imshow(submask);plt.clim(0,2)
+    plt.figure(6)
+    plt.clf()
+    plt.imshow(submask)
+    plt.clim(0, 2)
 
     return submask*(submask > 0.5)

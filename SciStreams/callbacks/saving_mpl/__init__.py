@@ -1,1 +1,1 @@
-from .core import store_results
+from .core import store_results  # noqa

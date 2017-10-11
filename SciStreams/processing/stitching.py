@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc):
     ''' Stitch_acc may not be necessary, it should just be a binary flag.  But
             could be generalized to a sequence number so I leave it.
@@ -14,7 +15,9 @@ def xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc):
     img_acc[w] = img_acc_old[w]/mask_acc[w]
     mask_acc = (mask_acc > 0).astype(int)
 
-    return dict(image=img_acc, mask=mask_acc, origin=origin_acc, stitchback=stitchback_acc)
+    return dict(image=img_acc, mask=mask_acc, origin=origin_acc,
+                stitchback=stitchback_acc)
+
 
 def xystitch_accumulate(prevstate, newstate):
     '''
@@ -82,11 +85,11 @@ def xystitch_accumulate(prevstate, newstate):
     bounds_next = _getbounds2D(origin_next, shape_next)
     # check if image will fit in stitched image
     expandby = _getexpansion2D(bounds_acc, bounds_next)
-    #print("need to expand by {}".format(expandby))
+    # print("need to expand by {}".format(expandby))
 
     img_acc = _expand2D(img_acc, expandby)
     mask_acc = _expand2D(mask_acc, expandby)
-    #print("New shape : {}".format(img_acc.shape))
+    # print("New shape : {}".format(img_acc.shape))
 
     origin_acc = origin_acc[0] + expandby[2], origin_acc[1] + expandby[0]
     _placeimg2D(img_next, origin_next, img_acc, origin_acc)
@@ -99,6 +102,7 @@ def xystitch_accumulate(prevstate, newstate):
 
     return newstate
 
+
 def _placeimg2D(img_source, origin_source, img_dest, origin_dest):
     ''' place source image into dest image. use the origins for
     registration.'''
@@ -110,8 +114,10 @@ def _placeimg2D(img_source, origin_source, img_dest, origin_dest):
     img_dest[low_bound:low_bound+img_source.shape[0],
              left_bound:left_bound+img_source.shape[1]] += img_source
 
+
 def _getbounds(center, width):
     return -center, width-1-center
+
 
 def _getbounds2D(origin, shape):
     # NOTE : arrays index img[y][x] but I choose this way
@@ -119,6 +125,7 @@ def _getbounds2D(origin, shape):
     yleft, yright = _getbounds(origin[0], shape[0])
     xleft, xright = _getbounds(origin[1], shape[1])
     return [xleft, xright, yleft, yright]
+
 
 def _getexpansion(bounds_acc, bounds_next):
     expandby = [0, 0]
@@ -132,11 +139,13 @@ def _getexpansion(bounds_acc, bounds_next):
 
     return expandby
 
+
 def _getexpansion2D(bounds_acc, bounds_next):
     expandby = list()
     expandby.extend(_getexpansion(bounds_acc[0:2], bounds_next[0:2]))
     expandby.extend(_getexpansion(bounds_acc[2:4], bounds_next[2:4]))
     return expandby
+
 
 def _expand2D(img, expandby):
     ''' expand image by the expansion requirements. '''
@@ -148,6 +157,7 @@ def _expand2D(img, expandby):
     drows = expandby[2] + expandby[3]
 
     img_tmp = np.zeros((img.shape[0] + drows, img.shape[1] + dcols))
-    img_tmp[expandby[2]:expandby[2]+img.shape[0], expandby[0]:expandby[0]+img.shape[1]] = img
+    img_tmp[expandby[2]:expandby[2]+img.shape[0],
+            expandby[0]:expandby[0]+img.shape[1]] = img
 
     return img_tmp

@@ -71,6 +71,7 @@ def test_merge():
     assert result_kwargs['c'] == 4
     assert result_args == [1, 2, 3, 4]
 
+
 def test_new_streamdoc():
 
     # test initialization

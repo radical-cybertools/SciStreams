@@ -6,7 +6,6 @@ from dask.base import normalize_token
 from streamz import Stream
 import SciStreams.core.scistreams as scs
 from SciStreams.core.StreamDoc import StreamDoc
-import SciStreams.globals
 
 set_options(delayed_pure=True)
 
@@ -27,7 +26,6 @@ def test_object_hash():
         global_list.append(1)
         return foo.a + foo.b
 
-
     # first, verify the hashes are the same
     myobj = Foo()
     first = delayed(add)(myobj)
@@ -39,7 +37,7 @@ def test_object_hash():
     s = Stream()
     # when delayed, should cache, the second map is in streams not SciStreams
     sout = scs.map(delayed(add), s)
-    sout = scs.map(lambda x : compute(x['args'][0], get=get), sout)
+    sout = scs.map(lambda x: compute(x['args'][0], get=get), sout)
     lout = sout.sink_to_list()
 
     s2 = Stream()
@@ -49,7 +47,9 @@ def test_object_hash():
     s.emit(StreamDoc(args=(myobj)))
     s.emit(StreamDoc(args=(myobj)))
     assert global_list == [1]
+    assert lout == [1, 1]
 
     s2.emit(StreamDoc(args=(myobj)))
     s2.emit(StreamDoc(args=(myobj)))
     assert global_list == [1, 1, 1]
+    assert l2out == [1, 1]
