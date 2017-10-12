@@ -18,6 +18,7 @@ Welcome to SciAnalysis's documentation!
  tutorials
  debugging
  tips
+ api
 
 .. currentmodule::
   intro
