@@ -520,7 +520,9 @@ def CollapseStream(axis=0, name="collapse-image"):
         if mask is None:
             # normalization is number of pixels in dimension
             # if no mask
-            norm = img.shape[
+            # TODO : Fix
+            #norm = img.shape[
+            norm = 1
         else:
             norm = np.sum(mask, axis=axis)
         cll = np.sum(image, axis=axis)
