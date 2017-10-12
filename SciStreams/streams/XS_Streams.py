@@ -708,6 +708,32 @@ def LineCutStream(axis=0, name=None):
                               stream_name=stream_name)
     return sin, sout
 
+def CollapseStream(axis=0, name="collapse-image"):
+    ''' This stream collapses 2D images to 1D images
+        by averaging along an axis.
+
+        Stream Inputs
+        -------------
+        image : 2d np.ndarray
+            the 2D image
+        mask : 2d np.ndarray
+            optional mask
+    '''
+    def collapse(image, mask=None, axis=0):
+        if mask is None:
+            # normalization is number of pixels in dimension
+            # if no mask
+            norm = img.shape[
+        else:
+            norm = np.sum(mask, axis=axis)
+        cll = np.sum(image, axis=axis)
+        res = cll/norm
+        return dict(line=res, axis=axis)
+    sin = sc.Stream(stream_name=name)
+
+    sout = scs.map(collapse, axis=axis)
+    return sin, sout
+
 
 def CollapseStream(axis=0, name="collapse-image"):
     ''' This stream collapses 2D images to 1D images
