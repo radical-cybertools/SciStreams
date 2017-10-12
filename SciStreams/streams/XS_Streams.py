@@ -93,7 +93,6 @@ def PrimaryFilteringStream():
             data : dict
                 must have a 2D np.ndarray with one of accepted detector
                 keys
-
         **Stream Outputs**
 
             Outputs from zero to any number streams
@@ -708,6 +707,7 @@ def LineCutStream(axis=0, name=None):
                               stream_name=stream_name)
     return sin, sout
 
+
 def CollapseStream(axis=0, name="collapse-image"):
     ''' This stream collapses 2D images to 1D images
         by averaging along an axis.
@@ -724,7 +724,7 @@ def CollapseStream(axis=0, name="collapse-image"):
             # normalization is number of pixels in dimension
             # if no mask
             # TODO : Fix
-            #norm = img.shape[
+            # norm = img.shape[
             norm = 1
         else:
             norm = np.sum(mask, axis=axis)
@@ -1019,6 +1019,19 @@ def ThumbStream(blur=None, crop=None, resize=None):
             resize : int, optional
                 the factor to resize by
                 for example resize=2 performs 2x2 binning of the image
+
+        Stream Inputs
+        -------------
+            image : 2d np.ndarray
+                the image
+
+        Returns
+        -------
+            sin :
+                the stream input
+
+            sout :
+                the stream output
     '''
     # TODO add flags to actually process into thumbs
     sin = sc.Stream(stream_name="Thumbnail Stream")
