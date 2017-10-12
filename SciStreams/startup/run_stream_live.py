@@ -1,3 +1,31 @@
+# run with zeromq
+'''
+    For this to work, need the following two things:
+        # (choose the ports you want)
+        1. run scripts/bluesky-0MQ-proxy 5578 5579
+        2.
+            In the stream code you would do this and run forever:
+            #prepare the SciStream Callback
+            sin = sc.Stream(stream_name="Input")
+            stream_input = SciStreamCallback(sin.emit)
+
+            # now start the infinite loop
+            from bluesky.callbacks.zmq import RemoteDispatcher
+            d = RemoteDispatcher('localhost:5579')
+
+            d.subscribe(stream_input)
+
+            # when done subscribing things and ready to use:
+            d.start()  # runs event loop forever
+        3. In the bluesky user interface, subscribe a Publisher
+            # Create a RunEngine instance (or, of course, use your existing
+            # one).
+            from bluesky import RunEngine, Msg
+            RE = RunEngine({})
+
+            from bluesky.callbacks.zmq import Publisher
+            Publisher('localhost:5578', RE)
+'''
 # test a XS run
 import numpy as np
 import matplotlib
@@ -234,6 +262,10 @@ sout_sqphipeaks = scs.select(sout_sqphipeaks, ('sqphi', 'image'), ('qs', 'y'),
 
 sin_linecuts, sout_linecuts = LineCutStream(axis=0)
 sout_sqphipeaks.connect(sin_linecuts)
+L_linecuts = sout_linecuts.sink_to_list()
+
+sin_linecuts_gisaxs_x, sout_linecuts_gisaxs_y = LineCutStream(axis=0)
+sout_sqphipeaks.connect(sin_linecuts_gisaxs_x)
 L_linecuts = sout_linecuts.sink_to_list()
 
 
@@ -487,8 +519,11 @@ def start(stream):
         # x0, y0 = 720, 599
         # rdet = 5
         # sin.emit(nds)
-        yield stream_input(*nds)
-        plt.pause(.1)
+        try:
+            yield stream_input(*nds)
+            plt.pause(.1)
+        except FileNotFoundError:
+            pass
         # input("stopping here")
 
 
