@@ -13,6 +13,7 @@ Welcome to SciAnalysis's documentation!
  installation
  streams
  visualizing_streams
+ stream_functions
  masking
  tutorials
  debugging

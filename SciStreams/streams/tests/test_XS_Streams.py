@@ -210,8 +210,8 @@ def test_QPHIMapStream():
 
     mask = None
     img = np.random.random((10, 10))
-    x = np.linspace(-5, 5, 10)
-    X, Y = np.meshgrid(x, x)
+    # x = np.linspace(-5, 5, 10)
+    # X, Y = np.meshgrid(x, x)
     # r_map = np.sqrt(X**2 + Y**2)
     # q_map = r_map*.12
 

@@ -24,13 +24,6 @@ from ..processing.peak_finding import peak_finding
 
 from ..config import config
 
-
-'''
-    Notes : load should be a separate function
-'''
-
-# from SciAnalysis.analyses.XSAnalysis.Data import Calibration
-# use RQConv now
 from ..data.Calibration import Calibration
 import streamz as sc
 import SciStreams.core.scistreams as scs
@@ -86,26 +79,56 @@ def pick_allowed_detectors(sdoc):
 # Streams : These return an sin and sout
 def PrimaryFilteringStream():
     ''' Filter the stream for just primary results.
-        Stream Inputs
-        -------------
 
-            md : No requirements
+        **Stream Inputs**
 
-            data :
+            md : dict
+                No requirements
+
+            data : dict
                 must have a 2D np.ndarray with one of accepted detector
-                    keys
+                keys
 
-        Stream Outputs
-        --------------
-            From 0 - any number streams
-                (depends on how many detectors were found)
+        **Stream Outputs**
+
+            Outputs from zero to any number streams
+            (depends on how many detectors were found)
 
             md :
                 detector_key : the detector key (string)
+
             data :
                 data with only one image as detector key
                 if there was more than one, it selects one of them
                 Note this has unspecified behaviour.
+
+        Examples
+        --------
+        >>> # A typical workflow is as follows:
+        >>> # instantiate the main stream input
+        >>> from streamz import Stream
+        >>> s = Stream()
+        >>> # create the filtering stream
+        >>> from SciStreams.streams.XS_Streams import PrimaryFilteringStream
+        >>> sin, sout = PrimaryFilteringStream()
+        >>> s.connect(sin)
+        >>> import numpy as np
+        >>> # create dummy detector image, from pilatus300
+        >>> img = np.random.random((619, 487))
+        >>> from SciStreams.core.StreamDoc import StreamDoc
+        >>> sdoc = StreamDoc(kwargs=dict(pilatus300_image=img))
+        >>> # save result in a list L that you can review later
+        >>> L = sout.sink_to_list()
+        >>> # emit the data
+        >>> s.emit(sdoc)
+
+        Returns
+        -------
+        sin : Stream instance
+            the source stream (see Stream Inputs)
+
+        sout : Stream instance
+            the output stream (see Stream Outputs)
     '''
     sin = sc.Stream(stream_name="Primary Filter")
     sout = sc.map(sin, pick_allowed_detectors)
@@ -117,6 +140,71 @@ def PrimaryFilteringStream():
 
 
 def AttributeNormalizingStream(external_keymap=None):
+    ''' Get and re-map the attributes of the stream.
+
+        This step is typically performed before sending data to the
+        CalibrationStream input stream.
+
+        **Stream Inputs**
+            md : dict
+                The metadata for the stream.
+            data : dict
+                No requirements for the data
+
+        **Stream Outputs**
+            md : dict
+                The same metadata is passed through
+            data : dict
+                The normalized metadata is put in the data which includes:
+                    beamx0: dict {'value' : val, 'unit' : unit}
+                        the x0 position of the beam
+                    beamy0: dict {'value' : val, 'unit' : unit}
+                        the y0 position of the beam
+                    wavelength: dict {'value' : val, 'unit' : unit}
+                        the wavelength of the beam
+                    pixel_size_x: dict {'value' : val, 'unit' : unit}
+                        the x size of a pixel
+                    pixel_size_y: dict {'value' : val, 'unit' : unit}
+                        the y size of a pixel
+                    detector_key: str
+                        the detector image key
+                    detector_name : str
+                        the detector name
+
+        Examples
+        --------
+        >>> # A typical workflow is as follows:
+        >>> # instantiate the main stream input
+        >>> from streamz import Stream
+        >>> from SciStreams import StreamDoc
+        >>> import numpy as np
+        >>> s = Stream()
+        >>> # create the filtering stream
+        >>> from SciStreams.streams.XS_Streams import \
+        ...     AttributeNormalizingStream
+        >>> sin, sout = AttributeNormalizingStream()
+        >>> s.connect(sin)
+        >>> # create dummy detector image, from pilatus300
+        >>> attr = dict(
+        ...             calibration_wavelength_A=1.0,
+        ...             detector_SAXS_x0_pix=5.0,
+        ...             detector_SAXS_y0_pix=5.0,
+        ...             detector_SAXS_distance_m=5.0,
+        ...             detector_key='pilatus300_image',
+        ...             )
+        >>> sdoc = StreamDoc(attributes=attr)
+        >>> # save result in a list L that you can review later
+        >>> L = sout.sink_to_list()
+        >>> # emit the data
+        >>> s.emit(sdoc)
+
+
+        Parameters
+        ----------
+            external_keymap: dict, optional
+                The keymap to perform the re-mapping from. If it is not
+                specified, internal keymaps are used.
+    '''
     sin = sc.Stream()
     sout = scs.get_attributes(sin)
     sout = scs.map(normalize_calib_dict, sout, external_keymap=external_keymap)
@@ -197,22 +285,24 @@ def CalibrationStream():
     ''' This stream takes data with kwargs and creates calibration object.
 
 
-       Stream Inputs
-       -------------
+        **Stream Inputs**
 
-             metadata : No requirements
-             data : requires keys who contain calibration information
+             md : dict
+                No requirements
+
+             data : dict
+                requires keys who contain calibration information
                 (this is usually obtained by moving metadata to data in first
                 step)
-            Note : use the AttributeNormalizingStream first so that the data
-            is as the CalibrationStream expects.
 
-        Stream Outputs
-        --------------
+        **Stream Outputs**
 
-            md : keeps regular md
-            data :
-                calibration : a calibration object
+            md : dict
+                keeps regular md
+
+            data : dict
+                calibration : object
+                    a calibration object
 
         Notes
         -----
@@ -220,6 +310,34 @@ def CalibrationStream():
             by saving references to the futures (which distributed will
             bookkeep)
 
+            Use the ``AttributeNormalizingStream`` first so that the data is as
+            the CalibrationStream expects.
+
+        Examples
+        --------
+        >>> from streamz import Stream
+        >>> from SciStreams import StreamDoc
+        >>> import numpy as np
+        >>> s = Stream()
+        >>> from SciStreams.streams.XS_Streams import CalibrationStream
+        >>> sin, sout = CalibrationStream()
+        >>> s.connect(sin)
+        >>> # some example data
+        >>> data = dict(wavelength=dict(value=1), pixel_size_x=dict(value=1),
+        ...             pixel_size_y=dict(value=1),
+        ...             sample_det_distance=dict(value=1),
+        ...             beamx0=dict(value=0), beamy0=dict(value=0),
+        ...             shape=(100,100))
+        >>> sdoc = StreamDoc(kwargs=data)
+        >>> s.emit(sdoc)
+
+        Returns
+        -------
+        sin : Stream instance
+            the source stream (see Stream Inputs)
+
+        sout : Stream instance
+            the output stream (see Stream Outputs)
     '''
     sin = sc.Stream(stream_name="Calibration")
     sout = scs.map(make_calibration, sin)
@@ -319,57 +437,83 @@ def _generate_qxyz_maps(calibration):
 def CircularAverageStream():
     ''' Circular average stream.
 
-        Stream Inputs
-        -------------
-            (image, calibration, mask=, bins=)
-
+        **Stream Inputs**
             image : 2d np.ndarray
                 the image to run circular average on
 
             calibration : 2D np.ndarray
                 the calibration object, with members:
+                    q_map : 2d np.ndarray
+                        the magnite of the wave vectors
 
-                q_map : 2d np.ndarray
-                    the magnite of the wave vectors
+                    r_map : 2d np.ndarray
+                        the pixel positions from center
 
-                r_map : 2d np.ndarray
-                    the pixel positions from center
-
-            mask= : 2d np.ndarray, optional
+            mask : 2d np.ndarray, optional
                 the mask
 
-            bins= : int or tuple, optional
+            bins : int or tuple, optional
                 if an int, the number of bins to divide into
                 if a list, the bins to use
 
-        Stream Outputs
-        --------------
-            sqx= : 1D np.ndarray
-                the q values
-            sqxerr= : 1D np.ndarray
-                the error q values
-            sqy= : 1D np.ndarray
-                the intensities
-            sqyerr= : 1D np.ndarray
-                the error in intensities (approximate)
+        **Stream Outputs**
 
-        Returns
-        -------
-            sin : Stream, the source stream (see Stream Inputs)
-            sout : the output stream (see Stream Outputs)
+            sqx : 1D np.ndarray
+                the q values
+            sqxerr : 1D np.ndarray
+                the error q values
+            sqy : 1D np.ndarray
+                the intensities
+            sqyerr : 1D np.ndarray
+                the error in intensities (approximate)
 
         Notes
         -----
-        - Assumes square pixels
-        - Assumes variance comes from shot noise only (by taking average along
-            ring/Npixels)
-        - If bins is None, it does its best to estimate pixel sizes and make
+            Assumes square pixels
+
+            Assumes variance comes from shot noise only (by taking average
+            along ring/Npixels)
+
+            If bins is None, it does its best to estimate pixel sizes and make
             the bins a pixel in size. Note, for Ewald curvature this is not
             straightforward. You need both a r_map in pixels from the center
             and the q_map for the actual q values.
 
-    TODO : Add options
+        Returns
+        -------
+        sin : Stream instance
+            the source stream (see Stream Inputs)
 
+        sout : Stream instance
+            the output stream (see Stream Outputs)
+
+        Examples
+        --------
+        >>> from streamz import Stream
+        >>> from SciStreams import StreamDoc
+        >>> import numpy as np
+        >>> s = Stream()
+        >>> from SciStreams.streams.XS_Streams import CircularAverageStream
+        >>> sin, sout = CircularAverageStream()
+        >>> s.connect(sin)
+        >>> mask = None
+        >>> bins = 3
+        >>> img = np.random.random((10, 10))
+        >>> x = np.linspace(-5, 5, 10)
+        >>> X, Y = np.meshgrid(x, x)
+        >>> r_map = np.sqrt(X**2 + Y**2)
+        >>> q_map = r_map*.12
+        >>> class Calib:
+        ...     def __init__(self, qmap, rmap):
+        ...         self.q_map = qmap
+        ...         self.r_map = rmap
+        >>> calibration = Calib(q_map, r_map)
+        >>> sdoc = StreamDoc(kwargs=dict(image=img,
+        ...                  calibration=calibration,
+        ...                  mask=mask,
+        ...                  bins=bins))
+        >>> # emit data as usual
+        >>> sin.emit(sdoc)
     '''
     # TODO : extend file to mltiple writers?
     def validate(x):
@@ -399,39 +543,57 @@ def circavg_from_calibration(image, calibration, mask=None, bins=None):
 
 
 def QPHIMapStream(bins=(800, 360)):
-    '''
+    ''' Transform the scattering image into a q, phi map.
+
         Parameters
         ----------
-        bins : 2 tuple, optional
-            the number of bins to divide into
+            bins : 2 tuple, optional
+                the number of bins to divide into
 
-        Stream Inputs
-        -------------
+        **Stream Inputs**
             img : 2d np.ndarray
                 the image
+
             mask : 2d np.ndarray, optional
                 the mask
+
             origin : 2 tuple
                 the beam center in the image
+
             qmap : 2d np.ndarray
                 the qmap of the image
 
-        Stream Outputs
-        --------------
-            sqphi= : 2d np.ndarray
+        **Stream Outputs**
+            sqphi : 2d np.ndarray
                 the sqphi map
-            qs= : 1d np.ndarray
+
+            qs : 1d np.ndarray
                 the q values
-            phis= : 1d np.ndarray
+
+            phis : 1d np.ndarray
                 the phi values
 
         Returns
         -------
-        sin : the input stream (see Stream Inputs)
-        sout : the output stream (see Stream Outputs)
-    '''
-    #
+            sin : Stream instance
+                the input stream (see Stream Inputs)
 
+            sout : Stream instance
+                the output stream (see Stream Outputs)
+
+        Examples
+        --------
+        >>> bins = (3, 4)
+        >>> sin, sout = QPHIMapStream(bins=bins)
+        >>> L = sout.sink_to_list()
+        >>> mask = None
+        >>> img = np.random.random((10, 10))
+        >>> origin = (3, 3)
+        >>> sdoc = StreamDoc(kwargs=dict(image=img,
+        ...                  origin=origin,
+        ...                  mask=mask))
+        >>> sin.emit(sdoc)
+    '''
     sin = sc.Stream(stream_name="QPHI map Stream")
     sout = scs.map(qphiavg, sin, bins=bins)
     sout = scs.add_attributes(sout, stream_name="qphiavg")
@@ -441,6 +603,7 @@ def QPHIMapStream(bins=(800, 360)):
 
 def LineCutStream(axis=0, name=None):
     ''' Obtain line cuts from a 2D image.
+
         Just simple slicing. It's a stream mainly to make this more standard.
 
         Parameters
@@ -450,26 +613,38 @@ def LineCutStream(axis=0, name=None):
                 Default is 0 (so we index rows A[i])
                 If 1, the index cols (A[:,i])
 
-        Stream Inputs
-        -------------
-        image : 2d np.ndarray
-            the image to obtain line cuts from
-        y : 1d np.ndarray
-            The y (row) values per pixel
-        x : The x (column) values per pixel
-        vals : list
-            the values to obtain the linecuts from
+            name : str, optional
+                the name of the stream
 
-        Stream Outputs
-        --------------
-        linecuts : a list of line cuts
-        linecuts_domain : the domain of the line cuts
-        linecuts_vals : the corresponding value for each line cut
+        **Stream Inputs**
+            image : 2d np.ndarray
+                the image to obtain line cuts from
+
+            y : 1d np.ndarray
+                The y (row) values per pixel
+
+            x : The x (column) values per pixel
+
+            vals : list
+                the values to obtain the linecuts from
+
+        **Stream Outputs**
+            linecuts : list
+                a list of line cuts
+
+            linecuts_domain : 1d np.ndarray
+                the domain of the line cuts
+
+            linecuts_vals : 1d np.ndarray
+                the corresponding value for each line cut
 
         Returns
         -------
-        sin : the input stream (see Stream Inputs)
-        sout : the output stream (see Stream Outputs)
+            sin : Stream instance
+                the input stream (see Stream Inputs)
+
+            sout : Stream instance
+                the output stream (see Stream Outputs)
     '''
     def linecuts(image, y, x, vals, axis=0):
         ''' Can potentially return an empty list of linecuts.'''
@@ -493,42 +668,75 @@ def LineCutStream(axis=0, name=None):
 
     # the string for the axis
     axisstr = ['y', 'x'][axis]
-    sin = sc.Stream(stream_name="Line Cuts")
-    sout = scs.map(linecuts, sin, axis=axis)
     if name is None:
         stream_name = 'linecuts-axis{}'.format(axisstr)
     else:
         stream_name = name + "-axis{}".format(axisstr)
+
+    sin = sc.Stream(stream_name=stream_name)
+    sout = scs.map(linecuts, sin, axis=axis)
 
     sout = scs.add_attributes(sout,
                               stream_name=stream_name)
     return sin, sout
 
 
+def CollapseStream(axis=0, name="collapse-image"):
+    ''' This stream collapses 2D images to 1D images
+        by averaging along an axis.
+
+        **Stream Inputs**
+            image : 2d np.ndarray
+                the 2D image
+            mask : 2d np.ndarray
+                optional mask
+    '''
+    def collapse(image, mask=None, axis=0):
+        if mask is None:
+            # normalization is number of pixels in dimension
+            # if no mask
+            # TODO : Fix
+            # norm = img.shape[
+            norm = 1
+        else:
+            norm = np.sum(mask, axis=axis)
+        cll = np.sum(image, axis=axis)
+        res = cll/norm
+        return dict(line=res, axis=axis)
+    sin = sc.Stream(stream_name=name)
+
+    sout = scs.map(collapse, axis=axis)
+    return sin, sout
+
+
 def AngularCorrelatorStream(bins=(800, 360)):
     ''' Stream to run angular correlations.
 
-        Stream Inputs
-        -------------
-        image : 2d np.ndarray
-            the image to run the angular correltions on
-        mask : 2d np.ndarray
-            the mask
-        origin : 2 tuple
-            the beam center of the image
-        bins : tuple
-            the number of bins in q and phi
-        method : string, optional
-            the method to use for the angular correlations
-            defaults to 'bgest'
-        q_map : the q_map to be used
+        **Stream Inputs**
+            image : 2d np.ndarray
+                the image to run the angular correltions on
 
-        Stream Outputs
-        --------------
-        sin : the stream input
-        sout : the stream output
+            mask : 2d np.ndarray
+                the mask
 
-        Incomplete
+            origin : 2 tuple
+                the beam center of the image
+
+            bins : tuple
+                the number of bins in q and phi
+
+            method : string, optional
+                the method to use for the angular correlations
+                defaults to 'bgest'
+
+            q_map : the q_map to be used
+
+        **Stream Outputs**
+            sin : Stream instance
+                the stream input
+
+            sout : Stream instance
+                the stream output
     '''
     # TODO : Allow optional kwargs in streams
     sin = sc.Stream(stream_name="Angular Correlation")
@@ -569,32 +777,39 @@ def ImageStitchingStream(return_intermediate=False):
     '''
         Image stitching
 
-        Stream Inputs
-        -------------
-            image= : 2d np.ndarray
+        **Stream Inputs**
+            image : 2d np.ndarray
                 the image for the stitching
-            mask= : 2d np.ndarray
+
+            mask : 2d np.ndarray
                 the mask
-            origin= : 2 tuple
+
+            origin : 2 tuple
                 the beam center
-            stitchback= : bool
+
+            stitchback : bool
                 whether or not to stitchback to previous image
 
-        Stream Outputs
-        --------------
-            image= : 2d np.ndarray
+        **Stream Outputs**
+            image : 2d np.ndarray
                 the stitched image
-            mask= : 2d np.ndarray
+
+            mask : 2d np.ndarray
                 the mask from the stitch
-            origin= : 2 tuple
+
+            origin : 2 tuple
                 the beam center
-            stitchback= : bool
+
+            stitchback : bool
                 whether or not to stitchback to previous image
 
         Returns
         -------
-            sin : the input stream
-            sout : the output stream
+            sin : Stream instance
+                the input stream
+
+            sout : Stream instance
+                the output stream
 
         Parameters
         ----------
@@ -606,6 +821,43 @@ def ImageStitchingStream(return_intermediate=False):
         -----
         Any normalization of images (for ex: by exposure time) should be done
         before inputting to this stream.
+
+        Examples
+        --------
+        >>> sin, sout = ImageStitchingStream()
+        >>> L = sout.sink_to_list()
+        >>> mask = np.ones((10, 10), dtype=np.int64)
+        >>> img1 = np.ones_like(mask, dtype=float)
+        >>> # 3 rows are higher
+        >>> img1[2:4] = 2
+        >>> # some arb value
+        >>> origin1 = [2, 3]
+        >>> # roll along zero axis
+        >>> img2 = np.roll(img1, 2, axis=0)
+        >>> # rolled by two
+        >>> origin2 = [2+2, 3]
+        >>> # first image, stitchback can be anything
+        >>> sdoc1 = StreamDoc(kwargs=dict(mask=mask, image=img1,
+        ...                               origin=origin1,
+        ...                               stitchback=False))
+        >>> sin.emit(sdoc1)
+        >>> # emit a second image and it will be stitched
+        >>> sdoc2 = StreamDoc(kwargs=dict(mask=mask, image=img2,
+        ...                               origin=origin2,
+        ...                               stitchback=True))
+        >>> sin.emit(sdoc2)
+        >>> # A new image with False stitchback will have output
+        >>> # stream output a result
+        >>> img3 = np.random.random((10,10))
+        >>> origin3 = (0,0)
+        >>> sdoc3 = StreamDoc(kwargs=dict(mask=mask, image=img3,
+        ...                               origin=origin3,
+        ...                               stitchback=False))
+        >>> sin.emit(sdoc3)
+        >>> len(L) == 1
+        True
+        >>> # the stitched image is here:
+        >>> img = L[0]['kwargs']['image']
     '''
     # TODO : add state. When False returned, need a reason why
     def validate(x):
@@ -685,11 +937,22 @@ def ImageStitchingStream(return_intermediate=False):
 def ThumbStream(blur=None, crop=None, resize=None):
     ''' Thumbnail stream
 
+        **Stream Inputs**
+            image : 2d np.ndarray
+                the image
+
+        **Stream Outputs**
+            sin : Stream instance
+                the stream input
+
+            sout : Stream instance
+                the stream output
+
         Parameters
         ----------
             blur : float, optional
                 the sigma of the Gaussian kernel to convolve image with
-                    for smoothing
+                for smoothing
                 default is None, no smoothing
 
             crop : 4 tuple of int, optional
@@ -699,17 +962,6 @@ def ThumbStream(blur=None, crop=None, resize=None):
             resize : int, optional
                 the factor to resize by
                 for example resize=2 performs 2x2 binning of the image
-
-        Stream Inputs
-        -------------
-            image : 2d np.ndarray
-                the image
-
-        Returns
-        -------
-            sin : the stream input
-            sout : the stream output
-
     '''
     # TODO add flags to actually process into thumbs
     sin = sc.Stream(stream_name="Thumbnail Stream")
@@ -725,18 +977,52 @@ def ThumbStream(blur=None, crop=None, resize=None):
 
 
 #
-def PeakFindingStream():
-    '''
-        Stream Inputs
-        -------------
+def PeakFindingStream(name='peakfind'):
+    ''' Find peaks in 1d line data.
 
-        Stream Outputs
-        -------------
+        **Stream Inputs**
+            sqx : 1d np.ndarray
+                the x domain of the curve
+
+            sqy : 1d np.ndarray
+                the y domain of the curve
+
+        **Stream Outputs**
+            model: lmfit.Model instance
+                The model for the fit
+
+            y_origin:
+
+            inds_peak: list
+               the peak indices
+
+            xdata:
+
+            ratio:
+
+            ydata:
+
+            wdata:
+
+            bkgd:
+
+            variance:
+
+            variance_mean:
+
+            peaksx:
+
+            peaksy:
+
+        Parameters
+        ----------
+        name : str, optional
+            name of stream
     '''
     sin = sc.Stream(stream_name="Peak Finder")
     # pkfind stream
     sout = scs.map(call_peak, scs.select(sin, 'sqy', 'sqx'))
-    sout = scs.add_attributes(sout, stream_name='peakfind')
+    sout = scs.add_attributes(sout, stream_name=name)
     return sin, sout
 
 
@@ -782,15 +1068,18 @@ def call_peak(sqx, sqy):
 
 # these are all the nn steps
 def ImageTaggingStream():
-    ''' Creates an image taggint stream.
+    ''' Creates an image tagging stream.
 
-        Stream Inputs
-        -------------
-        image : the image to be tagged
+        This stream will take in an image and output a tage as to what the
+        image is.
 
-        Stream Outputs
-        --------------
-        tag_name : the name of the tag for the image
+        **Stream Inputs**
+            image : 2d np.ndarray
+                the image to be tagged
+
+        **Stream Outputs**
+            tag_name : str
+                the name of the tag for the image
     '''
     sin = sc.Stream(stream_name="Image Tagger")
     sout = scs.map(infer, scs.select(sin, 'image'))
@@ -802,20 +1091,21 @@ def PCAStream(Nimgs=100, n_components=16):
     '''
         This runs principle component analysis on the last Nimgs
 
-        Stream Inputs
-        -------------
-        'image' : the nth image
+        **Stream Inputs**
+            image : 2d np.ndarray
+                the nth image
 
-        Stream Outputs
-        --------------
-        components : the components
+        **Stream Outputs**
+            components : 2d np.ndarray
+                the components
 
         Returns
         -------
-        sin : the input stream
-        sout : the output stream
+            sin : Stream instance
+                the input stream
 
-        you need to connect these streams for them to be useful
+            sout : Stream instance
+                the output stream
     '''
     sin = sc.Stream(stream_name="PCA Stream")
     sout = sin.sliding_window(Nimgs)
@@ -829,7 +1119,11 @@ def PCAStream(Nimgs=100, n_components=16):
 # sample custom written function
 def PCA_fit(data, n_components=10):
     ''' Run principle component analysis on data.
-        n_components : num components (default 10)
+
+        Parameters
+        ----------
+            n_components : int, optional
+                num components (default 10)
     '''
     # first reshape data if needed
     if data.ndim > 2:
