@@ -3,11 +3,13 @@
     layer should reside. Conversions from other interfaces to StreamDoc are
     found in corresponding interface folders.
 '''
-from functools import wraps
+from functools import wraps, partial
 import time
 import sys
 from uuid import uuid4
 # from ..globals import debugcache
+
+from distributed import Future
 
 # convenience routine to return a hash of the streamdoc
 # from dask.delayed import tokenize, delayed, Delayed
@@ -20,33 +22,13 @@ import numpy as np
 
 from ..config import default_timeout as DEFAULT_TIMEOUT
 
+from ..globals import client
+
 
 # this class is used to wrap outputs to inputs
 # for ex, if a function returns Arguments(12,34, g=23,h=20)
 # will assume the output will serve as input f(12,34, g=23, h=20)
 # to some function (unless another streamdoc is merged etc)
-
-
-# This is an internal object that helps keep track of arguments
-class Arguments:
-    def __init__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
-
-
-def parse_args(res, output_info=None):
-    ''' This is where the arguments are parsed
-        Main rules:
-            if output_info is not set then if dict, these are kwargs
-            if not, whatever the result is is an arg
-    '''
-    if output_info is not None:
-        # TODO :implement external output information
-        return Arguments(res)
-    elif isinstance(res, dict):
-        return Arguments(**res)
-    else:
-        return Arguments(res)
 
 
 # routines that add on to stream doc functionality
@@ -71,7 +53,7 @@ def unpack(args):
 
 def todict(kwargs):
     ''' assume input is a dictionary, split into kwargs.'''
-    return Arguments(**kwargs)
+    return dict(kwargs=kwargs)
 
 
 def add_attributes(sdoc, attributes={}):
@@ -255,15 +237,15 @@ def _to_event_stream(sdoc):
 
 
 class StreamDoc(dict):
-    def __init__(self, streamdoc=None, args=(), kwargs={}, attributes={},
-                 wrapper=None):
+    def __init__(self, kwargs={},
+                 attributes={}, streamdoc=None, wrapper=None):
         ''' A generalized document meant to be parsed by Streams.
 
             Components:
                 attributes :None the metadata
                 outputs : a dictionary of outputs from stream
-                args : a list of args
-                kwargs : a list of kwargs
+                kwargs : keyword arguments
+
                 statistics : some statistics of the stream that generated this
                     It can be anything, like run_start, run_stop etc
         '''
@@ -271,10 +253,10 @@ class StreamDoc(dict):
         # initialize the dictionary class
         super(StreamDoc, self).__init__(self)
 
+        # NOTE : removed args overall
         # initialize the metadata and kwargs
         self['attributes'] = dict()
         self['kwargs'] = dict()
-        self['args'] = list()
         self['provenance'] = dict()
         self['checkpoint'] = dict()
 
@@ -290,34 +272,38 @@ class StreamDoc(dict):
             self.updatedoc(streamdoc)
 
         # override with args
-        self.add(args=args, kwargs=kwargs, attributes=attributes)
+        self.add(kwargs=kwargs, attributes=attributes)
 
     def updatedoc(self, streamdoc):
         # print("in StreamDoc : {}".format(streamdoc))
-        self.add(args=streamdoc['args'], kwargs=streamdoc['kwargs'],
+        self.add(kwargs=streamdoc['kwargs'],
                  attributes=streamdoc['attributes'],
                  statistics=streamdoc['statistics'])
         self._wrapper = streamdoc._wrapper
 
-    def add(self, args=[], kwargs={}, attributes={}, statistics={},
+    # arguments can be a Future
+    # so everything involving it should be submitted to cluster
+    def add(self, kwargs={}, attributes={}, statistics={},
             provenance={}, checkpoint={}):
         ''' add args and kwargs'''
-        if not isinstance(args, list) and not isinstance(args, tuple):
-            args = (args, )
-
-        self['args'].extend(args)
         # Note : will overwrite previous kwarg data without checking
-        self['kwargs'].update(kwargs)
+        if isinstance(kwargs, Future):
+            def update_future(old_dict, update_dict):
+                new_dict = dict(old_dict)
+                new_dict.update(update_dict)
+                return new_dict
+
+            self['kwargs'] = client.submit(update_future, self['kwargs'],
+                                           kwargs)
+        else:
+            self['kwargs'].update(kwargs)
+
         self['attributes'].update(attributes)
         self['statistics'].update(statistics)
         self['provenance'].update(provenance)
         self['checkpoint'].update(checkpoint)
 
         return self
-
-    @property
-    def args(self):
-        return self['args']
 
     @property
     def kwargs(self):
@@ -332,6 +318,10 @@ class StreamDoc(dict):
         return self['statistics']
 
     def get_return(self, elem=None):
+        res = client.submit(self._get_return, elem=elem)
+        return res
+
+    def _get_return(self, elem=None):
         ''' get what the function would have normally returned.
 
             returns raw data
@@ -341,13 +331,11 @@ class StreamDoc(dict):
                 if an integer: get that nth argumen
                 if a string : get that kwarg
         '''
-        if isinstance(elem, int):
-            res = self['args'][elem]
-        elif isinstance(elem, str):
+        if isinstance(elem, str):
             res = self['kwargs'][elem]
         elif elem is None:
             # return general expected function output
-            if len(self['args']) == 0 and len(self['kwargs']) > 0:
+            if len(self['kwargs']) > 0:
                 res = dict(self['kwargs'])
             elif len(self['args']) > 0 and len(self['kwargs']) == 0:
                 res = self['args']
@@ -357,6 +345,8 @@ class StreamDoc(dict):
             else:
                 # if it's more complex, then it wasn't a function output
                 res = self
+        else:
+            raise ValueError("elem not understood : {}".format(elem))
 
         return res
 
@@ -520,16 +510,18 @@ def parse_streamdoc(name):
         def f_new(x, x2=None, **kwargs_additional):
             # add a time out to f
             # TODO : replace with custom time out per stream
-            f_timeout = timeout(seconds=DEFAULT_TIMEOUT)(f)
+            # NOTE : removed timeout for dask implementation
+            # f_timeout = timeout(seconds=DEFAULT_TIMEOUT)(f)
+            f_timeout = f
             # print("Running in {}".format(f.__name__))
             if x2 is None:
                 if _is_streamdoc(x):
                     # extract the args and kwargs
-                    args = x.args
+                    #args = x.args
                     kwargs = x.kwargs
                     attributes = x.attributes
                 else:
-                    args = (x,)
+                    #args = (x,)
                     kwargs = dict()
                     attributes = dict()
             else:
@@ -542,23 +534,51 @@ def parse_streamdoc(name):
                 else:
                     raise ValueError("Two normal arguments not accepted")
 
-            kwargs.update(kwargs_additional)
+            def update_kwargs(old_kwargs, in_kwargs):
+                new_kwargs = old_kwargs.copy()
+                new_kwargs.update(in_kwargs)
+                return new_kwargs
+
+            # kwargs is a Future so we need to be careful
+            # print(kwargs)
+            # print(kwargs_additional)
+            kwargs_future = client.submit(update_kwargs, kwargs,
+                                          kwargs_additional)
+            #kwargs.update(kwargs_additional)
             # print("args : {}, kwargs : {}".format(args, kwargs))
             # debugcache.append(dict(args=args, kwargs=kwargs,
             # attributes=attributes, funcname=f.__name__))
 
+            # args and kwargs can also be a Future
+            # need to take that into account
+            def unwrap(f, kwargs):
+                # at this stage it's assumed cluster has retrieved kwargs
+                return f(**kwargs)
+
+            def future_wrapper(f):
+                @wraps(f)
+                def f_new(*args, **kwargs):
+                    return client.submit(partial(unwrap, f), *args, **kwargs)
+                return f_new
+
+            # re-define f again...
+            fnew = future_wrapper(f_timeout)
             statistics = dict()
             t1 = time.time()
             try:
                 # now run the function
-                result = f_timeout(*args, **kwargs)
+                print(kwargs_future)
+                print(kwargs_future.result())
+                result = fnew(kwargs_future)
+                print(result)
+                print(result.result())
                 # print("args : {}".format(args))
                 # print("kwargs : {}".format(kwargs))
                 statistics['status'] = "Success"
             except TypeError:
                 print("Error, inputs do not match function type")
                 import inspect
-                sig = inspect.signature(f_timeout)
+                sig = inspect.signature(f)
                 print("(StreamDoc) Error : Input mismatch on function")
                 print("This means there is an issue with "
                       "The stream architecture")
@@ -592,10 +612,20 @@ def parse_streamdoc(name):
             # load in attributes
             # Save outputs to StreamDoc
             # parse arguments to an object with args and kwargs members
-            arguments_obj = parse_args(result)
+            # NOTE : Changed API. Need to ALWAYS assume dict
+            #arguments_obj = parse_args(result)
+
             # print("StreamDoc, parse_streamdoc : parsed args :
             # {}".format(arguments_obj.args))
-            streamdoc.add(args=arguments_obj.args, kwargs=arguments_obj.kwargs)
+            # streamdoc.add(args=arguments_obj.args, kwargs=arguments_obj.kwargs)
+            def clean_kwargs(res):
+                if not isinstance(res, dict):
+                    res = dict(_arg0=res)
+                return res
+
+            result = client.submit(clean_kwargs, result)
+
+            streamdoc.add(kwargs=result)
 
             return streamdoc
 

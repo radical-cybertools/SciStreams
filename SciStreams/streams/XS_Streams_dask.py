@@ -26,7 +26,8 @@ from ..config import config
 
 from ..data.Calibration import Calibration
 import streamz as sc
-import SciStreams.core.scistreams as scs
+import streamz.dask as dask_streams
+import SciStreams.core.scistreams_dask as scs
 import SciStreams.core.StreamDoc as sd
 
 keymaps = config['keymaps']
@@ -206,7 +207,8 @@ def AttributeNormalizingStream(external_keymap=None):
                 specified, internal keymaps are used.
     '''
     sin = sc.Stream()
-    sout = scs.get_attributes(sin)
+    sout = dask_stream.scatter(sin)
+    sout = scs.get_attributes(sout)
     sout = scs.map(normalize_calib_dict, sout, external_keymap=external_keymap)
     sout = scs.map(add_detector_info, sout)
     return sin, sout
