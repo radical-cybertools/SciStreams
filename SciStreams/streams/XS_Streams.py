@@ -910,11 +910,11 @@ def ImageStitchingStream(return_intermediate=False):
 
     # TODO : remove the add_attributes part and just keep stream_name
     sin = sc.Stream(stream_name="Image Stitching Stream")
-    sout = sc.map(sin, validate)
+    #sout = sc.map(sin, validate)
     # sin.map(lambda x : print("Beginning of stream data\n\n\n"))
     # TODO : remove compute requirement
     # TODO : incomplete
-    sout = scs.add_attributes(sout, stream_name="stitch")
+    sout = scs.add_attributes(sin, stream_name="stitch")
 
     sout = scs.select(sout, ('image', None), ('mask', None), ('origin', None),
                       ('stitchback', None))
@@ -951,6 +951,7 @@ def ImageStitchingStream(return_intermediate=False):
     # now emit some dummy value to swin, before connecting more to stream
     # swin.emit(dict(attributes=dict(stitchback=0)))
 
+    # TODO : figure out how to filter
     if not return_intermediate:
         # keep previous two results
         sout = sout.sliding_window(2)
