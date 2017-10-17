@@ -57,6 +57,7 @@ def todict(kwargs):
 
 
 def add_attributes(sdoc, attributes={}):
+    # print("adding attributes. previous sdoc : {}".format(sdoc))
     newsdoc = StreamDoc(sdoc)
     newsdoc = newsdoc.add(attributes=attributes)
     return newsdoc
@@ -71,13 +72,19 @@ def clear_attributes(sdoc):
 def to_attributes(sdoc):
     # move kwargs to attributes
     newsdoc = StreamDoc(sdoc)
-    newsdoc['attributes'].update(newsdoc['kwargs'])
+    # compute result on cluster
+    # could be a Future or not
+    try:
+        kwargs = sdoc['kwargs'].result()
+    except AttributeError:
+        kwargs = sdoc['kwargs']
+    newsdoc['attributes'].update(kwargs)
     newsdoc['kwargs'] = dict()
-    args = newsdoc['args']
+    # args = newsdoc['args']
 
-    for i, arg in enumerate(args):
-        name = "arg_{:04d}".format(i)
-        newsdoc['attributes'][name] = arg
+    #for i, arg in enumerate(args):
+        #name = "arg_{:04d}".format(i)
+        #newsdoc['attributes'][name] = arg
 
     return newsdoc
 
@@ -237,8 +244,8 @@ def _to_event_stream(sdoc):
 
 
 class StreamDoc(dict):
-    def __init__(self, kwargs={},
-                 attributes={}, streamdoc=None, wrapper=None):
+    def __init__(self, streamdoc=None, args=[], kwargs={},
+                 attributes={}):
         ''' A generalized document meant to be parsed by Streams.
 
             Components:
@@ -249,7 +256,6 @@ class StreamDoc(dict):
                 statistics : some statistics of the stream that generated this
                     It can be anything, like run_start, run_stop etc
         '''
-        self._wrapper = wrapper
         # initialize the dictionary class
         super(StreamDoc, self).__init__(self)
 
@@ -257,6 +263,7 @@ class StreamDoc(dict):
         # initialize the metadata and kwargs
         self['attributes'] = dict()
         self['kwargs'] = dict()
+        self['args'] = list()
         self['provenance'] = dict()
         self['checkpoint'] = dict()
 
@@ -272,18 +279,17 @@ class StreamDoc(dict):
             self.updatedoc(streamdoc)
 
         # override with args
-        self.add(kwargs=kwargs, attributes=attributes)
+        self.add(args=args, kwargs=kwargs, attributes=attributes)
 
     def updatedoc(self, streamdoc):
         # print("in StreamDoc : {}".format(streamdoc))
-        self.add(kwargs=streamdoc['kwargs'],
-                 attributes=streamdoc['attributes'],
-                 statistics=streamdoc['statistics'])
-        self._wrapper = streamdoc._wrapper
+        self.add(args=streamdoc['args'], kwargs=streamdoc['kwargs'],
+                attributes=streamdoc['attributes'],
+                statistics=streamdoc['statistics'])
 
     # arguments can be a Future
     # so everything involving it should be submitted to cluster
-    def add(self, kwargs={}, attributes={}, statistics={},
+    def add(self, args=[], kwargs={}, attributes={}, statistics={},
             provenance={}, checkpoint={}):
         ''' add args and kwargs'''
         # Note : will overwrite previous kwarg data without checking
@@ -297,6 +303,15 @@ class StreamDoc(dict):
                                            kwargs)
         else:
             self['kwargs'].update(kwargs)
+        if isinstance(args, Future):
+            def update_args(old_args, update_args):
+                new_args = list()
+                new_args.extend(old_args)
+                new_args.extend(update_args)
+                return new_args
+            self['args'] = client.submit(update_args, self['args'], args)
+        else:
+            self['args'].extend(args)
 
         self['attributes'].update(attributes)
         self['statistics'].update(statistics)
@@ -308,6 +323,10 @@ class StreamDoc(dict):
     @property
     def kwargs(self):
         return self['kwargs']
+
+    @property
+    def args(self):
+        return self['args']
 
     @property
     def attributes(self):
@@ -414,7 +433,6 @@ class StreamDoc(dict):
         # if not isinstance(mapping, list):
         # mapping = [mapping]
         streamdoc = StreamDoc(self)
-        streamdoc._wrapper = self._wrapper
         newargs = list()
         newkwargs = dict()
         totargs = dict(args=newargs, kwargs=newkwargs)
@@ -489,6 +507,9 @@ def _is_streamdoc(doc):
 def parse_streamdoc(name):
     ''' Decorator to parse StreamDocs from functions
 
+        remote : decide whether or not this computation should be submitted to
+        the cluster
+
     This is a decorator meant to wrap functions that process streams.
         It must make the following two assumptions:
             functions on streams process either one or two arguments:
@@ -505,19 +526,20 @@ def parse_streamdoc(name):
             if a tuple, makes a StreamDoc with only arguments else, makes a
             StreamDoc of just one element
     '''
-    def streamdoc_dec(f):
+    def streamdoc_dec(f, remote=True):
         @wraps(f)
         def f_new(x, x2=None, **kwargs_additional):
             # add a time out to f
             # TODO : replace with custom time out per stream
             # NOTE : removed timeout for dask implementation
             # f_timeout = timeout(seconds=DEFAULT_TIMEOUT)(f)
-            f_timeout = f
+            #f_timeout = f
             # print("Running in {}".format(f.__name__))
             if x2 is None:
+                # this is for map
                 if _is_streamdoc(x):
                     # extract the args and kwargs
-                    #args = x.args
+                    args = x.args
                     kwargs = x.kwargs
                     attributes = x.attributes
                 else:
@@ -525,6 +547,7 @@ def parse_streamdoc(name):
                     kwargs = dict()
                     attributes = dict()
             else:
+                # this is for accumulate
                 if _is_streamdoc(x) and _is_streamdoc(x2):
                     args = x.get_return(), x2.get_return()
                     kwargs = dict()
@@ -542,36 +565,73 @@ def parse_streamdoc(name):
             # kwargs is a Future so we need to be careful
             # print(kwargs)
             # print(kwargs_additional)
-            kwargs_future = client.submit(update_kwargs, kwargs,
-                                          kwargs_additional)
-            #kwargs.update(kwargs_additional)
+            if remote:
+                kwargs_future = client.submit(update_kwargs, kwargs,
+                                              kwargs_additional)
+                # print("Sent to cluster")
+            else:
+                # we don't want to run on cluster
+                # check if they're Futures first and turn them to concrete data
+                # if yes
+                if isinstance(kwargs, Future):
+                    kwargs = kwargs.result()
+                if isinstance(kwargs_additional, Future):
+                    kwargs_additional = kwargs_additional.result()
+
+                kwargs_future = update_kwargs(kwargs, kwargs_additional)
+
+            # print("args: {}".format(args))
+            # print("kwargs: {}".format(kwargs))
+
+            # print("kwargs_future : {}".format(kwargs_future))
+            # kwargs.update(kwargs_additional)
             # print("args : {}, kwargs : {}".format(args, kwargs))
             # debugcache.append(dict(args=args, kwargs=kwargs,
             # attributes=attributes, funcname=f.__name__))
 
             # args and kwargs can also be a Future
             # need to take that into account
-            def unwrap(f, kwargs):
+            def unwrap(f, args, kwargs):
                 # at this stage it's assumed cluster has retrieved kwargs
-                return f(**kwargs)
+                return f(*args, **kwargs)
+
+            # two layers here:
+            # 1. a Future must be returned so we must return using compute on
+            # function
+            # 2. The kwargs are not determined until we run computation on
+            # cluster so we need to modify function to unwrap kwargs once on
+            # cluster. We do this with "unwrap", which must wrap the function
+            # before client.submit
+            # the args and kwargs themselves may also be Futures
 
             def future_wrapper(f):
                 @wraps(f)
-                def f_new(*args, **kwargs):
-                    return client.submit(partial(unwrap, f), *args, **kwargs)
+                # assumed that args, kwargs come in this order always
+                def f_new(args, kwargs):
+                    return client.submit(f, args, kwargs)
                 return f_new
 
+            fnew = wraps(f)(partial(unwrap, f))
             # re-define f again...
-            fnew = future_wrapper(f_timeout)
+            if remote:
+                fnew = future_wrapper(fnew)
+                # print("submitting to cluster")
+            else:
+                # leave as is
+                # print("Not submitting to cluster")
+                pass
+
             statistics = dict()
             t1 = time.time()
             try:
                 # now run the function
-                print(kwargs_future)
-                print(kwargs_future.result())
-                result = fnew(kwargs_future)
-                print(result)
-                print(result.result())
+                # print statements for debugging
+                # print(kwargs_future)
+                # print(kwargs_future.result())
+                # print(kwargs_future)
+                result = fnew(args, kwargs_future)
+                # print(result)
+                # print(result.result())
                 # print("args : {}".format(args))
                 # print("kwargs : {}".format(kwargs))
                 statistics['status'] = "Success"
@@ -582,15 +642,22 @@ def parse_streamdoc(name):
                 print("(StreamDoc) Error : Input mismatch on function")
                 print("This means there is an issue with "
                       "The stream architecture")
-                print("Got {} arguments".format(len(args)))
-                print("Got kwargs : {}".format(list(kwargs.keys())))
+                # print("Got {} arguments".format(len(args)))
+                if remote:
+                    print("(computed the result on cluster)")
+                # could be a Future or not
+                try:
+                    kwargs_computed = kwargs.result()
+                except Exception:
+                    kwargs_computed = kwargs
+                print("Got kwargs : {}".format(list(kwargs_computed.keys())))
                 print("But expected : {}".format(sig))
                 print("Returning empty result, see error report below")
                 result = {}
-                _cleanexit(f_timeout, statistics)
+                _cleanexit(f, statistics)
             except Exception:
                 result = {}
-                _cleanexit(f_timeout, statistics)
+                _cleanexit(f, statistics)
 
             t2 = time.time()
             statistics['runtime'] = t1 - t2
@@ -603,7 +670,7 @@ def parse_streamdoc(name):
                     attributes['function_list'].copy()
             # print("updated function list:
             # {}".format(attributes['function_list']))
-            attributes['function_list'].append(getattr(f_timeout, '__name__',
+            attributes['function_list'].append(getattr(f, '__name__',
                                                'unnamed'))
             # print("Running function {}".format(f.__name__))
             # instantiate new stream doc
@@ -623,7 +690,10 @@ def parse_streamdoc(name):
                     res = dict(_arg0=res)
                 return res
 
-            result = client.submit(clean_kwargs, result)
+            if remote:
+                result = client.submit(clean_kwargs, result)
+            else:
+                result = clean_kwargs(result)
 
             streamdoc.add(kwargs=result)
 

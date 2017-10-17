@@ -1,3 +1,5 @@
+# this is the distributed version. It assumes that the StreamDocs are handled
+# as Futures
 # test a XS run
 import numpy as np
 import matplotlib
@@ -99,6 +101,7 @@ L_primary = sout_primary.sink_to_list()
 # get the attributes, clean them up and return
 # new sout_primary
 sin_attributes, sout_attributes = AttributeNormalizingStream()
+L_attributes = sout_attributes.sink_to_list()
 sout_primary.connect(sin_attributes)
 
 sout_primary = scs.merge(sc.zip(sout_primary,
@@ -108,183 +111,188 @@ sin_calib, sout_calib = CalibrationStream()
 sout_attributes.connect(sin_calib)
 L_calib = sout_calib.sink_to_list()
 
-sout_calib2 = sout_calib
-sout_calib = sc.Stream()
+#sout_calib2 = sout_calib
+#sout_calib = sc.Stream()
 
 # the PrimaryFilteringStream already split the detectors
-s_image = sc.Stream()
-#s_image = scs.add_attributes(sout_primary, stream_name="image")
+#s_image = sc.Stream()
+s_image = scs.add_attributes(sout_primary, stream_name="image")
+L_image = s_image.sink_to_list()
 
 
 # TODO : fix and remove this is for pilatus300 should be in mask gen
 s_mask = scs.map(generate_mask, sout_attributes)
+L_mask = s_mask.sink_to_list()
 
 
-s_imgmaskcalib = scs.merge(sc.zip(s_image, sout_calib, s_mask))
-L_imgmaskcalib = s_imgmaskcalib.sink_to_list()
-
-
-# some small streams
-def get_origin(**kwargs):
-    ''' get the origin from the attributes.'''
-    x = kwargs.get('beamx0', None)
-    y = kwargs.get('beamy0', None)
-    if x is None or y is None:
-        origin = None
-    else:
-        origin = (y['value'], x['value'])
-
-    return dict(origin=origin)
-
-
-def get_exposure(**kwargs):
-    return dict(exposure_time=kwargs.get('sample_exposure_time', None))
-
-
-def get_stitch(**kwargs):
-    return dict(stitchback=kwargs.get('stitchback', False))
-
-
-s_origin = scs.map(get_origin, sout_attributes)
-
-s_exposure = scs.map(get_exposure, sout_attributes)
-
-s_stitch = scs.map(get_stitch, sout_attributes)
-# name the stream for proper output
-
-# circular average
-sin_circavg, sout_circavg = CircularAverageStream()
-s_imgmaskcalib.connect(sin_circavg)
-L_circavg = sout_circavg.sink_to_list()
-
-# peak finding
-sin_peakfind, sout_peakfind = PeakFindingStream()
-sout_circavg.connect(sin_peakfind)
-
-# merge with sq
-sout_sqpeaks = scs.merge(sc.zip(sout_circavg, scs.select(sout_peakfind,
-                                'inds_peak', 'peaksx', 'peaksy')))
-
-L_sqpeaks = sout_sqpeaks.sink_to_list()
-
-
-def normexposure(image, exposure_time):
-    return dict(image=image/exposure_time)
-
-
-# image stitching
-# normalize by exposure time
-s_imagenorm = scs.map(normexposure, scs.merge(sc.zip(s_exposure, s_image)))
-# use this for image stitch
-s_imgmaskoriginstitch = scs.merge(sc.zip(s_imagenorm,
-                                         s_mask,
-                                         s_origin,
-                                         s_stitch))
-
-sin_stitched, sout_stitched = ImageStitchingStream(return_intermediate=True)
-s_imgmaskoriginstitch.connect(sin_stitched)
-
-L_stitched = sout_stitched.sink_to_list()
-
-
-def get_shape(**kwargs):
-    img = kwargs.get('image', None)
-    origin = kwargs.get('origin', None)
-
-    # this is to make a new calibration object for stitched images
-    if img is None:
-        raise ValueError("get_shape : img is None")
-
-    if origin is None:
-        raise ValueError("get_shape : origin is None")
-
-    y0, x0 = origin
-
-    return dict(origin=origin, shape=img.shape)
-
-
-sout_stitched_attributes = scs.map(get_shape, sout_stitched)
-sout_stitched_attributes = scs.merge(sc.zip(sout_attributes,
-                                            sout_stitched_attributes))
-s_calib_stitched = scs.map(make_calibration, sout_stitched_attributes)
-
-
-# the masked image. sometimes useful to use
-def maskimg(image, mask):
-    return dict(image=image*mask)
-
-
-s_maskedimg = scs.map(maskimg, scs.select(s_imgmaskcalib, 'image', 'mask'))
-
-# make qphiavg image
+#s_imgmaskcalib = scs.merge(sc.zip(s_image, sout_calib, s_mask))
+#L_imgmaskcalib = s_imgmaskcalib.sink_to_list()
 #
-s_img_mask_origin = scs.merge(sc.zip(s_image, s_mask, s_origin))
-s_qmap = scs.map(lambda calibration: dict(q_map=calibration.q_map),
-                 sout_calib)
-s_img_mask_origin_qmap = scs.merge(sc.zip(s_img_mask_origin, s_qmap))
-
-sin_qphiavg, sout_qphiavg = QPHIMapStream()
-s_img_mask_origin_qmap.connect(sin_qphiavg)
-
-L_qphiavg = sout_qphiavg.sink_to_list()
-
-sout_sqphipeaks = scs.merge(sc.zip(sout_qphiavg, scs.select(sout_peakfind,
-                                                            'inds_peak',
-                                                            'peaksx',
-                                                            'peaksy')))
-sout_sqphipeaks = scs.select(sout_sqphipeaks, ('sqphi', 'image'), ('qs', 'y'),
-                             ('phis', 'x'), ('peaksx', 'vals'))
-
-
-sin_linecuts, sout_linecuts = LineCutStream(axis=0)
-sout_sqphipeaks.connect(sin_linecuts)
-L_linecuts = sout_linecuts.sink_to_list()
-
-
-# TODO : connect the image to this
-sin_gisaxs_linecutsx, sout_gisaxs_linecutsx = \
-    LineCutStream(axis=0, name="gisaxs-linecuts-x")
-
-sin_gisaxs_linecutsy, sout_gisaxs_linecutsy = \
-    LineCutStream(axis=1, name="gisaxs-linecuts-y")
-
-sin_thumb, sout_thumb = ThumbStream(blur=2, crop=None, resize=10)
-s_image.connect(sin_thumb)
-
-sin_angularcorr, sout_angularcorr = AngularCorrelatorStream(bins=(800, 360))
-s_img_mask_origin_qmap.connect(sin_angularcorr)
-
-
-L_angularcorr = sout_angularcorr.sink_to_list()
-
-sout_angularcorrpeaks = scs.merge(sc.zip(sout_angularcorr,
-                                         scs.select(sout_peakfind,
-                                                    'inds_peak',
-                                                    'peaksx',
-                                                    'peaksy')))
-sout_angularcorrpeaks = scs.select(sout_angularcorrpeaks,
-                                   ('rdeltaphiavg_n', 'image'),
-                                   ('qvals', 'y'),
-                                   ('phivals', 'x'),
-                                   ('peaksx', 'vals'))
-
-sin_linecuts_angularcorr, sout_linecuts_angularcorr = \
-    LineCutStream(axis=0, name="angularcorr")
-sout_angularcorrpeaks.connect(sin_linecuts_angularcorr)
-L_linecuts_angularcorr = sout_linecuts_angularcorr.sink_to_list()
-
-
-sin_tag, sout_tag = ImageTaggingStream()
-s_maskedimg.connect(sin_tag)
-# s_maskedimg.sink(lambda x : print("masked img : {}".format(x)))
-L_tag = sout_tag.sink_to_list()
-
+#
+## some small streams
+#def get_origin(**kwargs):
+#    ''' get the origin from the attributes.'''
+#    x = kwargs.get('beamx0', None)
+#    y = kwargs.get('beamy0', None)
+#    if x is None or y is None:
+#        origin = None
+#    else:
+#        origin = (y['value'], x['value'])
+#
+#    return dict(origin=origin)
+#
+#
+#def get_exposure(**kwargs):
+#    return dict(exposure_time=kwargs.get('sample_exposure_time', None))
+#
+#
+#def get_stitch(**kwargs):
+#    return dict(stitchback=kwargs.get('stitchback', False))
+#
+#
+#s_origin = scs.map(get_origin, sout_attributes)
+#
+#s_exposure = scs.map(get_exposure, sout_attributes)
+#
+#s_stitch = scs.map(get_stitch, sout_attributes)
+## name the stream for proper output
+#
+## circular average
+#sin_circavg, sout_circavg = CircularAverageStream()
+#s_imgmaskcalib.connect(sin_circavg)
+#L_circavg = sout_circavg.sink_to_list()
+#
+## peak finding
+#sin_peakfind, sout_peakfind = PeakFindingStream()
+#sout_circavg.connect(sin_peakfind)
+#
+## merge with sq
+#sout_sqpeaks = scs.merge(sc.zip(sout_circavg, scs.select(sout_peakfind,
+#                                'inds_peak', 'peaksx', 'peaksy')))
+#
+#L_sqpeaks = sout_sqpeaks.sink_to_list()
+#
+#
+#def normexposure(image, exposure_time):
+#    return dict(image=image/exposure_time)
+#
+#
+## image stitching
+## normalize by exposure time
+#s_imagenorm = scs.map(normexposure, scs.merge(sc.zip(s_exposure, s_image)))
+## use this for image stitch
+#s_imgmaskoriginstitch = scs.merge(sc.zip(s_imagenorm,
+#                                         s_mask,
+#                                         s_origin,
+#                                         s_stitch))
+#
+#
+#sin_stitched, sout_stitched = ImageStitchingStream(return_intermediate=True)
+## NOTE : disconnected image stitching
+##s_imgmaskoriginstitch.connect(sin_stitched)
+#
+#L_stitched = sout_stitched.sink_to_list()
+#
+#
+#def get_shape(**kwargs):
+#    img = kwargs.get('image', None)
+#    origin = kwargs.get('origin', None)
+#
+#    # this is to make a new calibration object for stitched images
+#    if img is None:
+#        raise ValueError("get_shape : img is None")
+#
+#    if origin is None:
+#        raise ValueError("get_shape : origin is None")
+#
+#    y0, x0 = origin
+#
+#    return dict(origin=origin, shape=img.shape)
+#
+#
+#sout_stitched_attributes = scs.map(get_shape, sout_stitched)
+#sout_stitched_attributes = scs.merge(sc.zip(sout_attributes,
+#                                            sout_stitched_attributes))
+#s_calib_stitched = scs.map(make_calibration, sout_stitched_attributes)
+#
+#
+## the masked image. sometimes useful to use
+#def maskimg(image, mask):
+#    return dict(image=image*mask)
+#
+#
+#s_maskedimg = scs.map(maskimg, scs.select(s_imgmaskcalib, 'image', 'mask'))
+#
+## make qphiavg image
+##
+#s_img_mask_origin = scs.merge(sc.zip(s_image, s_mask, s_origin))
+#s_qmap = scs.map(lambda calibration: dict(q_map=calibration.q_map),
+#                 sout_calib)
+#s_img_mask_origin_qmap = scs.merge(sc.zip(s_img_mask_origin, s_qmap))
+#
+#sin_qphiavg, sout_qphiavg = QPHIMapStream()
+#s_img_mask_origin_qmap.connect(sin_qphiavg)
+#
+#L_qphiavg = sout_qphiavg.sink_to_list()
+#
+#sout_sqphipeaks = scs.merge(sc.zip(sout_qphiavg, scs.select(sout_peakfind,
+#                                                            'inds_peak',
+#                                                            'peaksx',
+#                                                            'peaksy')))
+#sout_sqphipeaks = scs.select(sout_sqphipeaks, ('sqphi', 'image'), ('qs', 'y'),
+#                             ('phis', 'x'), ('peaksx', 'vals'))
+#
+#
+#sin_linecuts, sout_linecuts = LineCutStream(axis=0)
+#sout_sqphipeaks.connect(sin_linecuts)
+#L_linecuts = sout_linecuts.sink_to_list()
+#
+#
+## TODO : connect the image to this
+#sin_gisaxs_linecutsx, sout_gisaxs_linecutsx = \
+#    LineCutStream(axis=0, name="gisaxs-linecuts-x")
+#
+#sin_gisaxs_linecutsy, sout_gisaxs_linecutsy = \
+#    LineCutStream(axis=1, name="gisaxs-linecuts-y")
+#
+#sin_thumb, sout_thumb = ThumbStream(blur=2, crop=None, resize=10)
+#s_image.connect(sin_thumb)
+#
+#sin_angularcorr, sout_angularcorr = AngularCorrelatorStream(bins=(800, 360))
+#s_img_mask_origin_qmap.connect(sin_angularcorr)
+#
+#
+#L_angularcorr = sout_angularcorr.sink_to_list()
+#
+#sout_angularcorrpeaks = scs.merge(sc.zip(sout_angularcorr,
+#                                         scs.select(sout_peakfind,
+#                                                    'inds_peak',
+#                                                    'peaksx',
+#                                                    'peaksy')))
+#sout_angularcorrpeaks = scs.select(sout_angularcorrpeaks,
+#                                   ('rdeltaphiavg_n', 'image'),
+#                                   ('qvals', 'y'),
+#                                   ('phivals', 'x'),
+#                                   ('peaksx', 'vals'))
+#
+#sin_linecuts_angularcorr, sout_linecuts_angularcorr = \
+#    LineCutStream(axis=0, name="angularcorr")
+#sout_angularcorrpeaks.connect(sin_linecuts_angularcorr)
+#L_linecuts_angularcorr = sout_linecuts_angularcorr.sink_to_list()
+#
+#
+#sin_tag, sout_tag = ImageTaggingStream()
+#s_maskedimg.connect(sin_tag)
+## s_maskedimg.sink(lambda x : print("masked img : {}".format(x)))
+#L_tag = sout_tag.sink_to_list()
+#
 
 # sample on how to plot to callback and file
 # (must make it an event stream again first)
 # set to True to enable plotting (opens many windows)
 liveplots = False
-if True:
+# NOTE : disabled sinking
+if False:
     # make event streams for some sinks
     event_stream_img = scs.to_event_stream(s_image)
     event_stream_sqphi = scs.to_event_stream(sout_qphiavg)

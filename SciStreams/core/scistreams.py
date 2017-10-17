@@ -12,17 +12,17 @@ def squash(child):
 
 
 def map(func, child, args=(), input_info=None,
-        output_info=None, **kwargs):
+        output_info=None, remote=True, **kwargs):
     # mapping wrapper for StreamDoc's
     # TODO : use input_info and output_info
-    return child.map(psdm(func), *args, **kwargs)
+    return child.map(psdm(func, remote=remote), *args, **kwargs)
 
 
 def sink(func, child, args=(), input_info=None,
-         output_info=None, **kwargs):
+         output_info=None, remote=True, **kwargs):
     # mapping wrapper for StreamDoc's
     # TODO : use input_info and output_info
-    return child.sink(psdm(func), *args, **kwargs)
+    return child.sink(psdm(func, remote=remote), *args, **kwargs)
 
 
 def accumulate(func, child, args=(), input_info=None,

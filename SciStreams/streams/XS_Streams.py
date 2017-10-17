@@ -1,5 +1,6 @@
 # TODO : add pixel procesing/thresholding threshold_pixels((2**32-1)-1) # Eiger
 # inter-module gaps
+from collections import deque
 
 from .. import globals as streams_globals
 
@@ -36,6 +37,7 @@ keymaps = config['keymaps']
 
 allowed_detector_keys = ['pilatus2M_image', 'pilatus300_image']
 
+global_calib = deque(maxlen=100)
 
 def pick_allowed_detectors(sdoc):
     ''' Only pass through 2d array events, ignore rest.
@@ -206,9 +208,12 @@ def AttributeNormalizingStream(external_keymap=None):
                 specified, internal keymaps are used.
     '''
     sin = sc.Stream()
+    # set remote=False. These are quick calculations we don't care to cache
+    # they are also always unique to each data so caching doesn't make sense
     sout = scs.get_attributes(sin)
-    sout = scs.map(normalize_calib_dict, sout, external_keymap=external_keymap)
-    sout = scs.map(add_detector_info, sout)
+    sout = scs.map(normalize_calib_dict, sout, external_keymap=external_keymap,
+            remote=False)
+    sout = scs.map(add_detector_info, sout, remote=False)
     return sin, sout
 
 
@@ -231,7 +236,12 @@ def normalize_calib_dict(external_keymap=None, **md):
         keymap = keymaps[keymap_name]
     else:
         keymap = external_keymap
+
+    # make a new dict, only choose relevant data
+    new_md = dict()
+    new_md.update(md)
     for key, val in keymap.items():
+        # print("looking for key {}".format(val))
         name = val['name']
         if name is not None:
             # for debugging
@@ -239,9 +249,9 @@ def normalize_calib_dict(external_keymap=None, **md):
             # swap out temp vals
             tmpval = md.pop(name, val['default_value'])
             default_unit = val['default_unit']
-            md[key] = dict(value=tmpval, unit=default_unit)
+            new_md[key] = dict(value=tmpval, unit=default_unit)
 
-    return md
+    return new_md
 
 
 def add_detector_info(**md):
@@ -258,6 +268,10 @@ def add_detector_info(**md):
                 has been transformed (i.e. image stitching)
     '''
     detector_key = md.get('detector_key', None)
+    detector_key = detector_key['value']
+    # TODO : remove dict("Value" "unit") etc and replace with a general
+    # descriptor (or ignore overall)
+    md['detector_key'] = detector_key
 
     # only do something is there is a detector key
     if detector_key is not None:
@@ -339,8 +353,10 @@ def CalibrationStream():
         sout : Stream instance
             the output stream (see Stream Outputs)
     '''
+    global global_calib
     sin = sc.Stream(stream_name="Calibration")
-    sout = scs.map(make_calibration, sin)
+    # force computation to come back here
+    sout = scs.map(make_calibration, sin, remote=False)
 
     # this piece should be computed using Dask
     def _generate_qxyz_maps(calibration):
@@ -348,22 +364,27 @@ def CalibrationStream():
         return dict(calibration=calibration)
 
     # from streamz.dask import scatter, gather
-    from SciStreams.globals import client
+    # from SciStreams.globals import client
 
     # TODO : change to use scatter/gather
     # (need to setup event loop for this etc)
 
-    sout = scs.map(lambda calibration:
-                   client.submit(_generate_qxyz_maps, calibration),
-                   sout)
+    #sout = scs.map(lambda calibration:
+                   #client.submit(_generate_qxyz_maps, calibration),
+                   #sout)
 
     # save the futures to a list (scheduler will ensure caching of result if
     # any reference to a future is kept)
-    sc.map(sout, lambda calibration:
-           streams_globals.futures_cache.append(calibration))
+    #sc.map(sout, lambda calibration:
+           #streams_globals.futures_cache.append(calibration))
 
-    sout = scs.map(lambda calibration:
-                   client.gather(calibration), sout)
+    #sout = scs.map(lambda calibration:
+                   #client.gather(calibration), sout)
+
+    sout = scs.map(_generate_qxyz_maps, sout)
+    #sout.map(lambda x : x['kwargs'].result()['calibration'].q_map).sink(print)
+    # sink the futures to a global list (deque)
+    global_calib = sout.map(lambda x : x['kwargs']).sink_to_list()
 
     return sin, sout
 
