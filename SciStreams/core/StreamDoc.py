@@ -293,7 +293,7 @@ class StreamDoc(dict):
             provenance={}, checkpoint={}):
         ''' add args and kwargs'''
         # Note : will overwrite previous kwarg data without checking
-        if isinstance(kwargs, Future):
+        if isinstance(kwargs, Future) or isinstance(self['kwargs'], Future):
             def update_future(old_dict, update_dict):
                 new_dict = dict(old_dict)
                 new_dict.update(update_dict)
@@ -691,7 +691,10 @@ def parse_streamdoc(name):
                 return res
 
             if remote:
-                result = client.submit(clean_kwargs, result)
+                result = client.submit(wraps(f)(clean_kwargs), result)
+                print("Computation key : {}".format(result.key))
+                print("Computation status : {}".format(result.status))
+                print("Computation : {}".format(f.__name__))
             else:
                 result = clean_kwargs(result)
 

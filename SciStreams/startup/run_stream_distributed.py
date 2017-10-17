@@ -125,46 +125,48 @@ s_mask = scs.map(generate_mask, sout_attributes)
 L_mask = s_mask.sink_to_list()
 
 
-#s_imgmaskcalib = scs.merge(sc.zip(s_image, sout_calib, s_mask))
-#L_imgmaskcalib = s_imgmaskcalib.sink_to_list()
-#
-#
-## some small streams
-#def get_origin(**kwargs):
-#    ''' get the origin from the attributes.'''
-#    x = kwargs.get('beamx0', None)
-#    y = kwargs.get('beamy0', None)
-#    if x is None or y is None:
-#        origin = None
-#    else:
-#        origin = (y['value'], x['value'])
-#
-#    return dict(origin=origin)
-#
-#
-#def get_exposure(**kwargs):
-#    return dict(exposure_time=kwargs.get('sample_exposure_time', None))
-#
-#
-#def get_stitch(**kwargs):
-#    return dict(stitchback=kwargs.get('stitchback', False))
-#
-#
-#s_origin = scs.map(get_origin, sout_attributes)
-#
-#s_exposure = scs.map(get_exposure, sout_attributes)
-#
-#s_stitch = scs.map(get_stitch, sout_attributes)
-## name the stream for proper output
-#
-## circular average
-#sin_circavg, sout_circavg = CircularAverageStream()
-#s_imgmaskcalib.connect(sin_circavg)
-#L_circavg = sout_circavg.sink_to_list()
+##s_zipped = 
+##L_zipped= s_zipped.sink_to_list()
+s_imgmaskcalib = scs.merge(sc.zip(s_image, sout_calib, s_mask))
+L_imgmaskcalib = s_imgmaskcalib.sink_to_list()
+
+
+# some small streams
+def get_origin(**kwargs):
+    ''' get the origin from the attributes.'''
+    x = kwargs.get('beamx0', None)
+    y = kwargs.get('beamy0', None)
+    if x is None or y is None:
+        origin = None
+    else:
+        origin = (y['value'], x['value'])
+
+    return dict(origin=origin)
+
+
+def get_exposure(**kwargs):
+    return dict(exposure_time=kwargs.get('sample_exposure_time', None))
+
+
+def get_stitch(**kwargs):
+    return dict(stitchback=kwargs.get('stitchback', False))
+
+
+s_origin = scs.map(get_origin, sout_attributes)
+
+s_exposure = scs.map(get_exposure, sout_attributes)
+
+s_stitch = scs.map(get_stitch, sout_attributes)
+# name the stream for proper output
+
+# circular average
+sin_circavg, sout_circavg = CircularAverageStream()
+s_imgmaskcalib.connect(sin_circavg)
+L_circavg = sout_circavg.sink_to_list()
 #
 ## peak finding
-#sin_peakfind, sout_peakfind = PeakFindingStream()
-#sout_circavg.connect(sin_peakfind)
+sin_peakfind, sout_peakfind = PeakFindingStream()
+sout_circavg.connect(sin_peakfind)
 #
 ## merge with sq
 #sout_sqpeaks = scs.merge(sc.zip(sout_circavg, scs.select(sout_peakfind,

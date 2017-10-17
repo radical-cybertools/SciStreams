@@ -30,6 +30,8 @@ import streamz as sc
 import SciStreams.core.scistreams as scs
 import SciStreams.core.StreamDoc as sd
 
+from SciStreams.globals import futures_cache
+
 keymaps = config['keymaps']
 
 # NOTE : When defining streams, make sure to place the expected inputs
@@ -384,7 +386,8 @@ def CalibrationStream():
     sout = scs.map(_generate_qxyz_maps, sout)
     #sout.map(lambda x : x['kwargs'].result()['calibration'].q_map).sink(print)
     # sink the futures to a global list (deque)
-    global_calib = sout.map(lambda x : x['kwargs']).sink_to_list()
+    sout.map(lambda x : x['kwargs']).sink(futures_cache.append)
+    sout.map(lambda x : x['args']).sink(futures_cache.append)
 
     return sin, sout
 
@@ -550,7 +553,9 @@ def CircularAverageStream():
 
     sin = sc.Stream(stream_name="Circular Average")
     sout = scs.add_attributes(sin, stream_name="circavg")
-    sout = sout.map(validate)
+    # No validation for now
+    # validation should not be necessary, should just throw an error
+    # sout = sout.map(validate)
     sout = scs.map(circavg_from_calibration, sout)
 
     return sin, sout
