@@ -17,7 +17,14 @@ def test_stream_map():
     # it is currently a Future now
     sout_futures = sout.map(lambda x: x['args'])
     # convert from Future to a result (blocking function)
-    sout_results = sout_futures.map(lambda x: x.result())
+
+    def safe_get(x):
+        try:
+            res = x.result()
+        except AttributeError:
+            res = x
+        return res
+    sout_results = sout_futures.map(safe_get)
     # pick the "_arg0" element of the result
     sout_elems = sout_results.pluck(0)
 
