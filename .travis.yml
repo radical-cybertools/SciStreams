@@ -26,22 +26,11 @@ install:
   - source activate testenv
   - python setup.py install build_ext -i
   - pip install codecov pillow matplotlib cachey pyyaml pytest databroker
-  - pip install pymongo h5py streamz lxml bluesky
-  - pushd ..
-  - git clone http://www.github.com/scikit-beam/scikit-beam.git
-  - cd scikit-beam
-  - python setup.py develop
-  - popd
-  - pushd ..
-  - git clone http://www.github.com/dask/dask.git
-  - cd dask
-  - python setup.py develop
-  - popd
-  - pushd ..
-  - git clone http://www.github.com/dask/distributed.git
-  - cd distributed
-  - python setup.py develop
-  - popd
+  - pip install pymongo h5py lxml bluesky
+  - pip install git+git://github.com/mrocklin/streamz
+  - pip install git+git://github.com/scikit-beam/scikit-beam
+  - pip install git+git://github.com/dask/dask
+  - pip install git+git://github.com/distributed/distributed
 # optional when manually debugging
 # pip install ipython
 
