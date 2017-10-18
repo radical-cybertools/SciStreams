@@ -3,50 +3,42 @@
     layer should reside. Conversions from other interfaces to StreamDoc are
     found in corresponding interface folders.
 '''
-from functools import wraps
+from functools import wraps, partial
 import time
 import sys
 from uuid import uuid4
 # from ..globals import debugcache
+
+from distributed import Future
 
 # convenience routine to return a hash of the streamdoc
 # from dask.delayed import tokenize, delayed, Delayed
 from dask.base import normalize_token
 
 # decorator to add timeouts
-from .timeout import timeout
+# from .timeout import timeout
 
 import numpy as np
 
-from ..config import default_timeout as DEFAULT_TIMEOUT
+# from ..config import default_timeout as DEFAULT_TIMEOUT
 
+from ..globals import client
+
+
+# TODO : Make sure each element is Future aware
 
 # this class is used to wrap outputs to inputs
 # for ex, if a function returns Arguments(12,34, g=23,h=20)
 # will assume the output will serve as input f(12,34, g=23, h=20)
 # to some function (unless another streamdoc is merged etc)
-
-
-# This is an internal object that helps keep track of arguments
-class Arguments:
-    def __init__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
-
-
-def parse_args(res, output_info=None):
-    ''' This is where the arguments are parsed
-        Main rules:
-            if output_info is not set then if dict, these are kwargs
-            if not, whatever the result is is an arg
-    '''
-    if output_info is not None:
-        # TODO :implement external output information
-        return Arguments(res)
-    elif isinstance(res, dict):
-        return Arguments(**res)
-    else:
-        return Arguments(res)
+'''
+    This is the crux of the analysis control. Everything is emitted as a
+    StreamDoc. This is also made friendly for distributed environments. It is
+    done by checking whether incoming members are dask.Futures or not.
+    Currently, this only supports dask for distributed computing but in
+    principle could support other API's, so long as the correct instance of
+    Future and client (with members 'submit' and 'compute') are supplied.
+'''
 
 
 # routines that add on to stream doc functionality
@@ -59,22 +51,13 @@ def pack(*args, **kwargs):
     return args
 
 
-def toargs(arg):
-    return Arguments(*arg)
-
-
-def unpack(args):
-    ''' assume input is a tuple, split into arguments.'''
-    # print("Arguments : {}".format(args))
-    return Arguments(*args)
-
-
 def todict(kwargs):
     ''' assume input is a dictionary, split into kwargs.'''
-    return Arguments(**kwargs)
+    return dict(kwargs=kwargs)
 
 
 def add_attributes(sdoc, attributes={}):
+    # print("adding attributes. previous sdoc : {}".format(sdoc))
     newsdoc = StreamDoc(sdoc)
     newsdoc = newsdoc.add(attributes=attributes)
     return newsdoc
@@ -89,13 +72,19 @@ def clear_attributes(sdoc):
 def to_attributes(sdoc):
     # move kwargs to attributes
     newsdoc = StreamDoc(sdoc)
-    newsdoc['attributes'].update(newsdoc['kwargs'])
+    # compute result on cluster
+    # could be a Future or not
+    try:
+        kwargs = sdoc['kwargs'].result()
+    except AttributeError:
+        kwargs = sdoc['kwargs']
+    newsdoc['attributes'].update(kwargs)
     newsdoc['kwargs'] = dict()
-    args = newsdoc['args']
+    # args = newsdoc['args']
 
-    for i, arg in enumerate(args):
-        name = "arg_{:04d}".format(i)
-        newsdoc['attributes'][name] = arg
+    # for i, arg in enumerate(args):
+    # name = "arg_{:04d}".format(i)
+    # newsdoc['attributes'][name] = arg
 
     return newsdoc
 
@@ -255,22 +244,27 @@ def _to_event_stream(sdoc):
 
 
 class StreamDoc(dict):
-    def __init__(self, streamdoc=None, args=(), kwargs={}, attributes={},
-                 wrapper=None):
+    def __init__(self, streamdoc=None, args=[], kwargs={},
+                 attributes={}, sdoc_type='full'):
         ''' A generalized document meant to be parsed by Streams.
+
+            sdoc_type : {'full', 'empty', 'error'}
+                the type of streamdoc
+                empty prevents functions from being run downstream
+                error as well
 
             Components:
                 attributes :None the metadata
                 outputs : a dictionary of outputs from stream
-                args : a list of args
-                kwargs : a list of kwargs
+                kwargs : keyword arguments
+
                 statistics : some statistics of the stream that generated this
                     It can be anything, like run_start, run_stop etc
         '''
-        self._wrapper = wrapper
         # initialize the dictionary class
         super(StreamDoc, self).__init__(self)
 
+        # NOTE : removed args overall
         # initialize the metadata and kwargs
         self['attributes'] = dict()
         self['kwargs'] = dict()
@@ -284,6 +278,9 @@ class StreamDoc(dict):
 
         # needed to distinguish that it is a StreamDoc by stream methods
         self['_StreamDoc'] = 'StreamDoc v1.0'
+        # to propagate empty values
+        # TODO : maybe add 'partial'? (i.e. values need to be filled in)
+        self['_StreamDoc_Type'] = sdoc_type
 
         # update
         if streamdoc is not None:
@@ -297,17 +294,48 @@ class StreamDoc(dict):
         self.add(args=streamdoc['args'], kwargs=streamdoc['kwargs'],
                  attributes=streamdoc['attributes'],
                  statistics=streamdoc['statistics'])
-        self._wrapper = streamdoc._wrapper
 
+    # arguments can be a Future
+    # so everything involving it should be submitted to cluster
     def add(self, args=[], kwargs={}, attributes={}, statistics={},
             provenance={}, checkpoint={}):
         ''' add args and kwargs'''
-        if not isinstance(args, list) and not isinstance(args, tuple):
-            args = (args, )
-
-        self['args'].extend(args)
+        def update_future_dict(old_dict, update_dict):
+            new_dict = dict(old_dict)
+            new_dict.update(update_dict)
+            return new_dict
         # Note : will overwrite previous kwarg data without checking
-        self['kwargs'].update(kwargs)
+        # this looks overly complicated, but just checks to see if results are
+        # local or on cluster (Future)
+        # if anything is a Future, then the operation is sent to cluster
+        # Basically, if any computation is already remote, keep it remote
+        # if it was all local, then keep local (the latter blocks, so be
+        # careful)
+        if isinstance(kwargs, Future) or isinstance(self['kwargs'], Future):
+
+            self['kwargs'] = client.submit(update_future_dict, self['kwargs'],
+                                           kwargs)
+        else:
+            self['kwargs'].update(kwargs)
+
+        if isinstance(attributes, Future) or \
+                isinstance(self['attributes'], Future):
+            self['attributes'] = client.submit(update_future_dict,
+                                               self['attributes'],
+                                               attributes)
+        else:
+            self['attributes'].update(attributes)
+
+        if isinstance(args, Future) or isinstance(self['args'], Future):
+            def update_args(old_args, update_args):
+                new_args = list()
+                new_args.extend(old_args)
+                new_args.extend(update_args)
+                return new_args
+            self['args'] = client.submit(update_args, self['args'], args)
+        else:
+            self['args'].extend(args)
+
         self['attributes'].update(attributes)
         self['statistics'].update(statistics)
         self['provenance'].update(provenance)
@@ -316,12 +344,12 @@ class StreamDoc(dict):
         return self
 
     @property
-    def args(self):
-        return self['args']
-
-    @property
     def kwargs(self):
         return self['kwargs']
+
+    @property
+    def args(self):
+        return self['args']
 
     @property
     def attributes(self):
@@ -332,32 +360,7 @@ class StreamDoc(dict):
         return self['statistics']
 
     def get_return(self, elem=None):
-        ''' get what the function would have normally returned.
-
-            returns raw data
-            Parameters
-            ----------
-            elem : optional
-                if an integer: get that nth argumen
-                if a string : get that kwarg
-        '''
-        if isinstance(elem, int):
-            res = self['args'][elem]
-        elif isinstance(elem, str):
-            res = self['kwargs'][elem]
-        elif elem is None:
-            # return general expected function output
-            if len(self['args']) == 0 and len(self['kwargs']) > 0:
-                res = dict(self['kwargs'])
-            elif len(self['args']) > 0 and len(self['kwargs']) == 0:
-                res = self['args']
-                if len(res) == 1:
-                    # a function with one arg normally returns this way
-                    res = res[0]
-            else:
-                # if it's more complex, then it wasn't a function output
-                res = self
-
+        res = client.submit(_get_return, self.args, self.kwargs, elem=elem)
         return res
 
     def repr(self):
@@ -387,106 +390,189 @@ class StreamDoc(dict):
 
     def select(self, *mapping):
         try:
-            sdoc = self._select(*mapping)
+            args, kwargs = self['args'], self['kwargs']
+#            if not isinstance(args, Future):
+#                print("len args : {}".format(len(args)))
+#            else:
+#                print("len args : {}".format(len(args.result())))
+#
+#            if not isinstance(kwargs, Future):
+#                print("kwargs keys : {}".format(list(kwargs.keys())))
+#            else:
+#                print("kwargs keys")
+#                print("kwargs keys : {}".format((kwargs.result())))
+
+            if isinstance(args, Future) or \
+                    isinstance(kwargs, Future):
+                # do computation remotely
+                # self.etc should be okay (if not, change to staticmethod)
+                res = client.submit(_select_from_mapping, args,
+                                    kwargs, *mapping)
+                # can't just get elements from tuple, need to submit to cluster
+
+                def get_args(res):
+                    return res[0]
+
+                def get_kwargs(res):
+                    return res[1]
+                args = client.submit(get_args, res)
+                kwargs = client.submit(get_kwargs, res)
+            else:
+                args, kwargs = _select_from_mapping(args, kwargs, *mapping)
+
+            from SciStreams.globals import debugcache
+            debugcache.append(args)
+            debugcache.append(kwargs)
+
+            sdoc = StreamDoc(self)
+            sdoc['args'] = args
+            sdoc['kwargs'] = kwargs
+
             return sdoc
         except Exception:
             statistics = dict()
             _cleanexit(self.select, statistics)
             new_sdoc = StreamDoc(attributes=self['attributes'])
             new_sdoc['statistics'] = statistics
+            new_sdoc['_StreamDoc_Type'] = 'error'
             return new_sdoc
 
-    def _select(self, *mapping):
-        ''' remap args and kwargs
-            combinations can be any one of the following:
+
+# static methods
+def _get_return(args, kwargs, elem=None):
+    ''' get what the function would have normally returned.
+
+        returns raw data
+        Parameters
+        ----------
+        elem : optional
+            if an integer: get that nth argumen
+            if a string : get that kwarg
+    '''
+    if isinstance(elem, str):
+        # print("elem is  a str : {}".format(elem))
+        res = kwargs[elem]
+    elif elem is None:
+        # print("elem is None")
+        # return general expected function output
+        if len(kwargs) > 0:
+            res = dict(kwargs)
+        elif len(args) > 0 and len(kwargs) == 0:
+            res = args
+            if len(res) == 1:
+                # a function with one arg normally returns this way
+                res = res[0]
+        else:
+            # if it's more complex, then it wasn't a function output
+            # make a dictionary This isn't currently used
+            # res = kwargs.copy()
+            # for i, arg in enumerate(args):
+            # key = "_arg{:02d}".format(i)
+            # res[key] = arg
+            raise ValueError("Error : Did not understand the input")
+    else:
+        raise ValueError("elem not understood : {}".format(elem))
+
+    return res
 
 
-            Some examples:
+def _select_from_mapping(args, kwargs, *mapping):
+    ''' remap args and kwargs
+        combinations can be any one of the following:
 
-            (1,)        : map 1st arg to next available arg
-            (1, None)   : map 1st arg to next available arg
-            'a',        : map 'a' to 'a'
-            'a', None   : map 'a' to next available arg
-            'a','b'     : map 'a' to 'b'
-            1, 'a'      : map 1st arg to 'a'
 
-            The following is NOT accepted:
-            (1,2) : this would map arg 1 to arg 2. Use proper ordering instead
-            ('a',1) : this would map 'a' to arg 1. Use proper ordering instead
+        Some examples:
 
-            Notes
-            -----
-            These *must* be tuples, and the list a list kwarg elems must be
-                strs and arg elems must be ints to accomplish this instead
-        '''
-        # print("IN STREAMDOC -> SELECT")
-        # TODO : take args instead
-        # if not isinstance(mapping, list):
-        # mapping = [mapping]
-        streamdoc = StreamDoc(self)
-        streamdoc._wrapper = self._wrapper
-        newargs = list()
-        newkwargs = dict()
-        totargs = dict(args=newargs, kwargs=newkwargs)
+        (1,)        : map 1st arg to next available arg
+        (1, None)   : map 1st arg to next available arg
+        'a',        : map 'a' to 'a'
+        'a', None   : map 'a' to next available arg
+        'a','b'     : map 'a' to 'b'
+        1, 'a'      : map 1st arg to 'a'
 
-        for mapelem in mapping:
-            if isinstance(mapelem, str):
-                mapelem = mapelem, mapelem
-            elif isinstance(mapelem, int):
-                mapelem = mapelem, None
+        The following is NOT accepted:
+        (1,2) : this would map arg 1 to arg 2. Use proper ordering instead
+        ('a',1) : this would map 'a' to arg 1. Use proper ordering instead
 
-            # length 1 for strings, repeat, for int give None
-            if len(mapelem) == 1 and isinstance(mapelem[0], str):
-                mapelem = mapelem[0], mapelem[0]
-            elif len(mapelem) == 1 and isinstance(mapelem[0], int):
-                mapelem = mapelem[0], None
+        Notes
+        -----
+        These *must* be tuples, and the list a list kwarg elems must be
+            strs and arg elems must be ints to accomplish this instead
+    '''
+    # print("IN STREAMDOC -> SELECT")
+    # TODO : take args instead
+    # if not isinstance(mapping, list):
+    # mapping = [mapping]
+    # streamdoc = StreamDoc(self)
+    newargs = list()
+    newkwargs = dict()
+    totargs = dict(args=newargs, kwargs=newkwargs)
+    # quick fix but could be cleaned up
+    sdoc = dict(args=args, kwargs=kwargs)
 
-            oldkey = mapelem[0]
-            newkey = mapelem[1]
+    for mapelem in mapping:
+        if isinstance(mapelem, str):
+            mapelem = mapelem, mapelem
+        elif isinstance(mapelem, int):
+            mapelem = mapelem, None
 
-            if isinstance(oldkey, int):
-                oldparentkey = 'args'
-            elif isinstance(oldkey, str):
-                oldparentkey = 'kwargs'
-            else:
-                raise ValueError("old key not understood : {}".format(oldkey))
+        # length 1 for strings, repeat, for int give None
+        if len(mapelem) == 1 and isinstance(mapelem[0], str):
+            mapelem = mapelem[0], mapelem[0]
+        elif len(mapelem) == 1 and isinstance(mapelem[0], int):
+            mapelem = mapelem[0], None
 
-            if newkey is None:
-                newparentkey = 'args'
-            elif isinstance(newkey, str):
-                newparentkey = 'kwargs'
-            elif isinstance(newkey, int):
-                errorstr = "Integer tuple pairs not accepted."
-                errorstr += " This usually comes from trying a (1,1)"
-                errorstr += " or ('foo',1) mapping."
-                errorstr += "Please try (1,None) or ('foo', None) instead"
-                raise ValueError(errorstr)
+        oldkey = mapelem[0]
+        newkey = mapelem[1]
 
-            if oldparentkey == 'kwargs' and \
-               oldkey not in streamdoc[oldparentkey] \
-               or oldparentkey == 'args' and \
-               len(streamdoc[oldparentkey]) < oldkey:
-                errorstr = "streamdoc.select() : Error {} not ".format(oldkey)
-                errorstr += "in the {} of ".format(oldparentkey)
-                errorstr += "the current streamdoc.\n"
+        if isinstance(oldkey, int):
+            oldparentkey = 'args'
+        elif isinstance(oldkey, str):
+            oldparentkey = 'kwargs'
+        else:
+            raise ValueError("old key not understood : {}".format(oldkey))
 
-                errorstr += "Details : Tried to map key {}".format(oldkey)
-                errorstr += " from {} ".format(oldparentkey)
-                errorstr += " to {}\n.".format(newparentkey)
-                errorstr += "This usually occurs from selecting "
-                errorstr += "a streamdoc with missing information\n"
-                errorstr += "(But could also come from missing data)\n"
-                raise KeyError(errorstr)
+        if newkey is None:
+            newparentkey = 'args'
+        elif isinstance(newkey, str):
+            newparentkey = 'kwargs'
+        elif isinstance(newkey, int):
+            errorstr = "Integer tuple pairs not accepted."
+            errorstr += " This usually comes from trying a (1,1)"
+            errorstr += " or ('foo',1) mapping."
+            errorstr += "Please try (1,None) or ('foo', None) instead"
+            raise ValueError(errorstr)
 
-            if newparentkey == 'args':
-                totargs[newparentkey].append(streamdoc[oldparentkey][oldkey])
-            else:
-                totargs[newparentkey][newkey] = streamdoc[oldparentkey][oldkey]
+        if oldparentkey == 'kwargs' and \
+           oldkey not in sdoc[oldparentkey] \
+           or oldparentkey == 'args' and \
+           len(sdoc[oldparentkey]) < oldkey:
+            errorstr = "streamdoc.select() : Error {} not ".format(oldkey)
+            errorstr += "in the {} of ".format(oldparentkey)
+            errorstr += "the current streamdoc.\n"
 
-        streamdoc['args'] = totargs['args']
-        streamdoc['kwargs'] = totargs['kwargs']
+            errorstr += "Details : Tried to map key {}".format(oldkey)
+            errorstr += " from {} ".format(oldparentkey)
+            errorstr += " to {}\n.".format(newparentkey)
+            errorstr += "This usually occurs from selecting "
+            errorstr += "a streamdoc with missing information\n"
+            errorstr += "(But could also come from missing data)\n"
+            raise KeyError(errorstr)
 
-        return streamdoc
+        if newparentkey == 'args':
+            totargs[newparentkey].append(sdoc[oldparentkey][oldkey])
+        else:
+            totargs[newparentkey][newkey] = sdoc[oldparentkey][oldkey]
+
+    # streamdoc['args'] = totargs['args']
+    # streamdoc['kwargs'] = totargs['kwargs']
+
+    # this is to make it friendly with distributed
+    # return the things that could be futures, then make a StreamDoc from
+    # it
+    # print("tot args :{}".format(totargs['args']))
+    # print("tot kwargs :{}".format(totargs['kwargs']))
+    return totargs['args'], totargs['kwargs']
 
 
 def _is_streamdoc(doc):
@@ -496,10 +582,21 @@ def _is_streamdoc(doc):
         return False
 
 
-def parse_streamdoc(name):
+def _is_empty(doc):
+    if doc['_StreamDoc_Type'] == 'empty' or\
+            doc['_StreamDoc_Type'] == 'error':
+        return True
+    else:
+        return False
+
+
+def parse_streamdoc(name, filter=False):
     ''' Decorator to parse StreamDocs from functions
 
-    This is a decorator meant to wrap functions that process streams.
+        remote : decide whether or not this computation should be submitted to
+        the cluster
+
+        This is a decorator meant to wrap functions that process streams.
         It must make the following two assumptions:
             functions on streams process either one or two arguments:
                 - if processing two arguments, it is assumed that the operation
@@ -515,15 +612,28 @@ def parse_streamdoc(name):
             if a tuple, makes a StreamDoc with only arguments else, makes a
             StreamDoc of just one element
     '''
-    def streamdoc_dec(f):
+    def streamdoc_dec(f, remote=True):
         @wraps(f)
         def f_new(x, x2=None, **kwargs_additional):
+            def update_kwargs(old_kwargs, in_kwargs, empty=False):
+                if not empty:
+                    new_kwargs = old_kwargs.copy()
+                    new_kwargs.update(in_kwargs)
+                    return new_kwargs
+                else:
+                    return {}
+
             # add a time out to f
             # TODO : replace with custom time out per stream
-            f_timeout = timeout(seconds=DEFAULT_TIMEOUT)(f)
+            # NOTE : removed timeout for dask implementation
+            # f_timeout = timeout(seconds=DEFAULT_TIMEOUT)(f)
+            # f_timeout = f
             # print("Running in {}".format(f.__name__))
             if x2 is None:
+                # this is for map
                 if _is_streamdoc(x):
+                    sdoc_type = x['_StreamDoc_Type']
+                    sdoc2_type = None
                     # extract the args and kwargs
                     args = x.args
                     kwargs = x.kwargs
@@ -533,44 +643,159 @@ def parse_streamdoc(name):
                     kwargs = dict()
                     attributes = dict()
             else:
+                # this is for accumulate
                 if _is_streamdoc(x) and _is_streamdoc(x2):
+                    sdoc_type = x['_StreamDoc_Type']
+                    sdoc2_type = x2['_StreamDoc_Type']
                     args = x.get_return(), x2.get_return()
+                    # print("found an accumulator. args are {}".format(args))
                     kwargs = dict()
-                    attributes = x.attributes
-                    # attributes of x2 overrides x
-                    attributes.update(x2.attributes)
+                    # check if attributes are a future
+                    if isinstance(x.attributes, Future) or \
+                            isinstance(x2.attributes, Future):
+                        attributes = client.submit(update_kwargs, x.attributes,
+                                                   x2.attributes)
+                    else:
+                        attributes = x.attributes
+                        # attributes of x2 overrides x
+                        attributes.update(x2.attributes)
                 else:
                     raise ValueError("Two normal arguments not accepted")
 
-            kwargs.update(kwargs_additional)
+            def empty_sdoc(x1, x2):
+                ''' Trick to propagae empty values.'''
+                # a few cases, x1 exists but not x2 and is full, or both exist
+                # and both full
+                if (x1 == 'full' and x2 is None) or \
+                        (x1 == 'full' and x2 == 'full'):
+                    empty = False
+                else:
+                    empty = True
+
+                return empty
+
+            if remote:
+                sdoc_empty = client.submit(empty_sdoc, sdoc_type, sdoc2_type)
+            else:
+                if isinstance(sdoc_type, Future):
+                    sdoc_type = sdoc_type.result()
+
+                if isinstance(sdoc2_type, Future):
+                    sdoc2_type = sdoc2_type.result()
+
+                sdoc_empty = empty_sdoc(sdoc_type, sdoc2_type)
+
+            # kwargs is a Future so we need to be careful
+            # print(kwargs)
+            # print(kwargs_additional)
+            if remote:
+                kwargs_future = client.submit(update_kwargs, kwargs,
+                                              kwargs_additional,
+                                              empty=sdoc_empty)
+                # print("Sent to cluster")
+            else:
+                # we don't want to run on cluster
+                # check if they're Futures first and turn them to concrete data
+                # if yes
+                if isinstance(kwargs, Future):
+                    kwargs = kwargs.result()
+                if isinstance(kwargs_additional, Future):
+                    kwargs_additional = kwargs_additional.result()
+
+                kwargs_future = update_kwargs(kwargs, kwargs_additional,
+                                              empty=sdoc_empty)
+
+#             if not isinstance(args, Future):
+#                 print("args: {}".format(args))
+#             else:
+#                 print("args: {}".format(args.result()))
+#             if not isinstance(kwargs, Future):
+#                 print("kwargs: {}".format(kwargs))
+#             else:
+#                 print("kwargs: {}".format(kwargs.result()))
+
+            # print("kwargs_future : {}".format(kwargs_future))
+            # kwargs.update(kwargs_additional)
             # print("args : {}, kwargs : {}".format(args, kwargs))
             # debugcache.append(dict(args=args, kwargs=kwargs,
             # attributes=attributes, funcname=f.__name__))
+
+            # args and kwargs can also be a Future
+            # need to take that into account
+            @wraps(f)
+            def unwrap(f, args, kwargs, empty=False):
+                # at this stage it's assumed cluster has retrieved kwargs
+                # print("unwrapping args {}".format(args))
+                # print("unwrapping kwargs {}".format(kwargs))
+                # bypass function (avoid long computation times)
+                if not empty:
+                    return f(*args, **kwargs)
+                else:
+                    return []
+
+            # two layers here:
+            # 1. a Future must be returned so we must return using compute on
+            # function
+            # 2. The kwargs are not determined until we run computation on
+            # cluster so we need to modify function to unwrap kwargs once on
+            # cluster. We do this with "unwrap", which must wrap the function
+            # before client.submit
+            # the args and kwargs themselves may also be Futures
+
+            def future_wrapper(f):
+                @wraps(f)
+                # assumed that args, kwargs come in this order always
+                def f_new(args, kwargs):
+                    return client.submit(f, args, kwargs)
+                return f_new
+
+            fnew = partial(unwrap, f)
+            # re-define f again...
+            if remote:
+                fnew = future_wrapper(fnew)
+                # print("submitting to cluster")
+            else:
+                # leave as is
+                # print("Not submitting to cluster")
+                pass
 
             statistics = dict()
             t1 = time.time()
             try:
                 # now run the function
-                result = f_timeout(*args, **kwargs)
+                # print statements for debugging
+                # print(kwargs_future)
+                # print(kwargs_future.result())
+                # print(kwargs_future)
+                result = fnew(args, kwargs_future)
+                # print(result)
+                # print(result.result())
                 # print("args : {}".format(args))
                 # print("kwargs : {}".format(kwargs))
                 statistics['status'] = "Success"
             except TypeError:
                 print("Error, inputs do not match function type")
                 import inspect
-                sig = inspect.signature(f_timeout)
+                sig = inspect.signature(f)
                 print("(StreamDoc) Error : Input mismatch on function")
                 print("This means there is an issue with "
                       "The stream architecture")
-                print("Got {} arguments".format(len(args)))
-                print("Got kwargs : {}".format(list(kwargs.keys())))
+                # print("Got {} arguments".format(len(args)))
+                if remote:
+                    print("(computed the result on cluster)")
+                # could be a Future or not
+                try:
+                    kwargs_computed = kwargs.result()
+                except Exception:
+                    kwargs_computed = kwargs
+                print("Got kwargs : {}".format(list(kwargs_computed.keys())))
                 print("But expected : {}".format(sig))
                 print("Returning empty result, see error report below")
                 result = {}
-                _cleanexit(f_timeout, statistics)
+                _cleanexit(f, statistics)
             except Exception:
                 result = {}
-                _cleanexit(f_timeout, statistics)
+                _cleanexit(f, statistics)
 
             t2 = time.time()
             statistics['runtime'] = t1 - t2
@@ -583,19 +808,68 @@ def parse_streamdoc(name):
                     attributes['function_list'].copy()
             # print("updated function list:
             # {}".format(attributes['function_list']))
-            attributes['function_list'].append(getattr(f_timeout, '__name__',
+            attributes['function_list'].append(getattr(f, '__name__',
                                                'unnamed'))
             # print("Running function {}".format(f.__name__))
             # instantiate new stream doc
-            streamdoc = StreamDoc(attributes=attributes)
+            streamdoc = StreamDoc(attributes=attributes, sdoc_type=sdoc_type)
             streamdoc['statistics'] = statistics
             # load in attributes
             # Save outputs to StreamDoc
             # parse arguments to an object with args and kwargs members
-            arguments_obj = parse_args(result)
+            # NOTE : Changed API. Need to ALWAYS assume dict
+            # arguments_obj = parse_args(result)
+
             # print("StreamDoc, parse_streamdoc : parsed args :
             # {}".format(arguments_obj.args))
-            streamdoc.add(args=arguments_obj.args, kwargs=arguments_obj.kwargs)
+            # streamdoc.add(args=arguments_obj.args,
+            #               kwargs=arguments_obj.kwargs)
+            # overly complicated... But works for now...
+            # one solution is to force everything to be a dict, instead of
+            # allowing args (will have to worry about accumulator for that)
+            @wraps(f)
+            def get_kwargs(res):
+                if isinstance(res, dict):
+                    return res
+                else:
+                    return {}
+
+            @wraps(f)
+            def get_args(res):
+                if not isinstance(res, dict):
+                    return [res]
+                else:
+                    return []
+
+            if not filter:
+                if remote:
+                    kwargs = client.submit(get_kwargs, result)
+                    args = client.submit(get_args, result)
+                    # print("Computation key : {}".format(result.key))
+                    # print("Computation status : {}".format(result.status))
+                    # print("Computation : {}".format(f.__name__))
+                else:
+                    kwargs = get_kwargs(result)
+                    args = get_args(result)
+                streamdoc.add(kwargs=kwargs, args=args)
+            else:
+                # for filter, we pass old streamdoc but change it's state
+                # if filter predicate is True (state can also be Future)
+                # make a new StreamDoc
+                streamdoc = StreamDoc(x)
+
+                def parse_predicate(sdoc_type, result):
+                    if result is True and sdoc_type == 'full':
+                        return 'full'
+                    else:
+                        return 'empty'
+
+                if remote:
+                    result = client.submit(parse_predicate, sdoc_type, result)
+                else:
+                    result = parse_predicate(sdoc_type, result)
+
+                streamdoc['_StreamDoc_Type'] = result
 
             return streamdoc
 
@@ -608,6 +882,8 @@ parse_streamdoc_map = parse_streamdoc("map")
 psdm = parse_streamdoc_map
 parse_streamdoc_acc = parse_streamdoc("acc")
 psda = parse_streamdoc_acc
+parse_streamdoc_filter = parse_streamdoc("filter", filter=True)
+psdf = parse_streamdoc_filter
 
 
 def _cleanexit(f, statistics):

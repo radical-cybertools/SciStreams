@@ -12,19 +12,33 @@ def test_stream_map():
         return arg + 1
 
     s = Stream()
-    sout = s.map(psda(addfunc))
+    sout = s.map(psdm(addfunc))
     # get the number member from StreamDoc
-    sout = sout.map(lambda x: x['args'][0])
+    # it is currently a Future now
+    sout_futures = sout.map(lambda x: x['args'])
+    # convert from Future to a result (blocking function)
+
+    def safe_get(x):
+        try:
+            res = x.result()
+        except AttributeError:
+            res = x
+        return res
+    sout_results = sout_futures.map(safe_get)
+    # pick the "_arg0" element of the result
+    sout_elems = sout_results.pluck(0)
 
     # save to list
-    L = sout.sink_to_list()
+    # L_futures = sout_futures.sink_to_list()
+    L_elems = sout_elems.sink_to_list()
 
     s.emit(StreamDoc(args=[1], kwargs=dict(foo="bar"),
                      attributes=dict(name="john")))
     s.emit(StreamDoc(args=[4], kwargs=dict(foo="bar"),
                      attributes=dict(name="john")))
 
-    assert L == [2, 5]
+    # convert the futures to results
+    assert L_elems == [2, 5]
 
 
 def test_stream_accumulate():
@@ -35,7 +49,7 @@ def test_stream_accumulate():
         return prevstate + newstate
 
     s = Stream()
-    sout = s.accumulate(psdm(myacc))
+    sout = s.accumulate(psda(myacc))
 
     L = sout.sink_to_list()
 

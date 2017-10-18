@@ -1,7 +1,8 @@
 # TODO : add pixel procesing/thresholding threshold_pixels((2**32-1)-1) # Eiger
 # inter-module gaps
+from collections import deque
 
-from .. import globals as streams_globals
+# from .. import globals as streams_globals
 
 from dask import set_options
 set_options(delayed_pure=True)  # noqa
@@ -29,12 +30,16 @@ import streamz as sc
 import SciStreams.core.scistreams as scs
 import SciStreams.core.StreamDoc as sd
 
+from SciStreams.globals import futures_cache
+
 keymaps = config['keymaps']
 
 # NOTE : When defining streams, make sure to place the expected inputs
 # and outputs in the docstrings! See stream below for a good example.
 
 allowed_detector_keys = ['pilatus2M_image', 'pilatus300_image']
+
+global_calib = deque(maxlen=100)
 
 
 def pick_allowed_detectors(sdoc):
@@ -206,9 +211,12 @@ def AttributeNormalizingStream(external_keymap=None):
                 specified, internal keymaps are used.
     '''
     sin = sc.Stream()
+    # set remote=False. These are quick calculations we don't care to cache
+    # they are also always unique to each data so caching doesn't make sense
     sout = scs.get_attributes(sin)
-    sout = scs.map(normalize_calib_dict, sout, external_keymap=external_keymap)
-    sout = scs.map(add_detector_info, sout)
+    sout = scs.map(normalize_calib_dict, sout, external_keymap=external_keymap,
+                   remote=False)
+    sout = scs.map(add_detector_info, sout, remote=False)
     return sin, sout
 
 
@@ -231,7 +239,12 @@ def normalize_calib_dict(external_keymap=None, **md):
         keymap = keymaps[keymap_name]
     else:
         keymap = external_keymap
+
+    # make a new dict, only choose relevant data
+    new_md = dict()
+    new_md.update(md)
     for key, val in keymap.items():
+        # print("looking for key {}".format(val))
         name = val['name']
         if name is not None:
             # for debugging
@@ -239,9 +252,9 @@ def normalize_calib_dict(external_keymap=None, **md):
             # swap out temp vals
             tmpval = md.pop(name, val['default_value'])
             default_unit = val['default_unit']
-            md[key] = dict(value=tmpval, unit=default_unit)
+            new_md[key] = dict(value=tmpval, unit=default_unit)
 
-    return md
+    return new_md
 
 
 def add_detector_info(**md):
@@ -258,6 +271,10 @@ def add_detector_info(**md):
                 has been transformed (i.e. image stitching)
     '''
     detector_key = md.get('detector_key', None)
+    detector_key = detector_key['value']
+    # TODO : remove dict("Value" "unit") etc and replace with a general
+    # descriptor (or ignore overall)
+    md['detector_key'] = detector_key
 
     # only do something is there is a detector key
     if detector_key is not None:
@@ -339,8 +356,10 @@ def CalibrationStream():
         sout : Stream instance
             the output stream (see Stream Outputs)
     '''
+    global global_calib
     sin = sc.Stream(stream_name="Calibration")
-    sout = scs.map(make_calibration, sin)
+    # force computation to come back here
+    sout = scs.map(make_calibration, sin, remote=False)
 
     # this piece should be computed using Dask
     def _generate_qxyz_maps(calibration):
@@ -348,22 +367,29 @@ def CalibrationStream():
         return dict(calibration=calibration)
 
     # from streamz.dask import scatter, gather
-    from SciStreams.globals import client
+    # from SciStreams.globals import client
 
     # TODO : change to use scatter/gather
     # (need to setup event loop for this etc)
 
-    sout = scs.map(lambda calibration:
-                   client.submit(_generate_qxyz_maps, calibration),
-                   sout)
+    # sout = scs.map(lambda calibration:
+    # client.submit(_generate_qxyz_maps, calibration),
+    #               sout)
 
     # save the futures to a list (scheduler will ensure caching of result if
     # any reference to a future is kept)
-    sc.map(sout, lambda calibration:
-           streams_globals.futures_cache.append(calibration))
+    # sc.map(sout, lambda calibration:
+    #        streams_globals.futures_cache.append(calibration))
 
-    sout = scs.map(lambda calibration:
-                   client.gather(calibration), sout)
+    # sout = scs.map(lambda calibration:
+    #                client.gather(calibration), sout)
+
+    sout = scs.map(_generate_qxyz_maps, sout)
+    # sout.map(lambda x :
+    #          x['kwargs'].result()['calibration'].q_map).sink(print)
+    # sink the futures to a global list (deque)
+    sout.map(lambda x: x['kwargs']).sink(futures_cache.append)
+    sout.map(lambda x: x['args']).sink(futures_cache.append)
 
     return sin, sout
 
@@ -521,7 +547,7 @@ def CircularAverageStream():
         if 'image' not in kwargs or 'calibration' not in kwargs:
             message = "expected two kwargs: "
             message += "(image, calibration), "
-            message += "got {} instead".format(kwargs.keys())
+            message += "got {} instead".format(list(kwargs.keys()))
             raise ValueError(message)
 
         # kwargs are optional so don't validate them
@@ -529,7 +555,9 @@ def CircularAverageStream():
 
     sin = sc.Stream(stream_name="Circular Average")
     sout = scs.add_attributes(sin, stream_name="circavg")
-    sout = sout.map(validate)
+    # No validation for now
+    # validation should not be necessary, should just throw an error
+    # sout = sout.map(validate)
     sout = scs.map(circavg_from_calibration, sout)
 
     return sin, sout
@@ -884,11 +912,11 @@ def ImageStitchingStream(return_intermediate=False):
 
     # TODO : remove the add_attributes part and just keep stream_name
     sin = sc.Stream(stream_name="Image Stitching Stream")
-    sout = sc.map(sin, validate)
+    # sout = sc.map(sin, validate)
     # sin.map(lambda x : print("Beginning of stream data\n\n\n"))
     # TODO : remove compute requirement
     # TODO : incomplete
-    sout = scs.add_attributes(sout, stream_name="stitch")
+    sout = scs.add_attributes(sin, stream_name="stitch")
 
     sout = scs.select(sout, ('image', None), ('mask', None), ('origin', None),
                       ('stitchback', None))
@@ -925,6 +953,7 @@ def ImageStitchingStream(return_intermediate=False):
     # now emit some dummy value to swin, before connecting more to stream
     # swin.emit(dict(attributes=dict(stitchback=0)))
 
+    # TODO : figure out how to filter
     if not return_intermediate:
         # keep previous two results
         sout = sout.sliding_window(2)

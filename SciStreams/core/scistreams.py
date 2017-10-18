@@ -3,6 +3,30 @@ from functools import wraps
 import streamz
 from SciStreams.core.StreamDoc import psdm, psda
 import SciStreams.core.StreamDoc as StreamDoc_core
+from SciStreams.globals import client
+
+
+def future_wrapper(f):
+    @wraps(f)
+    def f_new(*args, **kwargs):
+        return client.submit(f, *args, **kwargs)
+    return f_new
+
+
+# make psdm and psda wrappers that return Futures
+def psdm_f(f):
+    @wraps(f)
+    def new_psdm(f):
+        return psdm(future_wrapper(f))
+    return new_psdm
+
+
+def psda_f(f):
+    @wraps(f)
+    def new_psda(f):
+        return psda(future_wrapper(f))
+    return new_psda
+
 
 # TODO : Need to have each of these methods safely return a streamdoc
 
@@ -12,24 +36,27 @@ def squash(child):
 
 
 def map(func, child, args=(), input_info=None,
-        output_info=None, **kwargs):
+        output_info=None, remote=True, **kwargs):
     # mapping wrapper for StreamDoc's
     # TODO : use input_info and output_info
-    return child.map(psdm(func), *args, **kwargs)
+    # this makes a future at the f(*args, **kwargs) level *not* the StreamDoc
+    # level
+    return child.map(psdm(func, remote=remote), *args, **kwargs)
 
 
 def sink(func, child, args=(), input_info=None,
-         output_info=None, **kwargs):
+         output_info=None, remote=True, **kwargs):
     # mapping wrapper for StreamDoc's
     # TODO : use input_info and output_info
-    return child.sink(psdm(func), *args, **kwargs)
+    return child.sink(psdm(func, remote=remote), *args, **kwargs)
 
 
 def accumulate(func, child, args=(), input_info=None,
-               output_info=None, **kwargs):
+               output_info=None, remote=True,
+               **kwargs):
     # mapping wrapper for StreamDoc's
     # TODO : use input_info and output_info
-    return child.accumulate(psda(func), *args, **kwargs)
+    return child.accumulate(psda(func, remote=remote), *args, **kwargs)
 
 
 # wrapper functions into a stream
@@ -53,6 +80,7 @@ def clear_attributes(child):
     return streamz.map(child, StreamDoc_core.clear_attributes)
 
 
+# TODO : make sure things sent to attributes are not Futures
 def to_attributes(child):
     ''' send a function's args and kwargs to attributes, also clearing the args
     and kwargs'''

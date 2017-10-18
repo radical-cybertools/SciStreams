@@ -9,7 +9,7 @@ from . import config
 
 MAX_FUTURE_NUM = 1000
 
-debugcache = deque(maxlen=1)
+debugcache = deque(maxlen=10)
 if config.client is not None:
     print("Adding a client: {}".format(config.client))
     from distributed import Client

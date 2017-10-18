@@ -169,10 +169,10 @@ def make_submask(master_mask, refpoint, shape, blemish=None):
     if blemish is not None:
         submask = submask*blemish
 
-    import matplotlib.pyplot as plt
-    plt.figure(6)
-    plt.clf()
-    plt.imshow(submask)
-    plt.clim(0, 2)
+    # import matplotlib.pyplot as plt
+    # plt.figure(6)
+    # plt.clf()
+    # plt.imshow(submask)
+    # plt.clim(0, 2)
 
     return submask*(submask > 0.5)
