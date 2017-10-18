@@ -16,11 +16,11 @@ from distributed import Future
 from dask.base import normalize_token
 
 # decorator to add timeouts
-from .timeout import timeout
+# from .timeout import timeout
 
 import numpy as np
 
-from ..config import default_timeout as DEFAULT_TIMEOUT
+# from ..config import default_timeout as DEFAULT_TIMEOUT
 
 from ..globals import client
 
@@ -49,16 +49,6 @@ def select(sdoc, *mapping):
 def pack(*args, **kwargs):
     ''' pack arguments into one set of arguments.'''
     return args
-
-
-def toargs(arg):
-    return Arguments(*arg)
-
-
-def unpack(args):
-    ''' assume input is a tuple, split into arguments.'''
-    # print("Arguments : {}".format(args))
-    return Arguments(*args)
 
 
 def todict(kwargs):
@@ -92,9 +82,9 @@ def to_attributes(sdoc):
     newsdoc['kwargs'] = dict()
     # args = newsdoc['args']
 
-    #for i, arg in enumerate(args):
-        #name = "arg_{:04d}".format(i)
-        #newsdoc['attributes'][name] = arg
+    # for i, arg in enumerate(args):
+    # name = "arg_{:04d}".format(i)
+    # newsdoc['attributes'][name] = arg
 
     return newsdoc
 
@@ -302,8 +292,8 @@ class StreamDoc(dict):
     def updatedoc(self, streamdoc):
         # print("in StreamDoc : {}".format(streamdoc))
         self.add(args=streamdoc['args'], kwargs=streamdoc['kwargs'],
-                attributes=streamdoc['attributes'],
-                statistics=streamdoc['statistics'])
+                 attributes=streamdoc['attributes'],
+                 statistics=streamdoc['statistics'])
 
     # arguments can be a Future
     # so everything involving it should be submitted to cluster
@@ -328,8 +318,8 @@ class StreamDoc(dict):
         else:
             self['kwargs'].update(kwargs)
 
-        if isinstance(attributes, Future) or isinstance(self['attributes'], Future):
-
+        if isinstance(attributes, Future) or \
+                isinstance(self['attributes'], Future):
             self['attributes'] = client.submit(update_future_dict,
                                                self['attributes'],
                                                attributes)
@@ -413,13 +403,16 @@ class StreamDoc(dict):
 #                print("kwargs keys : {}".format((kwargs.result())))
 
             if isinstance(args, Future) or \
-                isinstance(kwargs, Future):
+                    isinstance(kwargs, Future):
                 # do computation remotely
                 # self.etc should be okay (if not, change to staticmethod)
-                res = client.submit(_select_from_mapping, args, kwargs, *mapping)
+                res = client.submit(_select_from_mapping, args,
+                                    kwargs, *mapping)
                 # can't just get elements from tuple, need to submit to cluster
+
                 def get_args(res):
                     return res[0]
+
                 def get_kwargs(res):
                     return res[1]
                 args = client.submit(get_args, res)
@@ -443,6 +436,7 @@ class StreamDoc(dict):
             new_sdoc['statistics'] = statistics
             new_sdoc['_StreamDoc_Type'] = 'error'
             return new_sdoc
+
 
 # static methods
 def _get_return(args, kwargs, elem=None):
@@ -471,10 +465,10 @@ def _get_return(args, kwargs, elem=None):
         else:
             # if it's more complex, then it wasn't a function output
             # make a dictionary This isn't currently used
-            #res = kwargs.copy()
-            #for i, arg in enumerate(args):
-                #key = "_arg{:02d}".format(i)
-                #res[key] = arg
+            # res = kwargs.copy()
+            # for i, arg in enumerate(args):
+            # key = "_arg{:02d}".format(i)
+            # res[key] = arg
             raise ValueError("Error : Did not understand the input")
     else:
         raise ValueError("elem not understood : {}".format(elem))
@@ -580,11 +574,13 @@ def _select_from_mapping(args, kwargs, *mapping):
     # print("tot kwargs :{}".format(totargs['kwargs']))
     return totargs['args'], totargs['kwargs']
 
+
 def _is_streamdoc(doc):
     if isinstance(doc, dict) and '_StreamDoc' in doc:
         return True
     else:
         return False
+
 
 def _is_empty(doc):
     if doc['_StreamDoc_Type'] == 'empty' or\
@@ -592,6 +588,7 @@ def _is_empty(doc):
         return True
     else:
         return False
+
 
 def parse_streamdoc(name, filter=False):
     ''' Decorator to parse StreamDocs from functions
@@ -655,7 +652,7 @@ def parse_streamdoc(name, filter=False):
                     kwargs = dict()
                     # check if attributes are a future
                     if isinstance(x.attributes, Future) or \
-                        isinstance(x2.attributes, Future):
+                            isinstance(x2.attributes, Future):
                         attributes = client.submit(update_kwargs, x.attributes,
                                                    x2.attributes)
                     else:
@@ -687,7 +684,6 @@ def parse_streamdoc(name, filter=False):
                     sdoc2_type = sdoc2_type.result()
 
                 sdoc_empty = empty_sdoc(sdoc_type, sdoc2_type)
-
 
             # kwargs is a Future so we need to be careful
             # print(kwargs)
@@ -822,11 +818,12 @@ def parse_streamdoc(name, filter=False):
             # Save outputs to StreamDoc
             # parse arguments to an object with args and kwargs members
             # NOTE : Changed API. Need to ALWAYS assume dict
-            #arguments_obj = parse_args(result)
+            # arguments_obj = parse_args(result)
 
             # print("StreamDoc, parse_streamdoc : parsed args :
             # {}".format(arguments_obj.args))
-            # streamdoc.add(args=arguments_obj.args, kwargs=arguments_obj.kwargs)
+            # streamdoc.add(args=arguments_obj.args,
+            #               kwargs=arguments_obj.kwargs)
             # overly complicated... But works for now...
             # one solution is to force everything to be a dict, instead of
             # allowing args (will have to worry about accumulator for that)
@@ -873,7 +870,6 @@ def parse_streamdoc(name, filter=False):
                     result = parse_predicate(sdoc_type, result)
 
                 streamdoc['_StreamDoc_Type'] = result
-
 
             return streamdoc
 

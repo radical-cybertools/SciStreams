@@ -3,12 +3,15 @@ from functools import wraps
 import streamz
 from SciStreams.core.StreamDoc import psdm, psda
 import SciStreams.core.StreamDoc as StreamDoc_core
+from SciStreams.globals import client
+
 
 def future_wrapper(f):
     @wraps(f)
     def f_new(*args, **kwargs):
         return client.submit(f, *args, **kwargs)
     return f_new
+
 
 # make psdm and psda wrappers that return Futures
 def psdm_f(f):
@@ -17,11 +20,13 @@ def psdm_f(f):
         return psdm(future_wrapper(f))
     return new_psdm
 
+
 def psda_f(f):
     @wraps(f)
     def new_psda(f):
         return psda(future_wrapper(f))
     return new_psda
+
 
 # TODO : Need to have each of these methods safely return a streamdoc
 
@@ -37,6 +42,7 @@ def map(func, child, args=(), input_info=None,
     # this makes a future at the f(*args, **kwargs) level *not* the StreamDoc
     # level
     return child.map(psdm(func, remote=remote), *args, **kwargs)
+
 
 def sink(func, child, args=(), input_info=None,
          output_info=None, remote=True, **kwargs):
@@ -60,6 +66,7 @@ def select(child, *mapping):
 
 def merge(child):
     return streamz.map(child, StreamDoc_core.merge)
+
 
 def add_attributes(child, **kwargs):
     return streamz.map(child, StreamDoc_core.add_attributes, attributes=kwargs)

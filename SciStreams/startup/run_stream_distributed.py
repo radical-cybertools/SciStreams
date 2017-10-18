@@ -111,11 +111,11 @@ sin_calib, sout_calib = CalibrationStream()
 sout_attributes.connect(sin_calib)
 L_calib = sout_calib.sink_to_list()
 
-#sout_calib2 = sout_calib
-#sout_calib = sc.Stream()
+# sout_calib2 = sout_calib
+# sout_calib = sc.Stream()
 
 # the PrimaryFilteringStream already split the detectors
-#s_image = sc.Stream()
+# s_image = sc.Stream()
 s_image = scs.add_attributes(sout_primary, stream_name="image")
 L_image = s_image.sink_to_list()
 
@@ -125,8 +125,8 @@ s_mask = scs.map(generate_mask, sout_attributes)
 L_mask = s_mask.sink_to_list()
 
 
-##s_zipped = 
-##L_zipped= s_zipped.sink_to_list()
+# #s_zipped =
+# #L_zipped= s_zipped.sink_to_list()
 s_imgmaskcalib = scs.merge(sc.zip(s_image, sout_calib, s_mask))
 L_imgmaskcalib = s_imgmaskcalib.sink_to_list()
 

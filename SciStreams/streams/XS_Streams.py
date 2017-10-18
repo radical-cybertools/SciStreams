@@ -2,7 +2,7 @@
 # inter-module gaps
 from collections import deque
 
-from .. import globals as streams_globals
+# from .. import globals as streams_globals
 
 from dask import set_options
 set_options(delayed_pure=True)  # noqa
@@ -40,6 +40,7 @@ keymaps = config['keymaps']
 allowed_detector_keys = ['pilatus2M_image', 'pilatus300_image']
 
 global_calib = deque(maxlen=100)
+
 
 def pick_allowed_detectors(sdoc):
     ''' Only pass through 2d array events, ignore rest.
@@ -214,7 +215,7 @@ def AttributeNormalizingStream(external_keymap=None):
     # they are also always unique to each data so caching doesn't make sense
     sout = scs.get_attributes(sin)
     sout = scs.map(normalize_calib_dict, sout, external_keymap=external_keymap,
-            remote=False)
+                   remote=False)
     sout = scs.map(add_detector_info, sout, remote=False)
     return sin, sout
 
@@ -371,23 +372,24 @@ def CalibrationStream():
     # TODO : change to use scatter/gather
     # (need to setup event loop for this etc)
 
-    #sout = scs.map(lambda calibration:
-                   #client.submit(_generate_qxyz_maps, calibration),
-                   #sout)
+    # sout = scs.map(lambda calibration:
+    # client.submit(_generate_qxyz_maps, calibration),
+    #               sout)
 
     # save the futures to a list (scheduler will ensure caching of result if
     # any reference to a future is kept)
-    #sc.map(sout, lambda calibration:
-           #streams_globals.futures_cache.append(calibration))
+    # sc.map(sout, lambda calibration:
+    #        streams_globals.futures_cache.append(calibration))
 
-    #sout = scs.map(lambda calibration:
-                   #client.gather(calibration), sout)
+    # sout = scs.map(lambda calibration:
+    #                client.gather(calibration), sout)
 
     sout = scs.map(_generate_qxyz_maps, sout)
-    #sout.map(lambda x : x['kwargs'].result()['calibration'].q_map).sink(print)
+    # sout.map(lambda x :
+    #          x['kwargs'].result()['calibration'].q_map).sink(print)
     # sink the futures to a global list (deque)
-    sout.map(lambda x : x['kwargs']).sink(futures_cache.append)
-    sout.map(lambda x : x['args']).sink(futures_cache.append)
+    sout.map(lambda x: x['kwargs']).sink(futures_cache.append)
+    sout.map(lambda x: x['args']).sink(futures_cache.append)
 
     return sin, sout
 
@@ -910,7 +912,7 @@ def ImageStitchingStream(return_intermediate=False):
 
     # TODO : remove the add_attributes part and just keep stream_name
     sin = sc.Stream(stream_name="Image Stitching Stream")
-    #sout = sc.map(sin, validate)
+    # sout = sc.map(sin, validate)
     # sin.map(lambda x : print("Beginning of stream data\n\n\n"))
     # TODO : remove compute requirement
     # TODO : incomplete

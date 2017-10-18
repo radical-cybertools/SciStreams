@@ -15,14 +15,14 @@ def test_stream_map():
     sout = s.map(psdm(addfunc))
     # get the number member from StreamDoc
     # it is currently a Future now
-    sout_futures = sout.map(lambda x: x['kwargs'])
+    sout_futures = sout.map(lambda x: x['args'])
     # convert from Future to a result (blocking function)
-    sout_results = sout_futures.map(lambda x : x.result())
+    sout_results = sout_futures.map(lambda x: x.result())
     # pick the "_arg0" element of the result
-    sout_elems = sout_results.pluck("_arg0")
+    sout_elems = sout_results.pluck(0)
 
     # save to list
-    L_futures = sout_futures.sink_to_list()
+    # L_futures = sout_futures.sink_to_list()
     L_elems = sout_elems.sink_to_list()
 
     s.emit(StreamDoc(args=[1], kwargs=dict(foo="bar"),
