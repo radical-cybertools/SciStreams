@@ -30,7 +30,7 @@ install:
   - pip install git+git://github.com/mrocklin/streamz
   - pip install git+git://github.com/scikit-beam/scikit-beam
   - pip install git+git://github.com/dask/dask
-  - pip install git+git://github.com/distributed/distributed
+  - pip install git+git://github.com/dask/distributed
 # optional when manually debugging
 # pip install ipython
 
