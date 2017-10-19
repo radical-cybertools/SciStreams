@@ -297,7 +297,7 @@ L_tag = sout_tag.sink_to_list()
 # set to True to enable plotting (opens many windows)
 liveplots = False
 # NOTE : disabled sinking
-if False:
+if True:
     # make event streams for some sinks
     event_stream_img = scs.to_event_stream(s_image)
     event_stream_sqphi = scs.to_event_stream(sout_qphiavg)
@@ -506,6 +506,8 @@ elif False:
 
 # some loop over stream
 # TODO look for FileNotFoundError in nds iteration
+# make sure it's an iterator
+stream = iter(stream)
 while True:
     try:
         print("iterating")

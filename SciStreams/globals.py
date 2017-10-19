@@ -10,10 +10,10 @@ from . import config
 MAX_FUTURE_NUM = 1000
 
 debugcache = deque(maxlen=10)
-if config.client is not None:
-    print("Adding a client: {}".format(config.client))
+if config.server is not None:
+    print("Adding a client: {}".format(config.server))
     from distributed import Client
-    client = Client(config.client)
+    client = Client(config.server)
 # no client, compute should compute and return nothing
 else:
     print("No client supported, running locally")
