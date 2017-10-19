@@ -88,7 +88,7 @@ _DEFAULTS = {
     'resultsroot': os.path.expanduser("/GPFS/pipeline"),
     'filestoreroot': os.path.expanduser("~/sqlite/filestore"),
     'delayed': True,
-    'client': None,
+    'server': None,
     'databases': default_databases,
     # tensorflow storage stuff
     'TFLAGS': {'out_dir': '/GPFS/pipeline/ml-tmp',
@@ -167,7 +167,7 @@ else:
     resultsrootmap = None
 
 
-client = config.get('client', _DEFAULTS['client'])
+server = config.get('server', _DEFAULTS['server'])
 databases = config.get('databases', _DEFAULTS['databases'])
 
 

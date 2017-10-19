@@ -162,7 +162,9 @@ def make_descriptor(data):
     return desc
 
 
-def to_event_stream(sdoc, tolist=False):
+def to_event_stream(sdoc, tolist=False, remote=True):
+    ''' Convert stream documents to an event stream.
+    '''
     event_stream = _to_event_stream(sdoc)
     if tolist:
         event_stream = list(event_stream)
@@ -175,6 +177,9 @@ def _to_event_stream(sdoc):
         Gives event_stream as generator
 
         Generates just one event with all data contained.
+
+        NOTE : Does not work with args (only considers kwargs)
+            (will just print a warning and try to add them)
     '''
     args = sdoc.args
     if len(args) > 0:
@@ -273,7 +278,7 @@ class StreamDoc(dict):
         self['checkpoint'] = dict()
 
         # these two pieces are specific to the run
-        self['statistics'] = dict()
+        self['statistics'] = dict(cumulative_time=0.)
         self['uid'] = str(uuid4())
 
         # needed to distinguish that it is a StreamDoc by stream methods
@@ -629,9 +634,16 @@ def parse_streamdoc(name, filter=False):
             # f_timeout = timeout(seconds=DEFAULT_TIMEOUT)(f)
             # f_timeout = f
             # print("Running in {}".format(f.__name__))
+            # TODO : normalize this more
+            prev_stats = dict(cumulative_time=0.)
+            # the default
+            sdoc_type = 'full'
+            sdoc2_type = None
             if x2 is None:
                 # this is for map
                 if _is_streamdoc(x):
+                    prev_stats['cumulative_time'] = \
+                        x['statistics']['cumulative_time']
                     sdoc_type = x['_StreamDoc_Type']
                     sdoc2_type = None
                     # extract the args and kwargs
@@ -645,6 +657,10 @@ def parse_streamdoc(name, filter=False):
             else:
                 # this is for accumulate
                 if _is_streamdoc(x) and _is_streamdoc(x2):
+                    prev_stats['cumulative_time'] = \
+                        x['statistics']['cumulative_time']
+                    prev_stats['cumulative_time'] += \
+                        x2['statistics']['cumulative_time']
                     sdoc_type = x['_StreamDoc_Type']
                     sdoc2_type = x2['_StreamDoc_Type']
                     args = x.get_return(), x2.get_return()
@@ -705,23 +721,6 @@ def parse_streamdoc(name, filter=False):
                 kwargs_future = update_kwargs(kwargs, kwargs_additional,
                                               empty=sdoc_empty)
 
-#             if not isinstance(args, Future):
-#                 print("args: {}".format(args))
-#             else:
-#                 print("args: {}".format(args.result()))
-#             if not isinstance(kwargs, Future):
-#                 print("kwargs: {}".format(kwargs))
-#             else:
-#                 print("kwargs: {}".format(kwargs.result()))
-
-            # print("kwargs_future : {}".format(kwargs_future))
-            # kwargs.update(kwargs_additional)
-            # print("args : {}, kwargs : {}".format(args, kwargs))
-            # debugcache.append(dict(args=args, kwargs=kwargs,
-            # attributes=attributes, funcname=f.__name__))
-
-            # args and kwargs can also be a Future
-            # need to take that into account
             @wraps(f)
             def unwrap(f, args, kwargs, empty=False):
                 # at this stage it's assumed cluster has retrieved kwargs
@@ -759,7 +758,7 @@ def parse_streamdoc(name, filter=False):
                 # print("Not submitting to cluster")
                 pass
 
-            statistics = dict()
+            statistics = dict(prev_stats)
             t1 = time.time()
             try:
                 # now run the function
@@ -798,8 +797,9 @@ def parse_streamdoc(name, filter=False):
                 _cleanexit(f, statistics)
 
             t2 = time.time()
-            statistics['runtime'] = t1 - t2
+            statistics['runtime'] = t2 - t1
             statistics['runstart'] = t1
+            statistics['cumulative_time'] += statistics['runtime']
 
             if 'function_list' not in attributes:
                 attributes['function_list'] = list()
@@ -841,6 +841,7 @@ def parse_streamdoc(name, filter=False):
                 else:
                     return []
 
+            # TODO : filter is not being used, should use or delete later?
             if not filter:
                 if remote:
                     kwargs = client.submit(get_kwargs, result)
