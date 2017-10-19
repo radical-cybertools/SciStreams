@@ -9,6 +9,8 @@ import sys
 from uuid import uuid4
 # from ..globals import debugcache
 
+from SciStreams.globals import client
+
 from distributed import Future
 
 # convenience routine to return a hash of the streamdoc
@@ -154,12 +156,6 @@ def squash(sdocs):
     return newsdoc
 
 
-def make_descriptor(data):
-    desc = dict()
-    if isinstance(data, np.ndarray):
-        desc['shape'] = data.shape
-
-    return desc
 
 
 def to_event_stream(sdoc, tolist=False, remote=True):
@@ -170,6 +166,102 @@ def to_event_stream(sdoc, tolist=False, remote=True):
         event_stream = list(event_stream)
     return event_stream
 
+def init_start(start_uid):
+    ''' Initialize a start document.
+        Can be done remotely so it is it's own function.
+
+        Need uid supplied externally. Separate Futures from uid.
+    '''
+    doc = dict()
+
+    doc['uid'] = start_uid
+    doc['time'] = time.time()
+    return doc
+
+def update_start(start, attrs):
+    start.update(attrs)
+    return start
+
+def init_descriptor(desc_uid, start_uid):
+    ''' Initialize the descriptor.
+
+        Need the start_uid and desc_uid
+    '''
+    descriptor = dict()
+    descriptor['uid'] = desc_uid
+    descriptor['time'] = time.time()
+    descriptor['run_start'] = start_uid
+    descriptor['data_keys'] = dict()
+    descriptor['timestamps'] = dict()
+    return descriptor
+
+def make_descriptor(data):
+    ''' Make a descriptor for data (to be used in a descriptor
+        This returns a dict describing the data field, not the total data.
+    '''
+    desc = dict()
+    if isinstance(data, np.ndarray):
+        desc['shape'] = data.shape
+
+    return desc
+
+def update_descriptor(descriptor, kwargs):
+    ''' Update a descriptor according to incoming data.
+
+        kwargs : a dictionary of the incoming data
+    '''
+    for key, data in kwargs.items():
+        # TODO : make data specific, add shape, dtype etc
+        desc_data = make_descriptor(data)
+        descriptor['data_keys'][key] = desc_data
+        descriptor['timestamps'][key] = time.time()
+    return descriptor
+
+def init_event(event_uid, start_uid, descriptor_uid):
+    ''' Initialize an event
+
+        Need the start_uid and descriptor_uid
+    '''
+    event = dict()
+    event['uid'] = event_uid
+    event['run_start'] = start_uid
+    event['time'] = time.time()
+    event['descriptor'] = descriptor_uid
+    event['filled'] = dict()
+    event['data'] = dict()
+    event['timestamps'] = dict()
+    event['seq_num'] = 1
+
+    return event
+
+def update_event(event, kwargs):
+    ''' Update an event according to incoming data.
+
+        kwargs : the incoming data
+    '''
+    # I could fill descriptor and event at same time,
+    # but I worry about time stamps
+    for key, data in kwargs.items():
+        event['data'][key] = data
+        event['timestamps'][key] = time.time()
+        event['filled'][key] = True
+    return event
+
+def init_stop(stop_uid, start_uid):
+    ''' Initialize a stop document.
+
+        start : the incoming start document
+            (need it to grab the uid)
+    '''
+    # finally the stop document (make them all in order
+    # just so time stamps are in sequence)
+    stop = dict()
+    stop['uid'] = stop_uid
+    stop['run_start'] = start_uid
+    stop['time'] = time.time()
+    stop['exit_status'] = "success"
+    return stop
+
 
 def _to_event_stream(sdoc):
     ''' Convert a streamdoc to event stream.
@@ -179,73 +271,72 @@ def _to_event_stream(sdoc):
         Generates just one event with all data contained.
 
         NOTE : Does not work with args (only considers kwargs)
-            (will just print a warning and try to add them)
+            #(will just print a warning and try to add them)
+            It will just ignore them now. Could add in future if needed,
+            not too difficult.
     '''
-    args = sdoc.args
-    if len(args) > 0:
-        print("Warning: Args is not zero. Making a new streamdoc with args")
-        msg = "(Args should be used as a convenience"
-        msg += " but efforts should be made to make them kwargs)"
-        print(msg)
-        newsdoc = StreamDoc(sdoc)
-        newsdoc['args'] = []
-        for i, arg in enumerate(args):
-            argkey = "_arg{:04d}".format(i)
-            newsdoc['kwargs'][argkey] = arg
-        sdoc = newsdoc
-    start = dict(**sdoc.attributes)
+    # args = sdoc.args
+    # if len(args) > 0:
+    #   print("Warning: Args is not zero. Making a new streamdoc with args")
+    #   msg = "(Args should be used as a convenience"
+    #   msg += " but efforts should be made to make them kwargs)"
+    #   print(msg)
+    #   newsdoc = StreamDoc(sdoc)
+    #   newsdoc['args'] = []
+    #   for i, arg in enumerate(args):
+    #       argkey = "_arg{:04d}".format(i)
+    #       newsdoc['kwargs'][argkey] = arg
+    #   sdoc = newsdoc
+    attributes = sdoc.attributes
+    kwargs = sdoc.kwargs
+    sdoc_type = sdoc["_StreamDoc_Type"]
+    # it's remote if either is a Future
+    # NOTE: could have non remote attributes and remote kwargs, and thus local
+    # start. But let's just make all events remote if they are
+    isremote = isinstance(kwargs, Future) or isinstance(attributes, Future)\
+        or isinstance(sdoc_type, Future)
 
-    # issue a new uid
+    # create the uids in advance
     start_uid = str(uuid4())
-
-    start['uid'] = start_uid
-    start['time'] = time.time()
-
-    descriptor = dict()
-    desc_uid = str(uuid4())
-    descriptor['uid'] = desc_uid
-    descriptor['time'] = time.time()
-    descriptor['run_start'] = start_uid
-    descriptor['data_keys'] = dict()
-    descriptor['timestamps'] = dict()
-    for key, data in sdoc.kwargs.items():
-        # TODO : make data specific, add shape, dtype etc
-        desc_data = make_descriptor(data)
-        descriptor['data_keys'][key] = desc_data
-        descriptor['timestamps'][key] = time.time()
-
-    event = dict()
+    descriptor_uid = str(uuid4())
     event_uid = str(uuid4())
-    event['uid'] = event_uid
-
-    event['run_start'] = start_uid
-    event['time'] = time.time()
-    event['descriptor'] = desc_uid
-    event['filled'] = dict()
-    event['data'] = dict()
-    event['timestamps'] = dict()
-    event['seq_num'] = 1
-
-    # I could fill descriptor and event at same time,
-    # but I worry about time stamps
-    for key, data in sdoc.kwargs.items():
-        event['data'][key] = data
-        event['timestamps'][key] = time.time()
-        event['filled'][key] = True
-
-    # finally the stop document (make them all in order
-    # just so time stamps are in sequence)
-    stop = dict()
     stop_uid = str(uuid4())
-    stop['uid'] = stop_uid
-    stop['run_start'] = start_uid
-    stop['time'] = time.time()
-    stop['exit_status'] = "success"
 
-    yield "start", start
-    yield "descriptor", descriptor
-    yield "event", event
-    yield "stop", stop
+    if isremote:
+        start = client.submit(init_start, start_uid)
+        start = client.submit(update_start, start, attributes)
+    else:
+        start = init_start(start_uid)
+        start = update_start(start, attributes)
+
+
+    if isremote:
+        descriptor = client.submit(init_descriptor, descriptor_uid, start_uid)
+        descriptor = client.submit(update_descriptor, descriptor, kwargs)
+    else:
+        descriptor = init_descriptor(descriptor_uid, start_uid)
+        descriptor = update_descriptor(descriptor, kwargs)
+
+
+    if isremote:
+        event = client.submit(init_event, event_uid, start_uid, descriptor_uid)
+        event = client.submit(update_event, event, kwargs)
+    else:
+        event = init_event(event_uid, start_uid, descriptor_uid)
+        event = update_event(event, kwargs)
+
+
+    if isremote:
+        stop = client.submit(init_stop, stop_uid, start_uid)
+    else:
+        stop = init_stop(stop_uid, start_uid)
+
+    # for symmetry, put None for parent
+    yield "start", (None, start_uid, start)
+    # it's a tree structure so we need parent_uid, and self_uid
+    yield "descriptor", (start_uid, descriptor_uid, descriptor)
+    yield "event", (descriptor_uid, event_uid, event)
+    yield "stop", (start_uid, stop_uid, stop)
 
 
 class StreamDoc(dict):
@@ -679,7 +770,7 @@ def parse_streamdoc(name, filter=False):
                     raise ValueError("Two normal arguments not accepted")
 
             def empty_sdoc(x1, x2):
-                ''' Trick to propagae empty values.'''
+                ''' Trick to propagate empty values.'''
                 # a few cases, x1 exists but not x2 and is full, or both exist
                 # and both full
                 if (x1 == 'full' and x2 is None) or \

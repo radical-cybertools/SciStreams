@@ -9,7 +9,11 @@ from .. import CallbackBase
 
 import numpy as np
 
+from distributed import Future
+
 from collections import deque
+
+from SciStreams.globals import client
 
 _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
@@ -84,54 +88,93 @@ def _make_fname_from_attrs(**attrs):
 
 
 class StorePlot_MPL(CallbackBase):
-    def __init__(self, **kwargs):
+    def __init__(self, remote=True, **kwargs):
         ''' kwargs are the options for store_results.
             see store_results for the kwargs details
         '''
+        self.remote = remote
+        self.start_docs = dict()
+        self.descriptors = dict()
         self.kwargs = kwargs
         self.start_uid = None
         self.descriptor_uid = None
         # don't pass the kwargs or args to CallbackBase
         super(StorePlot_MPL, self).__init__()
 
-    def start(self, doc):
+    def start(self, doctuple):
         # for each new start save the metadata
         # print("Got start: {}".format(doc))
-        self.md = dict()
-        self.start_uid = doc['uid']
-        for key, val in doc.items():
-            self.md[key] = val
+        _, self_uid, doc = doctuple
+        self.start_uid = self_uid
+        self.start_docs[self_uid] = None, doc
 
-    def descriptor(self, doc):
+    def descriptor(self, doctuple):
+        start_uid, descriptor_uid, doc = doctuple
         # print("Got descriptor: {}".format(doc))
-        if self.start_uid != doc['run_start']:
-            errormsg = "Error, uid of descriptor and run start"
-            errormsg += " do not match. Perhaps a run start"
-            errormsg += " and descriptor are out of sync"
+        if start_uid not in self.start_docs:
+            errormsg = "Error, could not find start."
+            #errormsg += "Error, uid of descriptor and run start"
+            #errormsg += " do not match. Perhaps a run start"
+            #errormsg += " and descriptor are out of sync"
             raise ValueError(errormsg)
 
-        self.descriptor_uid = doc['uid']
+        self.descriptors[descriptor_uid] = start_uid, doc
 
     # approach for now will be to assume all necessary data is in the event
     # itself
-    def event(self, doc):
+    def event(self, doctuple):
+        descriptor_uid, event_uid, doc = doctuple
         # print("Got event: {}".format(doc))
-        data = doc['data']
-        if doc['descriptor'] != self.descriptor_uid:
-            errormsg = "Error, uid of event and run start"
-            errormsg += " do not match. Perhaps a run start"
-            errormsg += " and descriptor are out of sync"
+        if descriptor_uid not in self.descriptors:
+            errormsg = "Error, descriptor uid not in descriptors"
+            errormsg += "\n for event"
+            #errormsg = "Error, uid of event and run start"
+            #errormsg += " do not match. Perhaps a run start"
+            #errormsg += " and descriptor are out of sync"
             raise ValueError(errormsg)
+
+        start_uid, descriptor = self.descriptors[descriptor_uid]
+
+        if start_uid not in self.start_docs:
+            raise ValueError("No start found for event")
+
+        _, start = self.start_docs[start_uid]
+
         # attrs = self.kwargs
-        attrs = self.md
+        #attrs = self.md
         # use the store_results function in this file
         # (i.e. don't include it in object)
-        store_results(data, attrs, **self.kwargs)
+        #store_results(data, attrs, **self.kwargs)
+        # if a Future, just do it remotely, don't block
+        if self.remote:
+            print("Submitting request to cluster")
+            client.submit(store_event_results, start, doc, **self.kwargs)
+        else:
+            print("Perfoming request locally")
+            if isinstance(start, Future):
+                start = start.result()
+            if isinstance(doc, Future):
+                doc = doc.result()
+            store_event_results(start, doc, **self.kwargs)
+
 
     def stop(self, doc):
-        # clear state
-        self.start_uid = None
-        self.descriptor_uid = None
+        # clear state. lazily clearing everything for now
+        # (since i don't assume interleaved stops)
+        # See SciStreamCallback for better implementation
+        self.start_docs = dict()
+        self.descriptors = dict()
+        # self.start_uid = None
+        # self.descriptor_uid = None
+
+
+def store_event_results(start, doc, **kwargs):
+    # to check if this blocks
+    # print("waiting for MPL store (10 sec)")
+    # import time
+    # time.sleep(10)
+    # print("done!")
+    store_results(doc['data'], start, **kwargs)
 
 
 def store_results(data, attrs, **kwargs):

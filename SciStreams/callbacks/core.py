@@ -1,4 +1,6 @@
+from distributed import Future
 from SciStreams.core.StreamDoc import StreamDoc
+from SciStreams.globals import client
 
 
 class CallbackBase:
@@ -21,60 +23,100 @@ class CallbackBase:
     def stop(self, doc):
         pass
 
+# TODO : This won't work with cloudpickle. Either find out why or just remove
+# it. We may want metaclassing though
+def FutureCallback(cls):
+    class FutureCB(cls):
+        def start(self, doc):
+            if isinstance(doc, Future):
+                client.submit(super().start, doc)
+            else:
+                super().start(doc)
+
+        def event(self, doc):
+            if isinstance(doc, Future):
+                client.submit(super().event, doc)
+            else:
+                super().event(doc)
+
+        def descriptor(self, doc):
+            if isinstance(doc, Future):
+                client.submit(super().descriptor, doc)
+            else:
+                super().descriptor(doc)
+
+        def stop(self, doc):
+            if isinstance(doc, Future):
+                client.submit(super().stop, doc)
+            else:
+                super().stop(doc)
+    return FutureCB
+
 
 # callback to convert eventstream to a scistream
 class SciStreamCallback(CallbackBase):
     ''' This will take a start document and events and output
         each event to a function as a StreamDoc.
+
+        remote :
+            Force computations to be remote
     '''
     # dictionary of start documents
-    def __init__(self, func, *args, **kwargs):
+    def __init__(self, func, *args, remote=True, **kwargs):
         self.func = func
+        self.remote = remote
         self.start_docs = dict()
         self.descriptors = dict()
         super(SciStreamCallback, self).__init__(*args, **kwargs)
 
-    def start(self, doc):
-        self.start_docs[doc['uid']] = doc
+    def start(self, doctuple):
+        # this scheme allows docs to be Futures
+        # but still allows us to construct the tree
+        # parent_uid, self_uid, doc
+        _, start_uid, doc = doctuple
+        self.start_docs[start_uid] = (None, doc)
 
-    def descriptor(self, doc):
-        start_uid = doc['run_start']
-        start_docs = self.start_docs
-        if start_uid not in start_docs:
+    def descriptor(self, doctuple):
+        start_uid, descriptor_uid, doc = doctuple
+        # start_uid = doc['run_start']
+        # for symmetry, keep the _ and None etc.
+        if start_uid not in self.start_docs:
             msg = "Missing start for descriptor"
-            msg += "\nDescriptor uid : {}".format(doc['uid'])
+            msg += "\nDescriptor uid : {}".format(descriptor_uid)
             msg += "\nStart uid: {}".format(start_uid)
             raise Exception(msg)
-        self.descriptors[doc['uid']] = doc
+        # give pointer to start_uid
+        # dictionary[self_uid] = (parent_uid, doc)
+        self.descriptors[descriptor_uid] = (start_uid, doc)
 
-    def event(self, doc):
-        descriptor_uid = doc['descriptor']
+    def event(self, doctuple):
+        # parent_uid, self_uid, doc
+        descriptor_uid, event_uid, doc = doctuple
+        # descriptor_uid = doc['descriptor']
         if descriptor_uid not in self.descriptors:
             msg = "Missing descriptor for event"
-            msg += "\nEvent uid : {}".format(doc['uid'])
+            msg += "\nEvent uid : {}".format(event_uid)
             msg += "\nDescriptor uid: {}".format(descriptor_uid)
             raise Exception(msg)
 
-        descriptor = self.descriptors[descriptor_uid]
-        start_uid = descriptor['run_start']
-        start_doc = self.start_docs[start_uid]
+        start_uid, descriptor = self.descriptors[descriptor_uid]
+        _, start = self.start_docs[start_uid]
 
-        data = doc['data']
+        if self.remote:
+            res = client.submit(eval_func, self.func, start, descriptor, doc)
+        else:
+            # don't do things remotely, so block if things are Futures
+            if isinstance(doc, Future):
+                doc = doc.result()
+            if isinstance(descriptor, Future):
+                descriptor = descriptor.result()
+            if isinstance(start, Future):
+                start = start.result()
+            res = eval_func(self.func, start, descriptor, doc)
 
-        # now make data
-        sdoc = StreamDoc()
-        sdoc.add(attributes=start_doc)
-        # no args since each element in a doc is named
-        sdoc.add(kwargs=data)
-        checkpoint = dict(parent_uids=[start_uid])
-        provenance = dict(name="SciStreamCallback")
-        sdoc.add(checkpoint=checkpoint)
-        sdoc.add(provenance=provenance)
-        self.func(sdoc)
-
-    def stop(self, doc):
+    def stop(self, doctuple):
         ''' Stop is where the garbage collection happens.'''
-        start_uid = doc['run_start']
+        start_uid, stop_uid, doc = doctuple
         # cleanup the start with start_uid
         self.cleanup_start(start_uid)
 
@@ -84,8 +126,9 @@ class SciStreamCallback(CallbackBase):
             raise Exception(msg)
         self.start_docs.pop(start_uid)
         desc_uids = list()
-        for desc_uid, desc in self.descriptors.items():
-            if desc['run_start'] == start_uid:
+        for desc_uid, doctuple in self.descriptors.items():
+            desc_start_uid, desc = doctuple
+            if desc_start_uid == start_uid:
                 desc_uids.append(desc_uid)
 
         for desc_uid in desc_uids:
@@ -94,3 +137,20 @@ class SciStreamCallback(CallbackBase):
     def cleanup_descriptor(self, desc_uid):
         if desc_uid in self.descriptors:
             self.descriptors.pop(desc_uid)
+
+
+def eval_func(func, start, descriptor, event):
+    start_uid = start['uid']
+    data = event['data']
+
+    # now make data
+    sdoc = StreamDoc()
+    sdoc.add(attributes=start)
+    # no args since each element in a doc is named
+    sdoc.add(kwargs=data)
+    checkpoint = dict(parent_uids=[start_uid])
+    provenance = dict(name="SciStreamCallback")
+    sdoc.add(checkpoint=checkpoint)
+    sdoc.add(provenance=provenance)
+    # finally, evaluate the function
+    return func(sdoc)

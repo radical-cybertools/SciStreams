@@ -8,6 +8,8 @@ matplotlib.use("Agg")  # noqa
 import matplotlib.pyplot as plt
 plt.ion()  # noqa
 
+from distributed import Future
+
 # databroker
 from databroker.assets.handlers import AreaDetectorTiffHandler
 
@@ -15,9 +17,12 @@ from databroker.assets.handlers import AreaDetectorTiffHandler
 # from tornado.ioloop import IOLoop
 # from tornado import gen
 
+from functools import partial
+
 # from distributed import sync
 
-from SciStreams.callbacks import CallbackBase, SciStreamCallback
+from SciStreams.callbacks import CallbackBase, SciStreamCallback, \
+    FutureCallback
 
 from SciStreams.detectors.mask_generators import generate_mask
 
@@ -25,6 +30,8 @@ from SciStreams.detectors.mask_generators import generate_mask
 # StreamDoc to event stream
 # from SciStreams.core.StreamDoc import to_event_stream
 # import SciStreams.core.StreamDoc as sd
+
+from SciStreams.globals import client
 
 # the differen streams libs
 import streamz.core as sc
@@ -86,7 +93,8 @@ class LivePlot_Custom(CallbackBase):
 # We need to normalize metadata, which is used for saving, somewhere
 # in our case, it's simpler to do this in the beginning
 sin = sc.Stream(stream_name="Input")
-stream_input = SciStreamCallback(sin.emit)
+
+stream_input = SciStreamCallback(sin.emit, remote=False)
 
 # these are abbreviations just to make streams access easier
 # this stream filters out data. only outputs data that will work in rest of
@@ -297,7 +305,7 @@ L_tag = sout_tag.sink_to_list()
 # set to True to enable plotting (opens many windows)
 liveplots = False
 # NOTE : disabled sinking
-if True:
+if False:
     # make event streams for some sinks
     event_stream_img = scs.to_event_stream(s_image)
     event_stream_sqphi = scs.to_event_stream(sout_qphiavg)
@@ -333,8 +341,15 @@ if True:
         event_stream_sq.sink(scs.star(liveplot_sq))
         event_stream_maskedimg.sink(scs.star(liveimage_maskedimg))
 
+    def submit_stream(f, docpair):
+        # ff = client.submit(f, docpair[0], docpair[1])
+        # return ff
+        return f(docpair[0], docpair[1])
+
     # output to storing callbacks
     from SciStreams.callbacks.saving_mpl.core import StorePlot_MPL
+    # StorePlot_MPL = FutureCallback(StorePlot_MPL)
+
     plot_storage_img = StorePlot_MPL(images=['image'], img_norm=normalizer)
     plot_storage_stitch = StorePlot_MPL(images=['image'], img_norm=normalizer)
     plot_storage_sq = StorePlot_MPL(lines=[('sqx', 'sqy')])
@@ -355,31 +370,31 @@ if True:
                                  'linecuts',  # y
                                  'linecuts_vals')])  # value
 
-    scs.sink(scs.star(plot_storage_img), event_stream_img)
-    scs.sink(scs.star(plot_storage_stitch), event_stream_stitched)
-    scs.sink(scs.star(plot_storage_sq), event_stream_sq)
-    scs.sink(scs.star(plot_storage_sqphi), event_stream_sqphi)
-    scs.sink(scs.star(plot_storage_peaks), event_stream_peaks)
+    sc.sink(event_stream_img, partial(submit_stream, plot_storage_img))
+    sc.sink(event_stream_stitched, partial(submit_stream, plot_storage_stitch))
+    sc.sink(event_stream_sq, partial(submit_stream, plot_storage_sq))
+    sc.sink(event_stream_sqphi, partial(submit_stream, plot_storage_sqphi))
+    sc.sink(event_stream_peaks, partial(submit_stream, plot_storage_peaks))
     sc.sink(event_stream_peaks,
-            scs.star(SciStreamCallback(store_results_hdf5)))
-    scs.sink(scs.star(plot_storage_linecuts), event_stream_linecuts)
-    scs.sink(scs.star(plot_storage_thumb), event_stream_thumb)
-    scs.sink(scs.star(plot_storage_angularcorr), event_stream_angularcorr)
-    scs.sink(scs.star(plot_storage_linecuts_angularcorr),
-             event_stream_linecuts_angularcorr)
+            partial(submit_stream, SciStreamCallback(store_results_hdf5)))
+    sc.sink(event_stream_linecuts, partial(submit_stream, plot_storage_linecuts))
+    sc.sink(event_stream_thumb, partial(submit_stream, plot_storage_thumb))
+    sc.sink(event_stream_angularcorr, partial(submit_stream, plot_storage_angularcorr))
+    sc.sink(event_stream_linecuts_angularcorr,
+            partial(submit_stream, plot_storage_linecuts_angularcorr))
 
     from SciStreams.callbacks.core import SciStreamCallback
     # save the peaks info
-    sc.sink(event_stream_peaks,
-            scs.star(SciStreamCallback(store_results_hdf5)))
+    #sc.sink(event_stream_peaks,
+            #partial(submit_stream, SciStreamCallback(store_results_hdf5)))
 
-    sc.sink(event_stream_img,
-            scs.star(SciStreamCallback(store_results_hdf5)))
+    #sc.sink(event_stream_img,
+            #partial(submit_stream, SciStreamCallback(store_results_hdf5)))
 
-    sc.sink(event_stream_tag,
-            scs.star(SciStreamCallback(store_results_xml)))
-    sc.sink(event_stream_tag,
-            scs.star(SciStreamCallback(store_results_hdf5)))
+    #sc.sink(event_stream_tag,
+            #partial(submit_stream, SciStreamCallback(store_results_xml)))
+    #sc.sink(event_stream_tag,
+            #partial(submit_stream, SciStreamCallback(store_results_hdf5)))
     # scs.map(print, event_stream_img)
 
 
@@ -504,14 +519,64 @@ elif False:
                                         md=md))
 
 
+class BufferStream:
+    ''' class mimicks callbacks, upgrades stream from a 'start', doc instance
+        to a more complex ('start', (None, start_uid, doc)) instance
+
+        Experimenting with distributed computing. This seems to work better.
+        Allows me to construct tree of docs before computing the delayed docs.
+
+        This unfortunately can't be distributed.
+    '''
+    def __init__(self):
+        self.start_docs = dict()
+        self.descriptor_docs = dict()
+
+    def __call__(self, ndpair):
+        name, doc = ndpair
+        if name == 'start':
+            parent_uid, self_uid = None, doc['uid']
+            # add the start that came through
+            self.start_docs[self_uid] = parent_uid
+        elif name == 'descriptor':
+            parent_uid, self_uid = doc['run_start'], doc['uid']
+            # now add descriptor
+            self.descriptor_docs[self_uid] = parent_uid
+        elif name == 'event':
+            parent_uid, self_uid = doc['descriptor'], doc['uid']
+        elif name == 'stop':
+            parent_uid, self_uid = doc['run_start'], doc['uid']
+            # clean up buffers
+            self.clear_start(parent_uid)
+
+        return name, (parent_uid, self_uid, doc)
+
+    def clear_start(self, start_uid):
+        # clear the start
+        self.start_docs.pop(start_uid)
+
+        # now clear the descriptors
+        # first find them
+        desc_uids = list()
+        for desc_uid, parent_uid in self.descriptor_docs.items():
+            if parent_uid == start_uid:
+                desc_uids.append(desc_uid)
+        # now pop them
+        for desc_uid in desc_uids:
+            self.descriptor_docs.pop(desc_uid)
+
+
+# stream converter
+stream_buffer = BufferStream()
+
 # some loop over stream
 # TODO look for FileNotFoundError in nds iteration
 # make sure it's an iterator
 stream = iter(stream)
 while True:
     try:
-        print("iterating")
-        nds = next(stream)
+        nds = stream_buffer(next(stream))
+        print("iterating : {}".format(nds[0]))
         stream_input(*nds)
         plt.pause(.1)
     except StopIteration:
