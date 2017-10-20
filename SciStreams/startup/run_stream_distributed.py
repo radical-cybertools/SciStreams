@@ -8,8 +8,6 @@ matplotlib.use("Agg")  # noqa
 import matplotlib.pyplot as plt
 plt.ion()  # noqa
 
-from distributed import Future
-
 # databroker
 from databroker.assets.handlers import AreaDetectorTiffHandler
 
@@ -21,8 +19,7 @@ from functools import partial
 
 # from distributed import sync
 
-from SciStreams.callbacks import CallbackBase, SciStreamCallback, \
-    FutureCallback
+from SciStreams.callbacks import CallbackBase, SciStreamCallback
 
 from SciStreams.detectors.mask_generators import generate_mask
 
@@ -31,7 +28,7 @@ from SciStreams.detectors.mask_generators import generate_mask
 # from SciStreams.core.StreamDoc import to_event_stream
 # import SciStreams.core.StreamDoc as sd
 
-from SciStreams.globals import client
+# from SciStreams.globals import client
 
 # the differen streams libs
 import streamz.core as sc
@@ -305,7 +302,7 @@ L_tag = sout_tag.sink_to_list()
 # set to True to enable plotting (opens many windows)
 liveplots = False
 # NOTE : disabled sinking
-if False:
+if True:
     # make event streams for some sinks
     event_stream_img = scs.to_event_stream(s_image)
     event_stream_sqphi = scs.to_event_stream(sout_qphiavg)
@@ -342,9 +339,19 @@ if False:
         event_stream_maskedimg.sink(scs.star(liveimage_maskedimg))
 
     def submit_stream(f, docpair):
+        name, doctuple = docpair
+        parent_uid, self_uid, doc = doctuple
         # ff = client.submit(f, docpair[0], docpair[1])
         # return ff
-        return f(docpair[0], docpair[1])
+        # print("submitting {}".format(docpair[0]))
+        # print("parent id : {}".format(docpair[1][0]))
+        # print("self id : {}".format(docpair[1][1]))
+        try:
+            doc = doc.result()
+        except AttributeError:
+            pass
+        doctuple = parent_uid, self_uid, doc
+        return f(name, doctuple)
 
     # output to storing callbacks
     from SciStreams.callbacks.saving_mpl.core import StorePlot_MPL
@@ -377,24 +384,26 @@ if False:
     sc.sink(event_stream_peaks, partial(submit_stream, plot_storage_peaks))
     sc.sink(event_stream_peaks,
             partial(submit_stream, SciStreamCallback(store_results_hdf5)))
-    sc.sink(event_stream_linecuts, partial(submit_stream, plot_storage_linecuts))
+    sc.sink(event_stream_linecuts, partial(submit_stream,
+                                           plot_storage_linecuts))
     sc.sink(event_stream_thumb, partial(submit_stream, plot_storage_thumb))
-    sc.sink(event_stream_angularcorr, partial(submit_stream, plot_storage_angularcorr))
+    sc.sink(event_stream_angularcorr, partial(submit_stream,
+                                              plot_storage_angularcorr))
     sc.sink(event_stream_linecuts_angularcorr,
             partial(submit_stream, plot_storage_linecuts_angularcorr))
 
     from SciStreams.callbacks.core import SciStreamCallback
     # save the peaks info
-    #sc.sink(event_stream_peaks,
-            #partial(submit_stream, SciStreamCallback(store_results_hdf5)))
+    # sc.sink(event_stream_peaks,
+            # partial(submit_stream, SciStreamCallback(store_results_hdf5)))
 
-    #sc.sink(event_stream_img,
-            #partial(submit_stream, SciStreamCallback(store_results_hdf5)))
+    # sc.sink(event_stream_img,
+            # partial(submit_stream, SciStreamCallback(store_results_hdf5)))
 
-    #sc.sink(event_stream_tag,
-            #partial(submit_stream, SciStreamCallback(store_results_xml)))
-    #sc.sink(event_stream_tag,
-            #partial(submit_stream, SciStreamCallback(store_results_hdf5)))
+    # sc.sink(event_stream_tag,
+            # partial(submit_stream, SciStreamCallback(store_results_xml)))
+    # sc.sink(event_stream_tag,
+            # partial(submit_stream, SciStreamCallback(store_results_hdf5)))
     # scs.map(print, event_stream_img)
 
 

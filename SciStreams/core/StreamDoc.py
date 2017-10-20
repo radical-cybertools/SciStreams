@@ -9,8 +9,6 @@ import sys
 from uuid import uuid4
 # from ..globals import debugcache
 
-from SciStreams.globals import client
-
 from distributed import Future
 
 # convenience routine to return a hash of the streamdoc
@@ -156,8 +154,6 @@ def squash(sdocs):
     return newsdoc
 
 
-
-
 def to_event_stream(sdoc, tolist=False, remote=True):
     ''' Convert stream documents to an event stream.
     '''
@@ -165,6 +161,7 @@ def to_event_stream(sdoc, tolist=False, remote=True):
     if tolist:
         event_stream = list(event_stream)
     return event_stream
+
 
 def init_start(start_uid):
     ''' Initialize a start document.
@@ -178,9 +175,11 @@ def init_start(start_uid):
     doc['time'] = time.time()
     return doc
 
+
 def update_start(start, attrs):
     start.update(attrs)
     return start
+
 
 def init_descriptor(desc_uid, start_uid):
     ''' Initialize the descriptor.
@@ -195,6 +194,7 @@ def init_descriptor(desc_uid, start_uid):
     descriptor['timestamps'] = dict()
     return descriptor
 
+
 def make_descriptor(data):
     ''' Make a descriptor for data (to be used in a descriptor
         This returns a dict describing the data field, not the total data.
@@ -204,6 +204,7 @@ def make_descriptor(data):
         desc['shape'] = data.shape
 
     return desc
+
 
 def update_descriptor(descriptor, kwargs):
     ''' Update a descriptor according to incoming data.
@@ -216,6 +217,7 @@ def update_descriptor(descriptor, kwargs):
         descriptor['data_keys'][key] = desc_data
         descriptor['timestamps'][key] = time.time()
     return descriptor
+
 
 def init_event(event_uid, start_uid, descriptor_uid):
     ''' Initialize an event
@@ -234,6 +236,7 @@ def init_event(event_uid, start_uid, descriptor_uid):
 
     return event
 
+
 def update_event(event, kwargs):
     ''' Update an event according to incoming data.
 
@@ -246,6 +249,7 @@ def update_event(event, kwargs):
         event['timestamps'][key] = time.time()
         event['filled'][key] = True
     return event
+
 
 def init_stop(stop_uid, start_uid):
     ''' Initialize a stop document.
@@ -309,7 +313,6 @@ def _to_event_stream(sdoc):
         start = init_start(start_uid)
         start = update_start(start, attributes)
 
-
     if isremote:
         descriptor = client.submit(init_descriptor, descriptor_uid, start_uid)
         descriptor = client.submit(update_descriptor, descriptor, kwargs)
@@ -317,14 +320,12 @@ def _to_event_stream(sdoc):
         descriptor = init_descriptor(descriptor_uid, start_uid)
         descriptor = update_descriptor(descriptor, kwargs)
 
-
     if isremote:
         event = client.submit(init_event, event_uid, start_uid, descriptor_uid)
         event = client.submit(update_event, event, kwargs)
     else:
         event = init_event(event_uid, start_uid, descriptor_uid)
         event = update_event(event, kwargs)
-
 
     if isremote:
         stop = client.submit(init_stop, stop_uid, start_uid)
@@ -516,9 +517,9 @@ class StreamDoc(dict):
             else:
                 args, kwargs = _select_from_mapping(args, kwargs, *mapping)
 
-            from SciStreams.globals import debugcache
-            debugcache.append(args)
-            debugcache.append(kwargs)
+            # from SciStreams.globals import debugcache
+            # debugcache.append(args)
+            # debugcache.append(kwargs)
 
             sdoc = StreamDoc(self)
             sdoc['args'] = args

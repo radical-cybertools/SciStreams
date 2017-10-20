@@ -14,6 +14,7 @@ from distributed import Future
 from collections import deque
 
 from SciStreams.globals import client
+from SciStreams.globals import futures_cache
 
 _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
@@ -103,7 +104,7 @@ class StorePlot_MPL(CallbackBase):
 
     def start(self, doctuple):
         # for each new start save the metadata
-        # print("Got start: {}".format(doc))
+        # print("Got start: {}".format(doctuple))
         _, self_uid, doc = doctuple
         self.start_uid = self_uid
         self.start_docs[self_uid] = None, doc
@@ -113,9 +114,9 @@ class StorePlot_MPL(CallbackBase):
         # print("Got descriptor: {}".format(doc))
         if start_uid not in self.start_docs:
             errormsg = "Error, could not find start."
-            #errormsg += "Error, uid of descriptor and run start"
-            #errormsg += " do not match. Perhaps a run start"
-            #errormsg += " and descriptor are out of sync"
+            # errormsg += "Error, uid of descriptor and run start"
+            # errormsg += " do not match. Perhaps a run start"
+            # errormsg += " and descriptor are out of sync"
             raise ValueError(errormsg)
 
         self.descriptors[descriptor_uid] = start_uid, doc
@@ -128,9 +129,9 @@ class StorePlot_MPL(CallbackBase):
         if descriptor_uid not in self.descriptors:
             errormsg = "Error, descriptor uid not in descriptors"
             errormsg += "\n for event"
-            #errormsg = "Error, uid of event and run start"
-            #errormsg += " do not match. Perhaps a run start"
-            #errormsg += " and descriptor are out of sync"
+            # errormsg = "Error, uid of event and run start"
+            # errormsg += " do not match. Perhaps a run start"
+            # errormsg += " and descriptor are out of sync"
             raise ValueError(errormsg)
 
         start_uid, descriptor = self.descriptors[descriptor_uid]
@@ -141,14 +142,18 @@ class StorePlot_MPL(CallbackBase):
         _, start = self.start_docs[start_uid]
 
         # attrs = self.kwargs
-        #attrs = self.md
+        # attrs = self.md
         # use the store_results function in this file
         # (i.e. don't include it in object)
-        #store_results(data, attrs, **self.kwargs)
+        # store_results(data, attrs, **self.kwargs)
         # if a Future, just do it remotely, don't block
         if self.remote:
             print("Submitting request to cluster")
-            client.submit(store_event_results, start, doc, **self.kwargs)
+            print("kwargs are {}".format(self.kwargs))
+            # NOTE: This NEEDS to happen or else the computation won't be done
+            # on cluster
+            futures_cache.append(client.submit(store_event_results, start, doc,
+                                 **self.kwargs))
         else:
             print("Perfoming request locally")
             if isinstance(start, Future):
@@ -156,7 +161,6 @@ class StorePlot_MPL(CallbackBase):
             if isinstance(doc, Future):
                 doc = doc.result()
             store_event_results(start, doc, **self.kwargs)
-
 
     def stop(self, doc):
         # clear state. lazily clearing everything for now
@@ -170,6 +174,7 @@ class StorePlot_MPL(CallbackBase):
 
 def store_event_results(start, doc, **kwargs):
     # to check if this blocks
+    print("submitting to MPL \n\n\n\n\n\n")
     # print("waiting for MPL store (10 sec)")
     # import time
     # time.sleep(10)

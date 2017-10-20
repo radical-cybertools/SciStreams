@@ -12,6 +12,8 @@ try:
 except ImportError:
     tqdm_loaded = False
 
+tqdm_loaded = False
+
 
 ''' This code relates all angular correlation related code.
 '''
@@ -48,7 +50,7 @@ class RDeltaPhiCorrelator:
         correlations to reduce error.
     '''
     def __init__(self, shape,  origin=None, mask=None, maskb=None, rbins=800,
-                 phibins=360, method='bgsub', saverphis=None, PF=True,
+                 phibins=360, method='bgsub', saverphis=None, PF=False,
                  sigma=None):
         ''' The initialization routine for the delta phi correlation object
         You need to specify:
