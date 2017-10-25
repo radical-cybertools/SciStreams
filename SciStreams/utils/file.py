@@ -36,47 +36,53 @@ def _cleanup_str(string):
     return string
 
 
-def _make_fname_from_attrs(attrs, filetype="xml"):
+def check_and_get(md, name, default="unnamed", strict=False):
+    if name not in md:
+        if strict:
+            raise ValueError("Error cannot find {}".format(name) +
+                             " in attributes. Not saving.")
+        else:
+            print("Warning, could not find {}".format(name) +
+                  " in attributes. Replacing with {}".format(default))
+    val = str(md.get(name, default))
+    return val
+
+
+def _make_fname_from_attrs(attrs, filetype="xml", strict=False):
     ''' make filename from attributes.
         This will likely be copied among a few interfaces.
         suffix : the suffix
+        strict : bool, optional
+            if True, raise ValueErrors upon missing entries.
+            False, try best to reconcile issue
     '''
-    if 'experiment_alias_directory' not in attrs:
-        raise ValueError("Error cannot find experiment_alias_directory" +
-                         " in attributes. Not saving.")
 
+    experiment_alias_directory = \
+        check_and_get(attrs, "experiment_alias_directory", strict=strict)
     # remove the trailing slash
-    rootdir = attrs['experiment_alias_directory'].strip("/")
+    rootdir = experiment_alias_directory.strip("/")
 
     if _ROOTMAP is not None:
         rootdir = rootdir.replace(_ROOTMAP[0], _ROOTMAP[1])
     elif _ROOTDIR is not None:
         rootdir = _ROOTDIR
 
-    if 'detector_name' not in attrs:
-        raise ValueError("Error cannot find detector_name in attributes")
-    else:
-        detname = _cleanup_str(attrs['detector_name'])
-        # get name from lookup table first
-        detector_name = config.detector_names.get(detname, detname)
+    detector_name = check_and_get(attrs, 'detector_name', strict=strict,
+                                       default="unnamed")
 
-    if 'sample_savename' not in attrs:
-        raise ValueError("Error cannot find sample_savename in attributes")
-    else:
-        sample_savename = _cleanup_str(attrs['sample_savename'])
+    detector_savedir = config.detector_names.get(detector_name, detector_name)
 
-    if 'stream_name' not in attrs:
-        # raise ValueError("Error cannot find stream_name in attributes")
-        stream_name = 'unnamed_analysis'
-    else:
-        stream_name = _cleanup_str(attrs['stream_name'])
+    sample_savename = check_and_get(attrs, 'sample_savename', strict=strict,
+                                    default="unnamed")
+    sample_savename = _cleanup_str(sample_savename)
 
-    if 'scan_id' not in attrs:
-        raise ValueError("Error cannot find scan_id in attributes")
-    else:
-        scan_id = _cleanup_str(str(attrs['scan_id']))
+    stream_name = check_and_get(attrs, 'stream_name', strict=strict,
+                                default='unnamed_stream')
+    stream_name = _cleanup_str(stream_name)
 
-    outdir = rootdir + "/" + detector_name + "/" + stream_name + "/" + filetype
+    scan_id = check_and_get(attrs, 'scan_id', strict=strict, default='scan_id')
+
+    outdir = rootdir + "/" + detector_savedir + "/" + stream_name + "/" + filetype
     make_dir(outdir)
     outfile = outdir + "/" + sample_savename + "_" + scan_id + "." + filetype
 

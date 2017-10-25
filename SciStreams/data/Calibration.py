@@ -21,6 +21,10 @@ class CalibrationBase(object):
         self.wavelength_A = wavelength_A
         self.distance_m = distance_m
         self.pixel_size_um = pixel_size_um
+        msg = "calibration:\n"
+        msg += "got wavelength : {}".format(wavelength_A)
+        msg += "got distance : {}".format(distance_m)
+        msg += "got pixel size : {}".format(pixel_size_um)
         # TODO :should we force these to be defined?
         # or add another object inheritance layer?
         if width is None:

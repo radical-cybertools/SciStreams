@@ -1,6 +1,7 @@
 # TODO : add pixel procesing/thresholding threshold_pixels((2**32-1)-1) # Eiger
 # inter-module gaps
 from collections import deque
+from numbers import Number
 
 # from .. import globals as streams_globals
 
@@ -408,12 +409,17 @@ def make_calibration(**md):
     '''
     # TODO : move detector stuff into previous load routine
     # k = 2pi/wv
-    wavelength = md['wavelength']['value']
-    md['k'] = dict(value=2.0*np.pi/wavelength, unit='1/Angstrom')
+    wavelength = md['wavelength']['value']  # in Angs *1e-10  # m
+    try:
+        md['k'] = dict(value=2.0*np.pi/wavelength, unit='1/Angstrom')
+    except Exception:
+        errormsg = "Error, wavelength not "
+        errormsg += "supported type: {}\n".format(wavelength)
+        print(errormsg)
+        raise
     # energy
     # h = 6.626068e-34  # m^2 kg / s
     c = 299792458  # m/s
-    wavelength = md['wavelength']['value']  # in Angs *1e-10  # m
     # E = h*c/wavelength  # Joules
     # E *= 6.24150974e18  # electron volts
     # E /= 1000.0  # keV
@@ -423,8 +429,15 @@ def make_calibration(**md):
     the small-angle limit, so it should only be considered a approximate.
     For instance, wide-angle detectors will have different delta-q across
     the detector face.'''
-    c = (md['pixel_size_x']['value']/1e6) / \
-        md['sample_det_distance']['value']
+    pixel_size = md['pixel_size_x']['value']/1e6
+    sample_det_distance = md['sample_det_distance']['value']
+    try:
+        c = pixel_size/sample_det_distance
+    except Exception:
+        errormsg = "Error, cannot divide pixel_size and sample_det_distance"
+        errormsg += " values : {}/{}".format(pixel_size, sample_det_distance)
+        print(errormsg)
+        raise
     twotheta = np.arctan(c)  # radians
     md['q_per_pixel'] = dict(value=2.0*md['k']['value']*np.sin(twotheta/2.0),
                              unit="1/Angstrom")
@@ -436,6 +449,13 @@ def make_calibration(**md):
     wavelength_A = wavelength
 
     # prepare the calibration object
+    if not isinstance(wavelength_A, Number) \
+            or not isinstance(distance_m, Number) \
+            or not isinstance(pixel_size_um, Number):
+        errormsg = "Error, one of the inputs is not a number:"
+        errormsg += "{}, {}, {}".format(wavelength_A, distance_m, pixel_size_m)
+        print(errormsg)
+        raise TypeError
     calib_object = Calibration(wavelength_A=wavelength_A,
                                distance_m=distance_m,
                                pixel_size_um=pixel_size_um)

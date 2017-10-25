@@ -5,9 +5,14 @@ import os.path
 
 from ...tools.image import findLowHigh
 
+from ...utils.file import _make_fname_from_attrs
+
 from .. import CallbackBase
 
 import numpy as np
+
+import uuid
+
 
 from distributed import Future
 
@@ -16,8 +21,13 @@ from collections import deque
 from SciStreams.globals import client
 from SciStreams.globals import futures_cache
 
+import tempfile
+
 _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
+
+TEMPDIR = tempfile.mkdtemp()
+
 
 fig_buffer = deque()
 
@@ -26,66 +36,6 @@ fig_buffer = deque()
 
 
 # TODO move to general tools
-def make_dir(directory):
-    ''' Creates directory if doesn't exist.'''
-    if not os.path.isdir(directory):
-        os.makedirs(directory)
-
-
-def _cleanup_str(string):
-    string = string.replace(" ", "_")
-    string = string.replace("/", "_")
-    string = string.replace("(", "_")
-    string = string.replace(")", "_")
-    string = string.replace(":", "_")
-    return string
-
-
-def _make_fname_from_attrs(**attrs):
-    ''' make filename from attributes.
-        This will likely be copied among a few interfaces.
-    '''
-
-    # remove the trailing slash, and index if a
-    # list of strs
-    rootdir = attrs['experiment_alias_directory']
-    if not isinstance(rootdir, str):
-        rootdir = rootdir[0]
-    rootdir = rootdir.strip("/")
-
-    if _ROOTMAP is not None:
-        rootdir = rootdir.replace(_ROOTMAP[0], _ROOTMAP[1])
-    elif _ROOTDIR is not None:
-        rootdir = _ROOTDIR
-
-    if 'detector_name' not in attrs:
-        raise ValueError("Error cannot find detector_name in attributes")
-    else:
-        detname = _cleanup_str(attrs['detector_name'])
-        # get name from lookup table first
-        detector_name = config.detector_names.get(detname, detname)
-
-    if 'sample_savename' not in attrs:
-        raise ValueError("Error cannot find sample_savename in attributes")
-    else:
-        sample_savename = _cleanup_str(attrs['sample_savename'])
-
-    if 'stream_name' not in attrs:
-        # raise ValueError("Error cannot find stream_name in attributes")
-        stream_name = 'unnamed_analysis'
-    else:
-        stream_name = _cleanup_str(attrs['stream_name'])
-
-    if 'scan_id' not in attrs:
-        raise ValueError("Error cannot find scan_id in attributes")
-    else:
-        scan_id = _cleanup_str(str(attrs['scan_id']))
-
-    outdir = rootdir + "/" + detector_name + "/" + stream_name + "/plots"
-    make_dir(outdir)
-    outfile = outdir + "/" + sample_savename + "_" + scan_id
-
-    return outfile
 
 
 class StorePlot_MPL(CallbackBase):
@@ -152,7 +102,7 @@ class StorePlot_MPL(CallbackBase):
             print("kwargs are {}".format(self.kwargs))
             # NOTE: This NEEDS to happen or else the computation won't be done
             # on cluster
-            futures_cache.append(client.submit(store_event_results, start, doc,
+            futures_cache.append(client.submit(store_event_results_mpl, start, doc,
                                  **self.kwargs))
         else:
             print("Perfoming request locally")
@@ -160,7 +110,7 @@ class StorePlot_MPL(CallbackBase):
                 start = start.result()
             if isinstance(doc, Future):
                 doc = doc.result()
-            store_event_results(start, doc, **self.kwargs)
+            store_event_results_mpl(start, doc, **self.kwargs)
 
     def stop(self, doc):
         # clear state. lazily clearing everything for now
@@ -172,17 +122,23 @@ class StorePlot_MPL(CallbackBase):
         # self.descriptor_uid = None
 
 
-def store_event_results(start, doc, **kwargs):
+# naming it mpl for ease of traceback for now
+def store_event_results_mpl(start, doc, **kwargs):
     # to check if this blocks
-    print("submitting to MPL \n\n\n\n\n\n")
+    print("submitting to MPL \n\n\n")
+    # testing that it is asynchronous
     # print("waiting for MPL store (10 sec)")
     # import time
     # time.sleep(10)
     # print("done!")
-    store_results(doc['data'], start, **kwargs)
+    print('doc keys : {}'.format(list(doc.keys())))
+    # patch for this function (should use SciStreamCallback eventually
+    # not MPL callback
+    dummy_sdoc = dict(kwargs=doc['data'], attributes=start)
+    store_results_mpl(dummy_sdoc, **kwargs)
 
 
-def store_results(data, attrs, **kwargs):
+def store_results_mpl(sdoc, **kwargs):
     ''' Store the results to a numpy file.
         This saves to numpy format by default.
         May raise an error if it doesn't understand data.
@@ -207,14 +163,23 @@ def store_results(data, attrs, **kwargs):
                 ylabel
                 title
     '''
+    data = sdoc['kwargs']
+    attrs = sdoc['attributes']
     # NOTE : This is different from the interface version which expect a
     # StreamDoc as input
     img_norm = kwargs.get('img_norm', None)
     plot_kws = kwargs.get('plot_kws', {})
+    # make import local so objects are not pickled
     import matplotlib.pyplot as plt
     # TODO : move some of the plotting into a general object
 
-    outfile = _make_fname_from_attrs(**attrs) + ".png"
+    try:
+        outfile = _make_fname_from_attrs(attrs, filetype="png")
+    except ValueError:
+        # write to the same file for error
+        fname = str(uuid.uuid4())
+        outfile = TEMPDIR + "/" + fname
+
     print("writing to {}".format(outfile))
 
     images = kwargs.get('images', [])
@@ -416,8 +381,10 @@ def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None):
                 ylims[0] = np.nanmin([np.nanmin(y), ylims[0]])
                 ylims[1] = np.nanmax([np.nanmax(y), ylims[1]])
 
-    plt.xlim(*xlims)
-    plt.ylim(*ylims)
+    if xlims is not None:
+        plt.xlim(*xlims)
+    if ylims is not None:
+        plt.ylim(*ylims)
 
 
 def plot_images(images, data, img_norm, plot_kws):

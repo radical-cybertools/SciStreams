@@ -81,6 +81,7 @@ default_databases = {}
 
 _DEFAULTS = {
     'delayed': True,
+    'debug': False,
     'required_attributes': dict(main=dict()),
     'default_timeout': None,
     'storagedir': os.path.expanduser("~/storage"),
@@ -103,6 +104,7 @@ maskdir = config.get('maskdir', _DEFAULTS['maskdir'])
 resultsroot = config.get('resultsroot', _DEFAULTS['resultsroot'])
 required_attributes = config.get('required_attributes',
                                  _DEFAULTS['required_attributes'])
+debug = config.get('debug', _DEFAULTS['debug'])
 
 
 # TODO : formalize this with some global existing python structure?

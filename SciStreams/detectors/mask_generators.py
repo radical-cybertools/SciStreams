@@ -8,6 +8,7 @@ from SciStreams.data.Mask import MaskGenerator, MasterMask
 
 # TODO : need to fix again...
 def generate_mask(**md):
+    # print("generating mask from metadata : {}".format(md))
     if 'override' in md:
         # override mask generator with simple loader
         # override should be filename
@@ -94,7 +95,7 @@ def generate_mask_pilatus300(**md):
         msg = "No suitable mask found, "
         msg += "generating ones with shape {}".format(shape)
         print(msg)
-        motor_list = {key: md[key] for key in keys}
+        motor_list = {key: md.get(key, None) for key in keys}
         print("Motors : {}".format(motor_list))
 
         mask = np.ones(shape)
@@ -166,7 +167,7 @@ def generate_mask_pilatus2M(**md):
         msg = "No suitable mask found, "
         msg += "generating ones with shape {}".format(shape)
         print(msg)
-        motor_list = {key: md[key] for key in keys}
+        motor_list = {key: md.get(key, None) for key in keys}
         print("Motors : {}".format(motor_list))
         print("Available masks : {}".format(pilatus_masks))
         mask = np.ones(shape)
@@ -196,6 +197,10 @@ def find_best_mask(masks, keys, tolerances, md):
         each mask is also an npz array with more information than just the mask
         use MasterMask to conveniently load it.
     '''
+    # first check that the keys are in metadata
+    for key in keys:
+        if key not in md:
+            return None
     # search for the right mask that matches data
     retrieved_mask = None
     # find the first mask that matches all motors

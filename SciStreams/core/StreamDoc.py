@@ -23,6 +23,7 @@ import numpy as np
 # from ..config import default_timeout as DEFAULT_TIMEOUT
 
 from ..globals import client
+from ..config import debug
 
 
 # TODO : Make sure each element is Future aware
@@ -488,17 +489,6 @@ class StreamDoc(dict):
     def select(self, *mapping):
         try:
             args, kwargs = self['args'], self['kwargs']
-#            if not isinstance(args, Future):
-#                print("len args : {}".format(len(args)))
-#            else:
-#                print("len args : {}".format(len(args.result())))
-#
-#            if not isinstance(kwargs, Future):
-#                print("kwargs keys : {}".format(list(kwargs.keys())))
-#            else:
-#                print("kwargs keys")
-#                print("kwargs keys : {}".format((kwargs.result())))
-
             if isinstance(args, Future) or \
                     isinstance(kwargs, Future):
                 # do computation remotely
@@ -526,13 +516,16 @@ class StreamDoc(dict):
             sdoc['kwargs'] = kwargs
 
             return sdoc
-        except Exception:
+        except Exception as e:
             statistics = dict()
             _cleanexit(self.select, statistics)
             new_sdoc = StreamDoc(attributes=self['attributes'])
             new_sdoc['statistics'] = statistics
             new_sdoc['_StreamDoc_Type'] = 'error'
-            return new_sdoc
+            if debug:
+                raise
+            else:
+                return new_sdoc
 
 
 # static methods
@@ -577,6 +570,12 @@ def _select_from_mapping(args, kwargs, *mapping):
     ''' remap args and kwargs
         combinations can be any one of the following:
 
+
+        Parameters
+        ----------
+        strict : bool, optional
+            if strict, raise upon a bad mapping
+            else, just return blank args and kwargs
 
         Some examples:
 
@@ -634,11 +633,13 @@ def _select_from_mapping(args, kwargs, *mapping):
         elif isinstance(newkey, str):
             newparentkey = 'kwargs'
         elif isinstance(newkey, int):
+            # this an error, but just return blank args and kwargs
             errorstr = "Integer tuple pairs not accepted."
             errorstr += " This usually comes from trying a (1,1)"
             errorstr += " or ('foo',1) mapping."
             errorstr += "Please try (1,None) or ('foo', None) instead"
-            raise ValueError(errorstr)
+            print(errorstr)
+            return [], {}
 
         if oldparentkey == 'kwargs' and \
            oldkey not in sdoc[oldparentkey] \
@@ -654,7 +655,7 @@ def _select_from_mapping(args, kwargs, *mapping):
             errorstr += "This usually occurs from selecting "
             errorstr += "a streamdoc with missing information\n"
             errorstr += "(But could also come from missing data)\n"
-            raise KeyError(errorstr)
+            return [], {}
 
         if newparentkey == 'args':
             totargs[newparentkey].append(sdoc[oldparentkey][oldkey])
@@ -755,7 +756,10 @@ def parse_streamdoc(name, filter=False):
                         x2['statistics']['cumulative_time']
                     sdoc_type = x['_StreamDoc_Type']
                     sdoc2_type = x2['_StreamDoc_Type']
-                    args = x.get_return(), x2.get_return()
+                    try:
+                        args = x.get_return(), x2.get_return()
+                    except Exception:
+                        args = None, None
                     # print("found an accumulator. args are {}".format(args))
                     kwargs = dict()
                     # check if attributes are a future
@@ -887,6 +891,8 @@ def parse_streamdoc(name, filter=False):
             except Exception:
                 result = {}
                 _cleanexit(f, statistics)
+                if debug:
+                    raise
 
             t2 = time.time()
             statistics['runtime'] = t2 - t1

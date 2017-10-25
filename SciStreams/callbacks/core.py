@@ -63,11 +63,15 @@ class SciStreamCallback(CallbackBase):
     '''
     # dictionary of start documents
     def __init__(self, func, *args, remote=True, **kwargs):
+        # args and kwargs reserved to forward to the functions
+        self.args = args
+        self.kwargs = kwargs
         self.func = func
         self.remote = remote
         self.start_docs = dict()
         self.descriptors = dict()
-        super(SciStreamCallback, self).__init__(*args, **kwargs)
+        # right now init doesn't really do anything
+        super(SciStreamCallback, self).__init__()
 
     def start(self, doctuple):
         # this scheme allows docs to be Futures
@@ -112,7 +116,8 @@ class SciStreamCallback(CallbackBase):
                 descriptor = descriptor.result()
             if isinstance(start, Future):
                 start = start.result()
-            res = eval_func(self.func, start, descriptor, doc)
+            res = eval_func(self.func, start, descriptor, doc, *self.args,
+                            **self.kwargs)
 
     def stop(self, doctuple):
         ''' Stop is where the garbage collection happens.'''
@@ -139,7 +144,7 @@ class SciStreamCallback(CallbackBase):
             self.descriptors.pop(desc_uid)
 
 
-def eval_func(func, start, descriptor, event):
+def eval_func(func, start, descriptor, event, *args, **kwargs):
     start_uid = start['uid']
     data = event['data']
 
@@ -153,4 +158,4 @@ def eval_func(func, start, descriptor, event):
     sdoc.add(checkpoint=checkpoint)
     sdoc.add(provenance=provenance)
     # finally, evaluate the function
-    return func(sdoc)
+    return func(sdoc, *args, **kwargs)
