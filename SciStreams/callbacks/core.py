@@ -23,6 +23,7 @@ class CallbackBase:
     def stop(self, doc):
         pass
 
+
 # TODO : This won't work with cloudpickle. Either find out why or just remove
 # it. We may want metaclassing though
 def FutureCallback(cls):
@@ -64,6 +65,7 @@ class SciStreamCallback(CallbackBase):
     # dictionary of start documents
     def __init__(self, func, *args, remote=True, **kwargs):
         # args and kwargs reserved to forward to the functions
+        # print("initiated with kwargs {}".format(kwargs))
         self.args = args
         self.kwargs = kwargs
         self.func = func
@@ -106,8 +108,11 @@ class SciStreamCallback(CallbackBase):
         start_uid, descriptor = self.descriptors[descriptor_uid]
         _, start = self.start_docs[start_uid]
 
+        kwargs = self.kwargs.copy()
         if self.remote:
-            res = client.submit(eval_func, self.func, start, descriptor, doc)
+            # run but don't return result
+            client.submit(eval_func, self.func, start, descriptor, doc,
+                          *self.args, **kwargs)
         else:
             # don't do things remotely, so block if things are Futures
             if isinstance(doc, Future):
@@ -116,8 +121,8 @@ class SciStreamCallback(CallbackBase):
                 descriptor = descriptor.result()
             if isinstance(start, Future):
                 start = start.result()
-            res = eval_func(self.func, start, descriptor, doc, *self.args,
-                            **self.kwargs)
+            eval_func(self.func, start, descriptor, doc, *self.args,
+                      **kwargs)
 
     def stop(self, doctuple):
         ''' Stop is where the garbage collection happens.'''
@@ -158,4 +163,7 @@ def eval_func(func, start, descriptor, event, *args, **kwargs):
     sdoc.add(checkpoint=checkpoint)
     sdoc.add(provenance=provenance)
     # finally, evaluate the function
+    # print("calling function {} with sdoc {}".format(func, sdoc))
+    # print("calling function {} with extra args : {}".format(func, args))
+    # print("extra kwargs : {}".format(kwargs))
     return func(sdoc, *args, **kwargs)

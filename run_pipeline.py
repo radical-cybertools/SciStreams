@@ -1,9 +1,12 @@
 import argparse
 import re
 import time
-from SciStreams.startup import run_stream_live
+import matplotlib
+matplotlib.use("Agg")  # noqa
 
-VERSION = "0.1"
+from SciStreams.startup import run_stream
+
+VERSION = "0.2"
 
 re_time_pairs = [
     (re.compile("^[0-9]{4}-[0-9]{2}-[0-9]{2}$"), "%Y-%m-%d"),
@@ -34,6 +37,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Start the pipeline')
     parser.add_argument('-t0', '--start_time', dest='start_time', type=str)
+    parser.add_argument('--stop_time', dest='stop_time', type=str)
     # help="The start time for the pipeline " +
     # "(default is 24 hrs prior to now)")
     args = parser.parse_args()
@@ -43,8 +47,9 @@ if __name__ == '__main__':
     else:
         # 1 day earlier
         start_time = time.time()-24*3600
+    stop_time= args.stop_time
 
     print("Searching for results " +
           "from {} onwards...".format(time.ctime(start_time)))
     # run pipeline
-    run_stream_live.start_run(start_time)
+    run_stream.start_run(start_time, stop_time=stop_time)

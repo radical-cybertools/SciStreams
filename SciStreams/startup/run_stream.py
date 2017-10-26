@@ -1,19 +1,24 @@
+# this is the distributed version. It assumes that the StreamDocs are handled
+# as Futures
 # test a XS run
+import time
 import numpy as np
-import matplotlib
-matplotlib.use("Agg")  # noqa
+# import matplotlib
+# matplotlib.use("Agg")  # noqa
 
 import matplotlib.pyplot as plt
-plt.ion()  # noqa
+# plt.ion()  # noqa
 
 # databroker
 from databroker.assets.handlers import AreaDetectorTiffHandler
 
 # if using dask async stuff will need this again
-from tornado.ioloop import IOLoop
-from tornado import gen
+# from tornado.ioloop import IOLoop
+# from tornado import gen
 
-from distributed import sync
+# from functools import partial
+
+# from distributed import sync
 
 from SciStreams.callbacks import CallbackBase, SciStreamCallback
 
@@ -23,6 +28,8 @@ from SciStreams.detectors.mask_generators import generate_mask
 # StreamDoc to event stream
 # from SciStreams.core.StreamDoc import to_event_stream
 # import SciStreams.core.StreamDoc as sd
+
+# from SciStreams.globals import client
 
 # the differen streams libs
 import streamz.core as sc
@@ -48,10 +55,11 @@ from SciStreams.tools.image import normalizer
 # interfaces imports
 from SciStreams.interfaces.xml.xml import store_results_xml
 from SciStreams.interfaces.hdf5 import store_results_hdf5
+from SciStreams.interfaces.plotting_mpl import store_results_mpl
 
 
 # TODO : move these out and put in stream folder
-# use reg stream mapping
+# # use reg stream mapping
 # from SciStreams.streams.XS_Streams import normalize_calib_dict,\
 #   add_detector_info
 from SciStreams.streams.XS_Streams import make_calibration
@@ -84,12 +92,13 @@ class LivePlot_Custom(CallbackBase):
 # We need to normalize metadata, which is used for saving, somewhere
 # in our case, it's simpler to do this in the beginning
 sin = sc.Stream(stream_name="Input")
-stream_input = SciStreamCallback(sin.emit)
+
+stream_input = SciStreamCallback(sin.emit, remote=False)
 
 # these are abbreviations just to make streams access easier
 # this stream filters out data. only outputs data that will work in rest of
 # stream
-sin_primary, sout_primary = PrimaryFilteringStream()
+sin_primary, sout_primary, serr_primary = PrimaryFilteringStream()
 sin.connect(sin_primary)
 
 # sink to list for debugging
@@ -99,6 +108,7 @@ L_primary = sout_primary.sink_to_list()
 # get the attributes, clean them up and return
 # new sout_primary
 sin_attributes, sout_attributes = AttributeNormalizingStream()
+L_attributes = sout_attributes.sink_to_list()
 sout_primary.connect(sin_attributes)
 
 sout_primary = scs.merge(sc.zip(sout_primary,
@@ -108,14 +118,22 @@ sin_calib, sout_calib = CalibrationStream()
 sout_attributes.connect(sin_calib)
 L_calib = sout_calib.sink_to_list()
 
+# sout_calib2 = sout_calib
+# sout_calib = sc.Stream()
+
 # the PrimaryFilteringStream already split the detectors
+# s_image = sc.Stream()
 s_image = scs.add_attributes(sout_primary, stream_name="image")
+L_image = s_image.sink_to_list()
 
 
 # TODO : fix and remove this is for pilatus300 should be in mask gen
 s_mask = scs.map(generate_mask, sout_attributes)
+L_mask = s_mask.sink_to_list()
 
 
+# #s_zipped =
+# #L_zipped= s_zipped.sink_to_list()
 s_imgmaskcalib = scs.merge(sc.zip(s_image, sout_calib, s_mask))
 L_imgmaskcalib = s_imgmaskcalib.sink_to_list()
 
@@ -177,7 +195,9 @@ s_imgmaskoriginstitch = scs.merge(sc.zip(s_imagenorm,
                                          s_origin,
                                          s_stitch))
 
+
 sin_stitched, sout_stitched = ImageStitchingStream(return_intermediate=True)
+# NOTE : disconnected image stitching
 s_imgmaskoriginstitch.connect(sin_stitched)
 
 L_stitched = sout_stitched.sink_to_list()
@@ -199,6 +219,7 @@ def get_shape(**kwargs):
     return dict(origin=origin, shape=img.shape)
 
 
+# TODO : only spawn new process if a condition is met
 sout_stitched_attributes = scs.map(get_shape, sout_stitched)
 sout_stitched_attributes = scs.merge(sc.zip(sout_attributes,
                                             sout_stitched_attributes))
@@ -211,6 +232,7 @@ def maskimg(image, mask):
 
 
 s_maskedimg = scs.map(maskimg, scs.select(s_imgmaskcalib, 'image', 'mask'))
+L_maskedimg = s_maskedimg.sink_to_list()
 
 # make qphiavg image
 #
@@ -231,18 +253,12 @@ sout_sqphipeaks = scs.merge(sc.zip(sout_qphiavg, scs.select(sout_peakfind,
 sout_sqphipeaks = scs.select(sout_sqphipeaks, ('sqphi', 'image'), ('qs', 'y'),
                              ('phis', 'x'), ('peaksx', 'vals'))
 
+L_sqphipeaks = sout_sqphipeaks.sink_to_list()
 
 sin_linecuts, sout_linecuts = LineCutStream(axis=0)
 sout_sqphipeaks.connect(sin_linecuts)
 L_linecuts = sout_linecuts.sink_to_list()
 
-
-# TODO : connect the image to this
-sin_gisaxs_linecutsx, sout_gisaxs_linecutsx = \
-    LineCutStream(axis=0, name="gisaxs-linecuts-x")
-
-sin_gisaxs_linecutsy, sout_gisaxs_linecutsy = \
-    LineCutStream(axis=1, name="gisaxs-linecuts-y")
 
 sin_thumb, sout_thumb = ThumbStream(blur=2, crop=None, resize=10)
 s_image.connect(sin_thumb)
@@ -276,12 +292,39 @@ s_maskedimg.connect(sin_tag)
 L_tag = sout_tag.sink_to_list()
 
 
+# custom written Stream
+# GISAXS line cuts stream
+def collapse(image, mask, axis=0):
+    ''' collapse the x dimension'''
+    # tested a blocking call
+    # import time
+    # time.sleep(100)
+    result = np.sum(image, axis=axis)
+    result = result/np.sum(mask, axis=axis)
+    return dict(linecut=result)
+
+
+sin_gisaxs = sc.Stream()
+# get the line cuts
+sout_gisaxs_x = scs.map(collapse, sin_gisaxs, axis=1)
+sout_gisaxs_x = scs.add_attributes(sout_gisaxs_x, stream_name="gisaxs-linex")
+L_gisaxs_x = sout_gisaxs_x.sink_to_list()
+
+sout_gisaxs_y = scs.map(collapse, sin_gisaxs, axis=0)
+sout_gisaxs_y = scs.add_attributes(sout_gisaxs_y, stream_name="gisaxs-liney")
+
+sin_imgmask = scs.merge(s_image.zip(s_mask))
+sin_imgmask.connect(sin_gisaxs)
+
+
 # sample on how to plot to callback and file
 # (must make it an event stream again first)
 # set to True to enable plotting (opens many windows)
 liveplots = False
+# NOTE : disabled sinking
 if True:
     # make event streams for some sinks
+    event_stream_err_primary = scs.to_event_stream(serr_primary)
     event_stream_img = scs.to_event_stream(s_image)
     event_stream_sqphi = scs.to_event_stream(sout_qphiavg)
     event_stream_sq = scs.to_event_stream(sout_circavg)
@@ -294,6 +337,8 @@ if True:
     event_stream_linecuts_angularcorr = \
         scs.to_event_stream(sout_linecuts_angularcorr)
     event_stream_tag = scs.to_event_stream(sout_tag)
+    event_stream_gisaxs_x = scs.to_event_stream(sout_gisaxs_x)
+    event_stream_gisaxs_y = scs.to_event_stream(sout_gisaxs_y)
 
     if liveplots:
         from SciStreams.callbacks.live import LiveImage, LivePlot
@@ -316,40 +361,69 @@ if True:
         event_stream_sq.sink(scs.star(liveplot_sq))
         event_stream_maskedimg.sink(scs.star(liveimage_maskedimg))
 
+    def submit_stream(f, docpair):
+        name, doctuple = docpair
+        parent_uid, self_uid, doc = doctuple
+        return f(name, doctuple)
+
     # output to storing callbacks
-    from SciStreams.callbacks.saving_mpl.core import StorePlot_MPL
-    plot_storage_img = StorePlot_MPL(images=['image'], img_norm=normalizer)
-    plot_storage_stitch = StorePlot_MPL(images=['image'], img_norm=normalizer)
-    plot_storage_sq = StorePlot_MPL(lines=[('sqx', 'sqy')])
-    plot_storage_sqphi = StorePlot_MPL(images=['sqphi'], img_norm=normalizer)
-    plot_storage_peaks = StorePlot_MPL(lines=[dict(x='sqx', y='sqy'),
-                                       dict(x='peaksx', y='peaksy', marker='o',
-                                       color='r', linewidth=0)])
-    plot_storage_linecuts = StorePlot_MPL(linecuts=[('linecuts_domain',  # x
-                                                     'linecuts',  # y
-                                                     'linecuts_vals')])  # val
-    plot_storage_thumb = StorePlot_MPL(images=['thumb'], img_norm=normalizer)
-    plot_storage_angularcorr = StorePlot_MPL(images=['rdeltaphiavg_n'],
-                                             img_norm=normalizer,
-                                             plot_kws=dict(vmin=0, vmax=1))
+
+    plot_storage_img = scs.star(SciStreamCallback(store_results_mpl,
+                                                  images=['image'],
+                                                  img_norm=normalizer))
+    plot_storage_stitch = scs.star(SciStreamCallback(store_results_mpl,
+                                                     images=['image'],
+                                                     img_norm=normalizer))
+    plot_storage_sq = scs.star(SciStreamCallback(store_results_mpl,
+                                                 lines=[('sqx', 'sqy')]))
+    plot_storage_sqphi = scs.star(SciStreamCallback(store_results_mpl,
+                                                    images=['sqphi'],
+                                                    img_norm=normalizer))
+    plot_storage_peaks = scs.star(SciStreamCallback(store_results_mpl,
+                                                    lines=[dict(x='sqx',
+                                                                y='sqy'),
+                                                           dict(x='peaksx',
+                                                                y='peaksy',
+                                                                marker='o',
+                                                                color='r',
+                                                                linewidth=0)]))
+    plot_storage_linecuts = \
+        scs.star(SciStreamCallback(store_results_mpl,
+                                   linecuts=[('linecuts_domain',  # x
+                                              'linecuts',  # y
+                                              'linecuts_vals')]))  # val
+    plot_storage_thumb = scs.star(SciStreamCallback(store_results_mpl,
+                                                    images=['thumb'],
+                                                    img_norm=normalizer))
+    plot_storage_angularcorr = \
+        scs.star(SciStreamCallback(store_results_mpl,
+                                   images=['rdeltaphiavg_n'],
+                                   img_norm=normalizer, plot_kws=dict(vmin=0,
+                                                                      vmax=1)))
 
     plot_storage_linecuts_angularcorr = \
-        StorePlot_MPL(linecuts=[('linecuts_domain',  # x
-                                 'linecuts',  # y
-                                 'linecuts_vals')])  # value
+        scs.star(SciStreamCallback(store_results_mpl,
+                                   linecuts=[('linecuts_domain',  # x
+                                              'linecuts',  # y
+                                              'linecuts_vals')]))  # value
 
-    scs.sink(scs.star(plot_storage_img), event_stream_img)
-    scs.sink(scs.star(plot_storage_stitch), event_stream_stitched)
-    scs.sink(scs.star(plot_storage_sq), event_stream_sq)
-    scs.sink(scs.star(plot_storage_sqphi), event_stream_sqphi)
-    scs.sink(scs.star(plot_storage_peaks), event_stream_peaks)
+    plot_storage_gisaxs = scs.star(SciStreamCallback(store_results_mpl,
+                                                     lines=['linecut']))
+
+    sc.sink(event_stream_img, plot_storage_img)
+    sc.sink(event_stream_stitched, plot_storage_stitch)
+    sc.sink(event_stream_sq, plot_storage_sq)
+    sc.sink(event_stream_sqphi, plot_storage_sqphi)
+    sc.sink(event_stream_peaks, plot_storage_peaks)
     sc.sink(event_stream_peaks,
             scs.star(SciStreamCallback(store_results_hdf5)))
-    scs.sink(scs.star(plot_storage_linecuts), event_stream_linecuts)
-    scs.sink(scs.star(plot_storage_thumb), event_stream_thumb)
-    scs.sink(scs.star(plot_storage_angularcorr), event_stream_angularcorr)
-    scs.sink(scs.star(plot_storage_linecuts_angularcorr),
-             event_stream_linecuts_angularcorr)
+    sc.sink(event_stream_linecuts, plot_storage_linecuts)
+    sc.sink(event_stream_thumb, plot_storage_thumb)
+    sc.sink(event_stream_angularcorr, plot_storage_angularcorr)
+    sc.sink(event_stream_linecuts_angularcorr,
+            plot_storage_linecuts_angularcorr)
+    sc.sink(event_stream_gisaxs_x, plot_storage_gisaxs)
+    sc.sink(event_stream_gisaxs_y, plot_storage_gisaxs)
 
     from SciStreams.callbacks.core import SciStreamCallback
     # save the peaks info
@@ -361,6 +435,9 @@ if True:
 
     sc.sink(event_stream_tag,
             scs.star(SciStreamCallback(store_results_xml)))
+    sc.sink(event_stream_err_primary,
+            scs.star(SciStreamCallback(store_results_xml,
+                                       stream_name="error")))
     sc.sink(event_stream_tag,
             scs.star(SciStreamCallback(store_results_hdf5)))
     # scs.map(print, event_stream_img)
@@ -378,130 +455,142 @@ class TiffHandler(AreaDetectorTiffHandler):
         return res
 
 
-if True:
+class BufferStream:
+    ''' class mimicks callbacks, upgrades stream from a 'start', doc instance
+        to a more complex ('start', (None, start_uid, doc)) instance
+
+        Experimenting with distributed computing. This seems to work better.
+        Allows me to construct tree of docs before computing the delayed docs.
+
+        This unfortunately can't be distributed.
+    '''
+    def __init__(self):
+        self.start_docs = dict()
+        self.descriptor_docs = dict()
+
+    def __call__(self, ndpair):
+        name, doc = ndpair
+        if name == 'start':
+            parent_uid, self_uid = None, doc['uid']
+            # add the start that came through
+            self.start_docs[self_uid] = parent_uid
+        elif name == 'descriptor':
+            parent_uid, self_uid = doc['run_start'], doc['uid']
+            # now add descriptor
+            self.descriptor_docs[self_uid] = parent_uid
+        elif name == 'event':
+            parent_uid, self_uid = doc['descriptor'], doc['uid']
+        elif name == 'stop':
+            # if the stop is strange, just use it to clear everything
+            if 'run_start' not in doc or 'uid' not in doc:
+                self.clear_all()
+            else:
+                parent_uid, self_uid = doc['run_start'], doc['uid']
+                # clean up buffers
+                self.clear_start(parent_uid)
+
+        return name, (parent_uid, self_uid, doc)
+
+    def clear_all(self):
+        self.start_docs = dict()
+        self.descriptors = dict()
+
+    def clear_start(self, start_uid):
+        # clear the start
+        self.start_docs.pop(start_uid)
+
+        # now clear the descriptors
+        # first find them
+        desc_uids = list()
+        for desc_uid, parent_uid in self.descriptor_docs.items():
+            if parent_uid == start_uid:
+                desc_uids.append(desc_uid)
+        # now pop them
+        for desc_uid in desc_uids:
+            self.descriptor_docs.pop(desc_uid)
+
+
+def start_run(start_time, stop_time=None, loop_forever=True,
+              poll_interval=60):
+    ''' Start running the streaming pipeline.
+
+        start_time : str
+            the start time for the run
+
+        stop_time : str, optional
+            the stop time of the initial search
+
+        loop_forever : bool, optional
+            If true, loop forever
+
+        poll_interval : int, optional
+            poll interval (if loop is True)
+            This is the interval to wait between checking for new data
+    '''
     # patchy way to get stream for now, need to fix later
     from SciStreams.interfaces.databroker.databases import databases
 
     cmsdb = databases['cms:data']
-    # register a handler that ignores file not found
-    # cmsdb.reg.register_handler("AD_TIFF", TiffHandler, overwrite=True)
 
-    # hdrs = cmsdb(start_time="2017-07-13", stop_time="2017-07-14")# 16:00")
-    # hdrs = cmsdb(start_time="2017-09-13", stop_time="2017-09-14 16:00")
-    # for this data, beam center is 718, 598 (x,y)
-    # so origin : 598, 718 (y, x)
-    # need to add in motor positions
-    # hdrs = cmsdb(start_time="2017-09-08", stop_time="2017-09-09")
-    # Oleg data 2017
-    # hdrs = cmsdb(start_time="2017-07-15", stop_time="2017-07-17")
-    # some recent saxs data
-    hdrs = cmsdb(start_time="2017-10-10", stop_time="2017-10-11")
-    stream = cmsdb.restream(hdrs, fill=True)
+    kwargs = dict()
+    if stop_time is not None:
+        kwargs['stop_time'] = stop_time
+    if start_time is not None:
+        kwargs['start_time'] = start_time
 
-elif False:
-    print("Creating simulated stream")
-    from SciStreams.tests.simulators import generate_event_stream
-    x0, y0 = 743, 581.
-    detx, dety = -65, -72
-    peaks = [40, 80, 100, 120, 200, 300, 400, 700, 1000, 1300, 1500, 2000,
-             2500, 2600]
-    peakamps = [.0003]*len(peaks)
-    sigma = 6.
+    from uuid import uuid4
 
-    md = dict(sample_name="test",
-              motor_bsx=-15.17,
-              motor_bsy=-16.9,
-              motor_bsphi=-12,
-              # these get filled in in loop
-              # motor_SAXSx = -65,
-              # motor_SAXSy = -72.,
-              # detector_SAXS_x0_pix=x0,
-              # detector_SAXS_y0_pix=y0,
-              # scan_id=0,
-              detector_SAXS_distance_m=5.,
-              calibration_energy_keV=13.5,
-              calibration_wavelength_A=0.9184,
-              experiment_alias_directory="/GPFS/xf11bm/data/2017_3/Simulated",
-              experiment_cycle="2017_3",
-              experiment_group="SciStream-test",
-              filename="foo.tiff",
-              # updated every time
-              # sample_savename="out",
-              sample_exposure_time=10.,
-              stitchback=True)
+    def stream_gen(hdrs):
+        ''' Intercept FileNotFoundError from file handler.
+            Issue a stop if some error is raised
+        '''
+        current_start = None
+        for hdr in hdrs:
+            gen = hdr.documents(fill=True)
+            try:
+                for nds in gen:
+                    if nds[0] == 'start':
+                        current_start = nds[1]['uid']
+                    yield nds
+            except FileNotFoundError:
+                # don't yield event, just give a stop
+                yield ('stop', {'uid': str(uuid4()),
+                                'run_start': current_start})
 
-    from SciStreams.simulators.saxs import mkSAXS
-    from SciStreams.simulators.gisaxs import mkGISAXS
+    while True:
+        hdrs = cmsdb(**kwargs)
+        stream = stream_gen(hdrs)
 
-    from SciStreams.detectors.detectors2D import detectors2D
-    shape = detectors2D['pilatus2M']['shape']['value']
-    scl = detectors2D['pilatus2M']['pixel_size_x']['value']
+        # stream converter
+        stream_buffer = BufferStream()
 
-    stream = list()
-    shiftsx = [-6, 0, 6]
-    shiftsy = [-8, 0, 8]
-    scan_id = 0
-    sym = 6  # 2*np.int(np.random.random()*12)
-    phase = 2*np.pi*np.random.random()
-    for shiftx in shiftsx:
-        for shifty in shiftsy:
-            x1 = x0 - shiftx*scl
-            y1 = y0 - shifty*scl
-            detx1, dety1 = detx+shiftx, dety+shifty
-
-            md = md.copy()
-            md.update(detector_SAXS_x0_pix=x1)
-            md.update(detector_SAXS_y0_pix=y1)
-            md.update(motor_SAXSx=detx1)
-            md.update(motor_SAXSy=dety1)
-            md.update(scan_id=scan_id)
-            md.update(measurement_type="SAXS")
-            md.update(sample_savename="sample_x{}_y{}".format(detx1, dety1))
-
-            data = mkSAXS(shape, peaks, peakamps, phase, x1, y1, sigma, sym)
-
-            plt.figure(1)
-            plt.clf()
-            plt.imshow(data)
-            plt.pause(.1)
-
-            data_dict = dict(pilatus2M_image=data)
-            stream.extend(generate_event_stream(data_dict,
-                                                md=md))
-            scan_id += 1
-
-    # try some GISAXS patterns
-    shiftx, shifty = 0, 0
-    x1 = x0 - shiftx*scl
-    y1 = y0 - shifty*scl
-    detx1, dety1 = detx+shiftx, dety+shifty
-    r = 3
-    ld = 12
-    Narray = 5
-    md = md.copy()
-    md.update(measurement_type="GISAXS")
-    md.update(stitchback=False)
-    data = mkGISAXS(shape, r, ld, Narray, x1, y1)
-    data_dict = dict(pilatus2M_image=data)
-    stream.extend(generate_event_stream(data_dict,
-                                        md=md))
-
-
-@gen.coroutine
-def start(stream):
-    for nds in stream:
-        # print(nds)
-        # x0, y0 = 720, 599
-        # rdet = 5
-        # sin.emit(nds)
-        yield stream_input(*nds)
-        plt.pause(.1)
-        # input("stopping here")
-
-
-def start_run(stream):
-    loop = IOLoop()
-    sync(loop, start, stream)
-
-
-start_run(stream)
+        # some loop over stream
+        # TODO look for FileNotFoundError in nds iteration
+        # make sure it's an iterator
+        stream = iter(stream)
+        last_start = None
+        while True:
+            try:
+                nds = stream_buffer(next(stream))
+                if nds[0] == 'start':
+                    last_start = nds[1][2]
+                print("iterating : {}".format(nds[0]))
+                stream_input(*nds)
+                plt.pause(.1)
+            except StopIteration:
+                break
+            except FileNotFoundError:
+                continue
+        # get the latest time, add 1 second to not overlap it
+        last_time = last_start['time']
+        t1 = time.localtime(last_time)
+        start_time = time.strftime("%Y-%m-%d %H:%M:%S", t1)
+        kwargs['start_time'] = start_time
+        # remove stop_time after first iteration
+        if 'stop_time' in kwargs:
+            kwargs.pop('stop_time')
+        # at the end, update time stamp for latest time
+        msg = "Reached end, waiting "
+        msg += "{} sec for more data...".format(poll_interval)
+        print(msg)
+        time.sleep(poll_interval)

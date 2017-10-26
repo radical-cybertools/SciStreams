@@ -4,6 +4,7 @@ import os.path
 import numpy as np
 import numbers
 
+
 # reads yaml file from user directory
 filename = os.path.expanduser("~/.config/scistreams/scistreams.yml")
 try:
@@ -12,6 +13,11 @@ try:
 except FileNotFoundError:
     config = dict()
 
+
+# make it an empty dict if not there
+if 'directories' not in config:
+    config['directories'] = dict()
+directories = config['directories']
 
 # read the mask conf file
 # ignore the mask yml now, just use mask_dir
@@ -23,7 +29,7 @@ try:
         for key2 in mask_config[key].keys():
             fname = mask_config[key][key2]['filename']
             # prepend the mask directory to filename then save
-            newfname = config['maskdir'] + "/" + key + "/" + fname
+            newfname = directories['masks'] + "/" + key + "/" + fname
             mask_config[key][key2]['filename'] = newfname
         # now populate the master mask databases for each mask
 except FileNotFoundError:
@@ -34,8 +40,8 @@ except FileNotFoundError:
 # should be a matter of replacing mask reading with a file handler
 # and populating a database of masks with some other form of masks
 master_masks = dict()
-if 'maskdir' in config:
-    maskdir = config['maskdir']
+if 'masks' in directories:
+    maskdir = directories.get('masks', None)
     # print("Reading masks from : {}".format(maskdir))
 
     # each dir is a key
@@ -97,14 +103,20 @@ _DEFAULTS = {
 }
 
 
+# get from directories file
+storagedir = directories.get('storage', _DEFAULTS['storagedir'])
+maskdir = directories.get('masks', _DEFAULTS['maskdir'])
+
 default_timeout = config.get('default_timeout', _DEFAULTS['default_timeout'])
 delayed = config.get('delayed', _DEFAULTS['delayed'])
-storagedir = config.get('storagedir', _DEFAULTS['storagedir'])
-maskdir = config.get('maskdir', _DEFAULTS['maskdir'])
 resultsroot = config.get('resultsroot', _DEFAULTS['resultsroot'])
 required_attributes = config.get('required_attributes',
                                  _DEFAULTS['required_attributes'])
 debug = config.get('debug', _DEFAULTS['debug'])
+
+# TODO : need way of dynamically doing this
+modules = config.get('modules', {})
+tensorflow = modules.get('tensorflow', {})
 
 
 # TODO : formalize this with some global existing python structure?

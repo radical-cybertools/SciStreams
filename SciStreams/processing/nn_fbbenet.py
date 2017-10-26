@@ -18,6 +18,16 @@
 '''
 
 
+from ..config import config
+
+from functools import partial
 from sidl.nn_fbbenet.infer import infer  # noqa
 from sidl.nn_fbbenet.infer import normalize_img, reduce_img  # noqa
 from sidl.nn_fbbenet.infer import inference_function  # noqa
+
+checkpoint_filename = config.get('modules', {})\
+    .get('tensorflow', {}).get('checkpoint_filename', None)
+
+infer = partial(infer, checkpoint_filename=checkpoint_filename)
+inference_function = partial(inference_function,
+                             checkpoint_filename=checkpoint_filename)

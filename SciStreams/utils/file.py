@@ -48,7 +48,8 @@ def check_and_get(md, name, default="unnamed", strict=False):
     return val
 
 
-def _make_fname_from_attrs(attrs, filetype="xml", strict=False):
+def _make_fname_from_attrs(attrs, filetype="xml", strict=False,
+                           stream_name=None):
     ''' make filename from attributes.
         This will likely be copied among a few interfaces.
         suffix : the suffix
@@ -68,7 +69,7 @@ def _make_fname_from_attrs(attrs, filetype="xml", strict=False):
         rootdir = _ROOTDIR
 
     detector_name = check_and_get(attrs, 'detector_name', strict=strict,
-                                       default="unnamed")
+                                  default="unnamed")
 
     detector_savedir = config.detector_names.get(detector_name, detector_name)
 
@@ -76,13 +77,15 @@ def _make_fname_from_attrs(attrs, filetype="xml", strict=False):
                                     default="unnamed")
     sample_savename = _cleanup_str(sample_savename)
 
-    stream_name = check_and_get(attrs, 'stream_name', strict=strict,
-                                default='unnamed_stream')
-    stream_name = _cleanup_str(stream_name)
+    if stream_name is None:
+        stream_name = check_and_get(attrs, 'stream_name', strict=strict,
+                                    default='unnamed_stream')
+        stream_name = _cleanup_str(stream_name)
 
     scan_id = check_and_get(attrs, 'scan_id', strict=strict, default='scan_id')
 
-    outdir = rootdir + "/" + detector_savedir + "/" + stream_name + "/" + filetype
+    outdir = rootdir + "/" + detector_savedir + "/" + stream_name \
+        + "/" + filetype
     make_dir(outdir)
     outfile = outdir + "/" + sample_savename + "_" + scan_id + "." + filetype
 

@@ -5,7 +5,7 @@ import numpy as np
 import setuptools
 
 setuptools.setup(name='SciStreams',
-                 version='1.0',
+                 version='0.2',
                  author='Kevin Yager',
                  description="CMS Analysis",
                  include_dirs=[np.get_include()],

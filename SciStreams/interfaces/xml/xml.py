@@ -10,7 +10,7 @@ _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
 
 
-def store_results_xml(sdoc):
+def store_results_xml(sdoc, **kwargs):
     '''
         expects a experiment_cycle, experiment group and sample_savename
         path is ROOT/experiment_cycle/experiment_group/sample_savename.xml
@@ -19,7 +19,7 @@ def store_results_xml(sdoc):
         streamdoc provided.
     '''
     attrs = sdoc['attributes']
-    outfile = _make_fname_from_attrs(attrs)
+    outfile = _make_fname_from_attrs(attrs, **kwargs)
 
     # TODO should we append to existing xml file (if exists?)
     if os.path.isfile(outfile):

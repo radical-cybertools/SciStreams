@@ -18,13 +18,14 @@ from ..processing.stitching import xystitch_accumulate, xystitch_result
 from ..processing.circavg import circavg
 from ..processing.qphiavg import qphiavg
 from ..processing.image import blur as _blur, crop as _crop, resize as _resize
-from ..processing import rdpc
 from ..processing.angularcorr import angular_corr
 from ..processing.nn_fbbenet import infer
 from ..processing.peak_finding import peak_finding
 
 
 from ..config import config
+from ..config import required_attributes, typesdict
+
 
 from ..data.Calibration import Calibration
 import streamz as sc
@@ -82,6 +83,26 @@ def pick_allowed_detectors(sdoc):
     return sdocs
 
 
+# filter a streamdoc with certain attributes (set in the yml file)
+# required_attributes, typesdict globals needed
+def filter_attributes(sdoc, type='main'):
+    print("filterting attributes")
+    attr = sdoc['attributes']
+    # get the sub required attributes
+    reqattr = required_attributes['main']
+    for key, val in reqattr.items():
+        if key not in attr:
+            print("bad attributes")
+            print("{} not in attributes".format(key))
+            return False
+        elif not isinstance(attr[key], typesdict[val]):
+            print("bad attributes")
+            print("key {} not an instance of {}".format(key, val))
+            return False
+    print("good attributes")
+    return True
+
+
 # Streams : These return an sin and sout
 def PrimaryFilteringStream():
     ''' Filter the stream for just primary results.
@@ -95,17 +116,19 @@ def PrimaryFilteringStream():
                 must have a 2D np.ndarray with one of accepted detector
                 keys
         **Stream Outputs**
+            Two streams are outputted, sout and serr
 
-            Outputs from zero to any number streams
-            (depends on how many detectors were found)
-
-            md :
-                detector_key : the detector key (string)
-
-            data :
-                data with only one image as detector key
-                if there was more than one, it selects one of them
-                Note this has unspecified behaviour.
+            sout : the stream with valid data
+                Outputs from zero to any number streams
+                (depends on how many detectors were found)
+                md :
+                    detector_key : the detector key (string)
+                data :
+                    data with only one image as detector key
+                    if there was more than one, it selects one of them
+                    Note this has unspecified behaviour.
+            serr : the stream with bad data. This can be sinked to an error
+                stream
 
         Examples
         --------
@@ -136,12 +159,18 @@ def PrimaryFilteringStream():
             the output stream (see Stream Outputs)
     '''
     sin = sc.Stream(stream_name="Primary Filter")
-    sout = sc.map(sin, pick_allowed_detectors)
+    # a primary filter, data will not go through if does not match attributes
+    sout = sin.filter(filter_attributes)
+    # get the error streams attributes (to output to some log)
+    serr = sin.filter(lambda x: not filter_attributes)
+    serr = scs.get_attributes(serr)
+    serr = scs.add_attributes(serr, error="primary_filter")
+    sout = sc.map(sout, pick_allowed_detectors)
     # turn list into individual streams
     # (if empty list, emits nothing, this is sort of like filter)
     sout = sout.concat()
     # just some checks to see if it's good data, else ignore
-    return sin, sout
+    return sin, sout, serr
 
 
 def AttributeNormalizingStream(external_keymap=None):
@@ -453,7 +482,8 @@ def make_calibration(**md):
             or not isinstance(distance_m, Number) \
             or not isinstance(pixel_size_um, Number):
         errormsg = "Error, one of the inputs is not a number:"
-        errormsg += "{}, {}, {}".format(wavelength_A, distance_m, pixel_size_m)
+        errormsg += "{}, {}, {}".format(wavelength_A, distance_m,
+                                        pixel_size_um)
         print(errormsg)
         raise TypeError
     calib_object = Calibration(wavelength_A=wavelength_A,
@@ -792,21 +822,6 @@ def AngularCorrelatorStream(bins=(800, 360)):
     sout = scs.map(angular_corr, sout, bins=bins)
     sout = scs.add_attributes(sout, stream_name="angular-corr")
     return sin, sout
-
-
-def prepare_correlation(shape, origin, mask, rbins=800, phibins=360,
-                        method='bgest'):
-    rdphicorr = rdpc.RDeltaPhiCorrelator(shape,  origin=origin,
-                                         mask=mask, rbins=rbins,
-                                         phibins=phibins)
-    # print("kwargs : {}".format(kwargs))
-    return rdphicorr
-
-
-def angularcorrelation(rdphicorr, image):
-    ''' Run the angular correlation on the angular correlation object.'''
-    rdphicorr.run(image)
-    return rdphicorr.rdeltaphiavg_n
 
 
 def _xystitch_result(img_acc, mask_acc, origin_acc, stitchback_acc):
