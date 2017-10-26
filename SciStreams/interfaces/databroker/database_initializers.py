@@ -1,6 +1,6 @@
 # Create Databases
 # NOTE : cmsdb makes temporary analysis database for now...
-from databroker.broker import Broker
+from databroker import Broker
 from databroker.headersource.mongo import MDSRO
 from databroker.assets.mongo import RegistryRO
 

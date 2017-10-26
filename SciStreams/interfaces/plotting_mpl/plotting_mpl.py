@@ -46,6 +46,9 @@ def store_results_mpl(sdoc, **kwargs):
                 ylabel
                 title
     '''
+    # if a failure don't even plot
+    if sdoc['status'].lower() == 'failure':
+        return
     data = sdoc['kwargs']
     attrs = sdoc['attributes']
     # NOTE : This is different from the interface version which expect a

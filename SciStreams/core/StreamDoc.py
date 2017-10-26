@@ -823,6 +823,7 @@ def parse_streamdoc(name, filter=False):
                 # print("unwrapping args {}".format(args))
                 # print("unwrapping kwargs {}".format(kwargs))
                 # bypass function (avoid long computation times)
+                # print("unwrap func name : {}".format(f.__name__))
                 if not empty:
                     return f(*args, **kwargs)
                 else:
@@ -844,7 +845,7 @@ def parse_streamdoc(name, filter=False):
                     return client.submit(f, args, kwargs)
                 return f_new
 
-            fnew = partial(unwrap, f)
+            fnew = wraps(f)(partial(unwrap, f))
             # re-define f again...
             if remote:
                 fnew = future_wrapper(fnew)

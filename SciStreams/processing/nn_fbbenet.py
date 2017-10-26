@@ -20,14 +20,16 @@
 
 from ..config import config
 
-from functools import partial
-from sidl.nn_fbbenet.infer import infer  # noqa
+from functools import partial, wraps
+from sidl.nn_fbbenet.infer import infer as sidl_infer  # noqa
 from sidl.nn_fbbenet.infer import normalize_img, reduce_img  # noqa
-from sidl.nn_fbbenet.infer import inference_function  # noqa
+from sidl.nn_fbbenet.infer import inference_function as sidl_inffunc  # noqa
 
 checkpoint_filename = config.get('modules', {})\
     .get('tensorflow', {}).get('checkpoint_filename', None)
 
-infer = partial(infer, checkpoint_filename=checkpoint_filename)
-inference_function = partial(inference_function,
+infer = partial(sidl_infer, checkpoint_filename=checkpoint_filename)
+infer = wraps(sidl_infer)(infer)
+inference_function = partial(sidl_inffunc,
                              checkpoint_filename=checkpoint_filename)
+inference_function = wraps(sidl_inffunc)(inference_function)

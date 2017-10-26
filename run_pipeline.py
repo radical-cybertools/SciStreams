@@ -38,18 +38,26 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Start the pipeline')
     parser.add_argument('-t0', '--start_time', dest='start_time', type=str)
     parser.add_argument('--stop_time', dest='stop_time', type=str)
-    # help="The start time for the pipeline " +
-    # "(default is 24 hrs prior to now)")
+    parser.add_argument('--test', dest='test', type=str)
     args = parser.parse_args()
-    if args.start_time is not None:
-        # will raise a ValueError
-        start_time = check_time(args.start_time)
+    if args.test.lower() == 'true':
+        print("test mode, testing one uid")
+        uids = ['3e5742d3-4e11-43d0-abe8-af6e44c26bf2']
+        run_stream.start_run(uids=uids)
+        print("Sleeping for an hour... (hit CTRL+C to quit)")
+        time.sleep(3600)
     else:
-        # 1 day earlier
-        start_time = time.time()-24*3600
-    stop_time= args.stop_time
+        # help="The start time for the pipeline " +
+        # "(default is 24 hrs prior to now)")
+        if args.start_time is not None:
+            # will raise a ValueError
+            start_time = check_time(args.start_time)
+        else:
+            # 1 day earlier
+            start_time = time.time()-24*3600
+        stop_time= args.stop_time
 
-    print("Searching for results " +
-          "from {} onwards...".format(time.ctime(start_time)))
-    # run pipeline
-    run_stream.start_run(start_time, stop_time=stop_time)
+        print("Searching for results " +
+              "from {} onwards...".format(time.ctime(start_time)))
+        # run pipeline
+        run_stream.start_run(start_time, stop_time=stop_time)

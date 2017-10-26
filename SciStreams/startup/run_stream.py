@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 # plt.ion()  # noqa
 
 # databroker
-from databroker.assets.handlers import AreaDetectorTiffHandler
+# from databroker.assets.handlers import AreaDetectorTiffHandler
 
 # if using dask async stuff will need this again
 # from tornado.ioloop import IOLoop
@@ -20,7 +20,7 @@ from databroker.assets.handlers import AreaDetectorTiffHandler
 
 # from distributed import sync
 
-from SciStreams.callbacks import CallbackBase, SciStreamCallback
+from SciStreams.callbacks import SciStreamCallback
 
 from SciStreams.detectors.mask_generators import generate_mask
 
@@ -64,30 +64,7 @@ from SciStreams.interfaces.plotting_mpl import store_results_mpl
 #   add_detector_info
 from SciStreams.streams.XS_Streams import make_calibration
 
-
-class LivePlot_Custom(CallbackBase):
-    def start(self, doc):
-        self.fignum = plt.figure().number
-
-    def event(self, doc):
-        img = doc[0]['data']['image']
-
-        attrs = doc[1]['data']
-        xkey = 'beamx0'
-        ykey = 'beamy0'
-        if xkey in attrs:
-            x0 = attrs[xkey]['value']
-            y0 = attrs[ykey]['value']
-        else:
-            x0, y0 = None, None
-
-        plt.figure(self.fignum)
-        plt.clf()
-        plt.imshow(img)
-        plt.clim(0, 100)
-        if x0 is not None and y0 is not None:
-            plt.plot(x0, y0, 'ro')
-
+# from SciStreams.callbacks.live.core import LivePlot_Custom
 
 # We need to normalize metadata, which is used for saving, somewhere
 # in our case, it's simpler to do this in the beginning
@@ -425,7 +402,6 @@ if True:
     sc.sink(event_stream_gisaxs_x, plot_storage_gisaxs)
     sc.sink(event_stream_gisaxs_y, plot_storage_gisaxs)
 
-    from SciStreams.callbacks.core import SciStreamCallback
     # save the peaks info
     sc.sink(event_stream_peaks,
             scs.star(SciStreamCallback(store_results_hdf5)))
@@ -441,18 +417,6 @@ if True:
     sc.sink(event_stream_tag,
             scs.star(SciStreamCallback(store_results_hdf5)))
     # scs.map(print, event_stream_img)
-
-
-# getting and sending data
-class TiffHandler(AreaDetectorTiffHandler):
-    def __call__(self, point_number):
-        # if File not Found, return None
-        try:
-            res = AreaDetectorTiffHandler.__call__(self, point_number)
-        except FileNotFoundError:
-            print("File not found {}".format(next(self._fnames_for_point(0))))
-            res = None
-        return res
 
 
 class BufferStream:
@@ -510,7 +474,7 @@ class BufferStream:
             self.descriptor_docs.pop(desc_uid)
 
 
-def start_run(start_time, stop_time=None, loop_forever=True,
+def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
               poll_interval=60):
     ''' Start running the streaming pipeline.
 
@@ -519,6 +483,9 @@ def start_run(start_time, stop_time=None, loop_forever=True,
 
         stop_time : str, optional
             the stop time of the initial search
+
+        uids : str or list of str, optional
+            if set, run only on these uids quickly
 
         loop_forever : bool, optional
             If true, loop forever
@@ -556,9 +523,17 @@ def start_run(start_time, stop_time=None, loop_forever=True,
                 # don't yield event, just give a stop
                 yield ('stop', {'uid': str(uuid4()),
                                 'run_start': current_start})
+    if uids is not None:
+        print("Starting a run only on selected uids")
+        # REMOVE ME
+        # uids = ['3e5742d3-4e11-43d0-abe8-af6e44c26bf2']
+        # REMOVE ME
+        hdrs = cmsdb[uids]
+        loop_forever = False
 
     while True:
-        hdrs = cmsdb(**kwargs)
+        # UNCOMMENT ME
+        # hdrs = cmsdb(**kwargs)
         stream = stream_gen(hdrs)
 
         # stream converter
@@ -581,6 +556,9 @@ def start_run(start_time, stop_time=None, loop_forever=True,
                 break
             except FileNotFoundError:
                 continue
+        if not loop_forever:
+            return
+
         # get the latest time, add 1 second to not overlap it
         last_time = last_start['time']
         t1 = time.localtime(last_time)
@@ -594,3 +572,15 @@ def start_run(start_time, stop_time=None, loop_forever=True,
         msg += "{} sec for more data...".format(poll_interval)
         print(msg)
         time.sleep(poll_interval)
+
+def start_callback():
+    from bluesky.callbacks.zmq import RemoteDispatcher
+    from SciStreams.config import config as configd
+    stream_buffer = BufferStream()
+    # get the dispatcher port for bluesky zeromq process
+    ipstring = "localhost:{:4d}".format(configd['bluesky']['port'])
+    d = RemoteDispatcher(ipstring)
+    d.subscribe(stream_buffer)
+
+    # when done subscribing things and ready to use:
+    d.start()  # runs event loop forever

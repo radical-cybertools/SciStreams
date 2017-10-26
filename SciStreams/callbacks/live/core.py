@@ -237,6 +237,30 @@ class LivePlot(CallbackBase):
         super().stop(doc)
 
 
+class LivePlot_Custom(CallbackBase):
+    def start(self, doc):
+        self.fignum = plt.figure().number
+
+    def event(self, doc):
+        img = doc[0]['data']['image']
+
+        attrs = doc[1]['data']
+        xkey = 'beamx0'
+        ykey = 'beamy0'
+        if xkey in attrs:
+            x0 = attrs[xkey]['value']
+            y0 = attrs[ykey]['value']
+        else:
+            x0, y0 = None, None
+
+        plt.figure(self.fignum)
+        plt.clf()
+        plt.imshow(img)
+        plt.clim(0, 100)
+        if x0 is not None and y0 is not None:
+            plt.plot(x0, y0, 'ro')
+
+
 # copied from bluesky callbacks core
 def _get_obj_fields(fields):
     """
