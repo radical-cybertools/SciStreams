@@ -348,11 +348,11 @@ if True:
                                                      img_norm=normalizer))
     plot_storage_sq = scs.star(SciStreamCallback(store_results_mpl,
                                                  lines=[('sqx', 'sqy')],
-                                                scale='loglog'))
+                                                 scale='loglog'))
     plot_storage_sqphi = scs.star(SciStreamCallback(store_results_mpl,
                                                     images=['sqphi'],
                                                     img_norm=normalizer,
-                                                   aspect='auto'))
+                                                    aspect='auto'))
     plot_storage_peaks = scs.star(SciStreamCallback(store_results_mpl,
                                                     lines=[dict(x='sqx',
                                                                 y='sqy'),
