@@ -1,5 +1,8 @@
 import matplotlib
 matplotlib.use("Agg")  # noqa
+import numpy as np
+import matplotlib.pyplot as plt
+
 from ... import config
 
 from uuid import uuid4
@@ -8,7 +11,6 @@ from ...tools.image import findLowHigh
 
 from ...utils.file import _make_fname_from_attrs
 
-import numpy as np
 
 _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
@@ -17,7 +19,6 @@ global_list = set()
 # usually the number of processes is good
 maxfigs = 1000
 
-import matplotlib.pyplot as plt
 
 class FigureGetter:
     maxfigs = 1000
@@ -125,10 +126,11 @@ def store_results_mpl(sdoc, **kwargs):
 
         # only plot either of the three
         if len(images) > 0:
-            xlims, ylims, fig = plot_images(images, data, img_norm, plot_kws, fig=fig)
+            xlims, ylims, fig = plot_images(images, data, img_norm, plot_kws,
+                                            fig=fig)
         elif len(lines) > 0:
-            xlims, ylims, fig = plot_lines(lines, data, img_norm,
-                                      plot_kws, xlims=xlims, ylims=ylims, fig=fig)
+            xlims, ylims, fig = plot_lines(lines, data, img_norm, plot_kws,
+                                           xlims=xlims, ylims=ylims, fig=fig)
         elif len(linecuts) > 0:
             plot_linecuts(linecuts, data, img_norm, plot_kws,
                           xlims=xlims, ylims=ylims, fig=fig)
@@ -201,6 +203,7 @@ def store_results_mpl(sdoc, **kwargs):
         # figuregetter takes care of closing
         # plt.close(fig)
 
+
 def plot_linecuts(linecuts_keys, data, img_norm, plot_kws, xlims=None,
                   ylims=None, fig=None):
     ''' assume that each linecut is a 2d image meant to be plotted as 1d
@@ -256,7 +259,8 @@ def plot_linecuts(linecuts_keys, data, img_norm, plot_kws, xlims=None,
     return xlims, ylims, fig
 
 
-def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None, fig=None):
+def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None,
+               fig=None):
     import matplotlib.pyplot as plt
     if fig is None:
         print("Warning, axes not passed. choosing random")
@@ -265,7 +269,6 @@ def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None, fig=None
     if len(fig.axes) == 0:
         # forces getting a new axis
         fig.gca()
-
 
     for line in lines:
         # reset the per data plot opts (only set if line is a dict)
@@ -330,7 +333,8 @@ def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None, fig=None
     return xlims, ylims, fig
 
 
-def plot_images(images, data, img_norm, plot_kws, xlims=None, ylims=None, fig=None):
+def plot_images(images, data, img_norm, plot_kws, xlims=None, ylims=None,
+                fig=None):
     import matplotlib.pyplot as plt
     if fig is None:
         print("Warning, axes not passed. choosing random")
@@ -339,7 +343,6 @@ def plot_images(images, data, img_norm, plot_kws, xlims=None, ylims=None, fig=No
     if len(fig.axes) == 0:
         # forces getting a new axis
         fig.gca()
-
 
     # print("plotting images with keys {}".format(images))
     for key in images:
@@ -369,11 +372,11 @@ def plot_images(images, data, img_norm, plot_kws, xlims=None, ylims=None, fig=No
                 dim = int(np.ceil(np.sqrt(nimgs)))
                 # fig, axes = plt.subplots(dim, dim)
                 # trying to make this thread safe
-                gs = plt.GridSpec(len(y), 1)
+                gs = plt.GridSpec(dim, dim)
                 gs.update(hspace=0.0, wspace=0.0)
                 for j in range(len(image)):
                     if isinstance(image, np.ndarray):
-                        ax = fig.add_subplot(gs[j//dim, j%dim])
+                        ax = fig.add_subplot(gs[j//dim, j % dim])
                         ax.imshow(image[j], **plot_kws)
         else:
             print("Warning : key {} not found ".format(key) +

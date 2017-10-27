@@ -114,9 +114,10 @@ class SciStreamCallback(CallbackBase):
         kwargs = self.kwargs.copy()
         if self.remote:
             # run but don't return result
-            print('submitting function {} to server'.format(self.func.__name__))
-            res = client.submit(wraps(self.func)(eval_func), self.func, start, descriptor, doc,
-                                *self.args, **kwargs)
+            msg = 'submitting function {} to server'.format(self.func.__name__)
+            print(msg)
+            res = client.submit(wraps(self.func)(eval_func), self.func, start,
+                                descriptor, doc, *self.args, **kwargs)
             if isinstance(res, Future):
                 globals.futures_cache_sinks.append(res)
         else:
@@ -141,7 +142,7 @@ class SciStreamCallback(CallbackBase):
             msg = "Warning missing start for stop, skipping"
             print(msg)
             return
-            #raise Exception(msg)
+            # raise Exception(msg)
         self.start_docs.pop(start_uid)
         desc_uids = list()
         for desc_uid, doctuple in self.descriptors.items():
