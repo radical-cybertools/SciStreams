@@ -3,8 +3,8 @@
 # test a XS run
 import time
 import numpy as np
-# import matplotlib
-# matplotlib.use("Agg")  # noqa
+import matplotlib
+matplotlib.use("Agg")  # noqa
 
 import matplotlib.pyplot as plt
 # plt.ion()  # noqa
@@ -338,11 +338,6 @@ if True:
         event_stream_sq.sink(scs.star(liveplot_sq))
         event_stream_maskedimg.sink(scs.star(liveimage_maskedimg))
 
-    def submit_stream(f, docpair):
-        name, doctuple = docpair
-        parent_uid, self_uid, doc = doctuple
-        return f(name, doctuple)
-
     # output to storing callbacks
 
     plot_storage_img = scs.star(SciStreamCallback(store_results_mpl,
@@ -352,10 +347,12 @@ if True:
                                                      images=['image'],
                                                      img_norm=normalizer))
     plot_storage_sq = scs.star(SciStreamCallback(store_results_mpl,
-                                                 lines=[('sqx', 'sqy')]))
+                                                 lines=[('sqx', 'sqy')],
+                                                scale='loglog'))
     plot_storage_sqphi = scs.star(SciStreamCallback(store_results_mpl,
                                                     images=['sqphi'],
-                                                    img_norm=normalizer))
+                                                    img_norm=normalizer,
+                                                   aspect='auto'))
     plot_storage_peaks = scs.star(SciStreamCallback(store_results_mpl,
                                                     lines=[dict(x='sqx',
                                                                 y='sqy'),
@@ -375,8 +372,7 @@ if True:
     plot_storage_angularcorr = \
         scs.star(SciStreamCallback(store_results_mpl,
                                    images=['rdeltaphiavg_n'],
-                                   img_norm=normalizer, plot_kws=dict(vmin=0,
-                                                                      vmax=1)))
+                                   img_norm=normalizer, vmin=0, vmax=1))
 
     plot_storage_linecuts_angularcorr = \
         scs.star(SciStreamCallback(store_results_mpl,

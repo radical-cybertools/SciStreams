@@ -70,7 +70,6 @@ def store_results_mpl(sdoc, **kwargs):
 
         kwargs : options as follows:
             keywords:
-                plot_kws : plot options forwarded to matplotlib
                 images : keys of images
                 lines : keys of lines to plot (on top of images)
                     if element is a tuple, assume (x,y) format, else assume
@@ -79,6 +78,7 @@ def store_results_mpl(sdoc, **kwargs):
                 xlabel
                 ylabel
                 title
+                all others are sent as plot options forwarded to matplotlib
     '''
     # if a failure don't even plot
     if 'status' in sdoc and sdoc['status'].lower() == 'failure':
@@ -87,8 +87,7 @@ def store_results_mpl(sdoc, **kwargs):
     attrs = sdoc['attributes']
     # NOTE : This is different from the interface version which expect a
     # StreamDoc as input
-    img_norm = kwargs.get('img_norm', None)
-    plot_kws = kwargs.get('plot_kws', {})
+    img_norm = kwargs.pop('img_norm', None)
     # make import local so objects are not pickled
     # TODO : move some of the plotting into a general object
     try:
@@ -101,9 +100,20 @@ def store_results_mpl(sdoc, **kwargs):
 
     print("writing to {}".format(outfile))
 
-    images = kwargs.get('images', [])
-    lines = kwargs.get('lines', [])
-    linecuts = kwargs.get('linecuts', [])
+    images = kwargs.pop('images', [])
+    lines = kwargs.pop('lines', [])
+    linecuts = kwargs.pop('linecuts', [])
+
+    # plotting the extra options
+    labelsize = kwargs.pop('labelsize', 20)
+    scale = kwargs.pop('scale', None)
+    xlabel = kwargs.pop('xlabel', None)
+    ylabel  = kwargs.pop('ylabel', None)
+    title = kwargs.pop('title', None)
+    hideaxes = kwargs.pop('hideaxes', False)
+
+    # now the rest should be plot keywords
+    plot_kws = kwargs
 
     xlims = None
     ylims = None
@@ -135,36 +145,21 @@ def store_results_mpl(sdoc, **kwargs):
             plot_linecuts(linecuts, data, img_norm, plot_kws,
                           xlims=xlims, ylims=ylims, fig=fig)
 
-        # plotting the extra options
-        if 'labelsize' in plot_kws:
-            labelsize = plot_kws['labelsize']
-        else:
-            labelsize = 20
 
-        if 'hideaxes' in plot_kws:
-            hideaxes = plot_kws['hideaxes']
-        else:
-            hideaxes = False
-
-        if 'xlabel' in plot_kws:
-            xlabel = plot_kws['xlabel']
+        if xlabel is not None:
             for ax in fig.axes:
                 ax.set_xlabel(xlabel, size=labelsize)
 
-        if 'ylabel' in plot_kws:
-            ylabel = plot_kws['ylabel']
+        if ylabel is not None:
             for ax in fig.axes:
-                ax.set_xlabel(xlabel, size=labelsize)
                 ax.set_ylabel(ylabel, size=labelsize)
 
-        if 'title' in plot_kws:
-            title = plot_kws['title']
+        if title is not None:
             for ax in fig.axes:
                 ax.set_title(title)
 
-        if 'scale' in plot_kws:
+        if scale is not None:
             try:
-                scale = plot_kws['scale']
                 if scale == 'loglog':
                     for ax in fig.axes:
                         ax.set_xscale('log')
@@ -179,7 +174,7 @@ def store_results_mpl(sdoc, **kwargs):
                     correct_ylimits(ax)
                 # else ignore
             except Exception:
-                print("plotting_mpl : Error in setting " +
+                print("plotting_mpl : Error in setting "+
                       "scales (array is likely zeros)")
 
         if hideaxes:
@@ -363,7 +358,8 @@ def plot_images(images, data, img_norm, plot_kws, xlims=None, ylims=None,
             if image.ndim == 2:
                 if isinstance(image, np.ndarray):
                     for ax in fig.axes:
-                        ax.imshow(image, **plot_kws)
+                        im = ax.imshow(image, **plot_kws)
+                        fig.colorbar(im)
                     # TODO : verify this is clean with threads?
                     # plt.colorbar(cax=ax)
             elif image.ndim == 3:
