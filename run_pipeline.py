@@ -55,7 +55,7 @@ if __name__ == '__main__':
         else:
             # 1 day earlier
             start_time = time.time()-24*3600
-        stop_time= args.stop_time
+        stop_time = args.stop_time
 
         print("Searching for results " +
               "from {} onwards...".format(time.ctime(start_time)))
