@@ -434,6 +434,7 @@ class BufferStream:
 
     def __call__(self, ndpair):
         name, doc = ndpair
+        parent_uid, self_uid = None, None
         if name == 'start':
             parent_uid, self_uid = None, doc['uid']
             # add the start that came through
@@ -525,15 +526,11 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
                                 'run_start': current_start})
     if uids is not None:
         print("Starting a run only on selected uids")
-        # REMOVE ME
-        # uids = ['3e5742d3-4e11-43d0-abe8-af6e44c26bf2']
-        # REMOVE ME
         hdrs = cmsdb[uids]
         loop_forever = False
 
     while True:
-        # UNCOMMENT ME
-        # hdrs = cmsdb(**kwargs)
+        hdrs = cmsdb(**kwargs)
         stream = stream_gen(hdrs)
 
         # stream converter

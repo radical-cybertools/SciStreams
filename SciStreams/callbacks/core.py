@@ -1,6 +1,9 @@
 from distributed import Future
 from SciStreams.core.StreamDoc import StreamDoc
 from SciStreams.globals import client
+from SciStreams import globals
+
+from functools import wraps
 
 
 class CallbackBase:
@@ -111,8 +114,11 @@ class SciStreamCallback(CallbackBase):
         kwargs = self.kwargs.copy()
         if self.remote:
             # run but don't return result
-            client.submit(eval_func, self.func, start, descriptor, doc,
-                          *self.args, **kwargs)
+            print('submitting function {} to server'.format(self.func.__name__))
+            res = client.submit(wraps(self.func)(eval_func), self.func, start, descriptor, doc,
+                                *self.args, **kwargs)
+            if isinstance(res, Future):
+                globals.futures_cache_sinks.append(res)
         else:
             # don't do things remotely, so block if things are Futures
             if isinstance(doc, Future):
@@ -132,8 +138,10 @@ class SciStreamCallback(CallbackBase):
 
     def cleanup_start(self, start_uid):
         if start_uid not in self.start_docs:
-            msg = "Error missing start for stop"
-            raise Exception(msg)
+            msg = "Warning missing start for stop, skipping"
+            print(msg)
+            return
+            #raise Exception(msg)
         self.start_docs.pop(start_uid)
         desc_uids = list()
         for desc_uid, doctuple in self.descriptors.items():
@@ -150,6 +158,7 @@ class SciStreamCallback(CallbackBase):
 
 
 def eval_func(func, start, descriptor, event, *args, **kwargs):
+    print("on cluster, computing {}".format(func.__name__))
     start_uid = start['uid']
     data = event['data']
 
