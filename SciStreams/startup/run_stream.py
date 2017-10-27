@@ -75,6 +75,8 @@ def wait_on_client():
     ''' Wait on client to limit pressure.
         Depends on globals client and MAX_PROCESSING.'''
     while True:
+        if not hasattr(client, 'processing'):
+            return True
         free = False
         for key, val in client.processing().items():
             if len(val) < MAX_PROCESSING:
@@ -367,13 +369,18 @@ if True:
     plot_storage_stitch = scs.star(SciStreamCallback(store_results_mpl,
                                                      images=['image'],
                                                      img_norm=normalizer))
+    xlbl = "$q,(\AA^{-1})$"
+    ylbl = "I(q)"
     plot_storage_sq = scs.star(SciStreamCallback(store_results_mpl,
                                                  lines=[('sqx', 'sqy')],
-                                                 scale='loglog'))
+                                                 scale='loglog', xlabel=xlbl,
+                                                 ylabel=ylbl))
     plot_storage_sqphi = scs.star(SciStreamCallback(store_results_mpl,
                                                     images=['sqphi'],
                                                     img_norm=normalizer,
-                                                    aspect='auto'))
+                                                    aspect='auto',
+                                                    xlabel="$\phi\,$(radians)",
+                                                    ylabel="$q\,$(pixel)"))
     plot_storage_peaks = scs.star(SciStreamCallback(store_results_mpl,
                                                     lines=[dict(x='sqx',
                                                                 y='sqy'),
@@ -381,7 +388,8 @@ if True:
                                                                 y='peaksy',
                                                                 marker='o',
                                                                 color='r',
-                                                                linewidth=0)]))
+                                                                linewidth=0)],
+                                                    xlabel=xlbl, ylabel=ylbl))
     plot_storage_linecuts = \
         scs.star(SciStreamCallback(store_results_mpl,
                                    linecuts=[('linecuts_domain',  # x
@@ -393,13 +401,18 @@ if True:
     plot_storage_angularcorr = \
         scs.star(SciStreamCallback(store_results_mpl,
                                    images=['rdeltaphiavg_n'],
-                                   img_norm=normalizer, vmin=0, vmax=1))
+                                   img_norm=normalizer, vmin=0, vmax=1,
+                                   xlabel="$\phi\,(radians)$",
+                                   ylabel="q\,(pixel)",
+                                   aspect='auto'))
 
     plot_storage_linecuts_angularcorr = \
         scs.star(SciStreamCallback(store_results_mpl,
                                    linecuts=[('linecuts_domain',  # x
                                               'linecuts',  # y
-                                              'linecuts_vals')]))  # value
+                                              'linecuts_vals')],
+                                   xlabel="$\Delta\phi$\,(radians)$",
+                                   ylabel="$c(\Delta\phi)$"))  # value
 
     plot_storage_gisaxs = scs.star(SciStreamCallback(store_results_mpl,
                                                      lines=['linecut']))

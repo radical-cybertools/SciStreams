@@ -146,12 +146,15 @@ def store_results_mpl(sdoc, **kwargs):
                           xlims=xlims, ylims=ylims, fig=fig)
 
         if xlabel is not None:
-            for ax in fig.axes:
-                ax.set_xlabel(xlabel, size=labelsize)
+            # for ax in fig.axes:
+            # TODO : Allow labeling on multiple axes?
+            ax = fig.axes[0]
+            ax.set_xlabel(xlabel, size=labelsize)
 
         if ylabel is not None:
-            for ax in fig.axes:
-                ax.set_ylabel(ylabel, size=labelsize)
+            # for ax in fig.axes:
+            ax = fig.axes[0]
+            ax.set_ylabel(ylabel, size=labelsize)
 
         if title is not None:
             for ax in fig.axes:
@@ -193,6 +196,7 @@ def store_results_mpl(sdoc, **kwargs):
             fig.savefig(outfile)
         except Exception:
             print("Error in fig saving, ignoring... file : {}".format(outfile))
+            raise
         # make sure no mem leaks, just close
         # figuregetter takes care of closing
         # plt.close(fig)
@@ -356,9 +360,8 @@ def plot_images(images, data, img_norm, plot_kws, xlims=None, ylims=None,
                 plot_kws['vmax'] = vmax
             if image.ndim == 2:
                 if isinstance(image, np.ndarray):
-                    for ax in fig.axes:
-                        im = ax.imshow(image, **plot_kws)
-                        fig.colorbar(im)
+                    im = fig.axes[0].imshow(image, **plot_kws)
+                    fig.colorbar(im)
                     # TODO : verify this is clean with threads?
                     # plt.colorbar(cax=ax)
             elif image.ndim == 3:
