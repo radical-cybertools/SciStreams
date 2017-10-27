@@ -108,7 +108,7 @@ def store_results_mpl(sdoc, **kwargs):
     labelsize = kwargs.pop('labelsize', 20)
     scale = kwargs.pop('scale', None)
     xlabel = kwargs.pop('xlabel', None)
-    ylabel  = kwargs.pop('ylabel', None)
+    ylabel = kwargs.pop('ylabel', None)
     title = kwargs.pop('title', None)
     hideaxes = kwargs.pop('hideaxes', False)
 
@@ -145,7 +145,6 @@ def store_results_mpl(sdoc, **kwargs):
             plot_linecuts(linecuts, data, img_norm, plot_kws,
                           xlims=xlims, ylims=ylims, fig=fig)
 
-
         if xlabel is not None:
             for ax in fig.axes:
                 ax.set_xlabel(xlabel, size=labelsize)
@@ -174,7 +173,7 @@ def store_results_mpl(sdoc, **kwargs):
                     correct_ylimits(ax)
                 # else ignore
             except Exception:
-                print("plotting_mpl : Error in setting "+
+                print("plotting_mpl : Error in setting " +
                       "scales (array is likely zeros)")
 
         if hideaxes:
