@@ -40,7 +40,7 @@ if __name__ == '__main__':
     parser.add_argument('--stop_time', dest='stop_time', type=str)
     parser.add_argument('--test', dest='test', type=str)
     args = parser.parse_args()
-    if args.test.lower() == 'true':
+    if isinstance(args.test, str) and args.test.lower() == 'true':
         print("test mode, testing one uid")
         uids = ['3e5742d3-4e11-43d0-abe8-af6e44c26bf2']
         run_stream.start_run(uids=uids)
@@ -55,7 +55,7 @@ if __name__ == '__main__':
         else:
             # 1 day earlier
             start_time = time.time()-24*3600
-        stop_time= args.stop_time
+        stop_time = args.stop_time
 
         print("Searching for results " +
               "from {} onwards...".format(time.ctime(start_time)))

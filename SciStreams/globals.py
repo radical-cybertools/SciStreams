@@ -30,6 +30,8 @@ else:
     client = Client()
 
 futures_cache = deque(maxlen=MAX_FUTURE_NUM)
+# allow for 100,000 sinks for these (so we don't lose them)
+futures_cache_sinks = deque(maxlen=100000)
 
 # assume all functions are pure globally
 try:

@@ -1,19 +1,53 @@
 import matplotlib
 matplotlib.use("Agg")  # noqa
+import numpy as np
+import matplotlib.pyplot as plt
+
 from ... import config
+
+from uuid import uuid4
 
 from ...tools.image import findLowHigh
 
 from ...utils.file import _make_fname_from_attrs
 
-import numpy as np
-
-from collections import deque
 
 _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
 
-fig_buffer = deque()
+global_list = set()
+# usually the number of processes is good
+maxfigs = 1000
+
+
+class FigureGetter:
+    maxfigs = 1000
+    fignum = None
+
+    def __enter__(self):
+        found = False
+        for i in range(self.maxfigs):
+            if i in global_list:
+                pass
+            else:
+                found = True
+            if found:
+                global_list.add(i)
+                self.fignum = i
+                break
+        if found:
+            fig = plt.figure(i)
+            fig.clf()
+            # forces new axes
+            fig.gca()
+            return fig
+        else:
+            raise Exception("Cannot lock a figure")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        plt.close(plt.figure(self.fignum))
+        global_list.remove(self.fignum)
+
 
 # store results decorator for plotting library
 # as of now function that returns decorator takes no arguments
@@ -36,7 +70,6 @@ def store_results_mpl(sdoc, **kwargs):
 
         kwargs : options as follows:
             keywords:
-                plot_kws : plot options forwarded to matplotlib
                 images : keys of images
                 lines : keys of lines to plot (on top of images)
                     if element is a tuple, assume (x,y) format, else assume
@@ -45,18 +78,17 @@ def store_results_mpl(sdoc, **kwargs):
                 xlabel
                 ylabel
                 title
+                all others are sent as plot options forwarded to matplotlib
     '''
     # if a failure don't even plot
-    if sdoc['status'].lower() == 'failure':
+    if 'status' in sdoc and sdoc['status'].lower() == 'failure':
         return
     data = sdoc['kwargs']
     attrs = sdoc['attributes']
     # NOTE : This is different from the interface version which expect a
     # StreamDoc as input
-    img_norm = kwargs.get('img_norm', None)
-    plot_kws = kwargs.get('plot_kws', {})
+    img_norm = kwargs.pop('img_norm', None)
     # make import local so objects are not pickled
-    import matplotlib.pyplot as plt
     # TODO : move some of the plotting into a general object
     try:
         outfile = _make_fname_from_attrs(attrs, filetype="png")
@@ -68,9 +100,20 @@ def store_results_mpl(sdoc, **kwargs):
 
     print("writing to {}".format(outfile))
 
-    images = kwargs.get('images', [])
-    lines = kwargs.get('lines', [])
-    linecuts = kwargs.get('linecuts', [])
+    images = kwargs.pop('images', [])
+    lines = kwargs.pop('lines', [])
+    linecuts = kwargs.pop('linecuts', [])
+
+    # plotting the extra options
+    labelsize = kwargs.pop('labelsize', 20)
+    scale = kwargs.pop('scale', None)
+    xlabel = kwargs.pop('xlabel', None)
+    ylabel = kwargs.pop('ylabel', None)
+    title = kwargs.pop('title', None)
+    hideaxes = kwargs.pop('hideaxes', False)
+
+    # now the rest should be plot keywords
+    plot_kws = kwargs
 
     xlims = None
     ylims = None
@@ -87,85 +130,88 @@ def store_results_mpl(sdoc, **kwargs):
 
     # grab fig from queue. do some cleanup (if a fig
     # has not been released for some time, release it)
-    fig = plt.figure(0)  # int(np.random.random()*MAXFIGNUM))
-    fig.clf()
-    ax = fig.gca()
+    with FigureGetter() as fig:
+        # import matplotlib.pyplot as plt
+        # fig = plt.figure(fignum)  # int(np.random.random()*MAXFIGNUM))
 
-    # only plot either of the three
-    if len(images) > 0:
-        xlims, ylims = plot_images(images, data, img_norm, plot_kws)
-    elif len(lines) > 0:
-        xlims, ylims = plot_lines(lines, data, img_norm,
-                                  plot_kws, xlims=xlims, ylims=ylims)
-    elif len(linecuts) > 0:
-        plot_linecuts(linecuts, data, img_norm, plot_kws,
-                      xlims=xlims, ylims=ylims)
+        # only plot either of the three
+        if len(images) > 0:
+            xlims, ylims, fig = plot_images(images, data, img_norm, plot_kws,
+                                            fig=fig)
+        elif len(lines) > 0:
+            xlims, ylims, fig = plot_lines(lines, data, img_norm, plot_kws,
+                                           xlims=xlims, ylims=ylims, fig=fig)
+        elif len(linecuts) > 0:
+            plot_linecuts(linecuts, data, img_norm, plot_kws,
+                          xlims=xlims, ylims=ylims, fig=fig)
 
-    # plotting the extra options
-    if 'labelsize' in plot_kws:
-        labelsize = plot_kws['labelsize']
-    else:
-        labelsize = 20
+        if xlabel is not None:
+            # for ax in fig.axes:
+            # TODO : Allow labeling on multiple axes?
+            ax = fig.axes[0]
+            ax.set_xlabel(xlabel, size=labelsize)
 
-    if 'hideaxes' in plot_kws:
-        hideaxes = plot_kws['hideaxes']
-    else:
-        hideaxes = False
+        if ylabel is not None:
+            # for ax in fig.axes:
+            ax = fig.axes[0]
+            ax.set_ylabel(ylabel, size=labelsize)
 
-    if 'xlabel' in plot_kws:
-        xlabel = plot_kws['xlabel']
-        plt.xlabel(xlabel, size=labelsize)
+        if title is not None:
+            for ax in fig.axes:
+                ax.set_title(title)
 
-    if 'ylabel' in plot_kws:
-        ylabel = plot_kws['ylabel']
-        plt.xlabel(xlabel, size=labelsize)
-        plt.ylabel(ylabel, size=labelsize)
+        if scale is not None:
+            try:
+                if scale == 'loglog':
+                    for ax in fig.axes:
+                        ax.set_xscale('log')
+                        ax.set_yscale('log')
+                    correct_ylimits(ax)
+                elif scale == 'semilogx':
+                    for ax in fig.axes:
+                        ax.set_xscale('log')
+                elif scale == 'semilogy':
+                    for ax in fig.axes:
+                        ax.set_yscale('log')
+                    correct_ylimits(ax)
+                # else ignore
+            except Exception:
+                print("plotting_mpl : Error in setting " +
+                      "scales (array is likely zeros)")
 
-    if 'title' in plot_kws:
-        title = plot_kws['title']
-        plt.title(title)
+        if hideaxes:
+            for ax in fig.axes:
+                ax.get_xaxis().set_visible(False)
+                ax.get_yaxis().set_visible(False)
 
-    if 'scale' in plot_kws:
+        if xlims is not None:
+            for ax in fig.axes:
+                ax.set_xlim(*xlims)
+        if ylims is not None:
+            for ax in fig.axes:
+                ax.set_ylim(*ylims)
+
+        # save
         try:
-            scale = plot_kws['scale']
-            if scale == 'loglog':
-                ax.set_xscale('log')
-                ax.set_yscale('log')
-                correct_ylimits(ax)
-            elif scale == 'semilogx':
-                ax.set_xscale('log')
-            elif scale == 'semilogy':
-                ax.set_yscale('log')
-                correct_ylimits(ax)
-            # else ignore
+            fig.savefig(outfile)
         except Exception:
-            print("plotting_mpl : Error in setting " +
-                  "scales (array is likely zeros)")
-
-    if hideaxes:
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-
-    if xlims is not None:
-        plt.xlim(*xlims)
-    if ylims is not None:
-        plt.ylim(*ylims)
-
-    # save
-    try:
-        fig.savefig(outfile)
-    except Exception:
-        print("Error in fig saving, ignoring... file : {}".format(outfile))
-    # make sure no mem leaks, just close
-    # plt.close(fig)
+            print("Error in fig saving, ignoring... file : {}".format(outfile))
+            raise
+        # make sure no mem leaks, just close
+        # figuregetter takes care of closing
+        # plt.close(fig)
 
 
 def plot_linecuts(linecuts_keys, data, img_norm, plot_kws, xlims=None,
-                  ylims=None):
+                  ylims=None, fig=None):
     ''' assume that each linecut is a 2d image meant to be plotted as 1d
         linecuts can be tuples or one key. if tuple, first index assumed x-axis
     '''
     import matplotlib.pyplot as plt
+    if fig is None:
+        print("Warning, fignum is None, choosing random")
+        fig = plt.figure(str(uuid4()))
+
     # assumes plot has been cleared already
     # and fig selected
     for linecuts_key in linecuts_keys:
@@ -199,21 +245,29 @@ def plot_linecuts(linecuts_keys, data, img_norm, plot_kws, xlims=None,
         for i, linecut in enumerate(y):
             # only plot if there is data
             if x is not None and linecut is not None:
-                ax = plt.subplot(gs[i, :])
-                plt.sca(ax)
+                ax = fig.add_subplot(gs[i, :])
                 # y should be 2d image
                 if ylabels is not None:
                     tmplabel = "value : {}".format(ylabels[i])
                 else:
                     tmplabel = "value : {}".format(i)
-                plt.plot(x, linecut, label=tmplabel, **plot_kws)
-                plt.legend()
+                ax.plot(x, linecut, label=tmplabel, **plot_kws)
+                ax.legend()
 
-    return xlims, ylims
+    return xlims, ylims, fig
 
 
-def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None):
+def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None,
+               fig=None):
     import matplotlib.pyplot as plt
+    if fig is None:
+        print("Warning, axes not passed. choosing random")
+        fig = plt.figure(str(uuid4()))
+
+    if len(fig.axes) == 0:
+        # forces getting a new axis
+        fig.gca()
+
     for line in lines:
         # reset the per data plot opts (only set if line is a dict)
         opts = {}
@@ -261,7 +315,8 @@ def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None):
         if x is not None and y is not None:
             new_opts = opts.copy()
             new_opts.update(plot_kws)
-            plt.plot(x, y, **new_opts)
+            for ax in fig.axes:
+                ax.plot(x, y, **new_opts)
             if xlims is None:
                 xlims = [np.nanmin(x), np.nanmax(x)]
             else:
@@ -273,11 +328,20 @@ def plot_lines(lines, data, img_norm, plot_kws, xlims=None, ylims=None):
                 ylims[0] = np.nanmin([np.nanmin(y), ylims[0]])
                 ylims[1] = np.nanmax([np.nanmax(y), ylims[1]])
 
-    return xlims, ylims
+    return xlims, ylims, fig
 
 
-def plot_images(images, data, img_norm, plot_kws, xlims=None, ylims=None):
+def plot_images(images, data, img_norm, plot_kws, xlims=None, ylims=None,
+                fig=None):
     import matplotlib.pyplot as plt
+    if fig is None:
+        print("Warning, axes not passed. choosing random")
+        fig = plt.figure(str(uuid4()))
+
+    if len(fig.axes) == 0:
+        # forces getting a new axis
+        fig.gca()
+
     # print("plotting images with keys {}".format(images))
     for key in images:
         # print("found image with key {}".format(key))
@@ -296,21 +360,27 @@ def plot_images(images, data, img_norm, plot_kws, xlims=None, ylims=None):
                 plot_kws['vmax'] = vmax
             if image.ndim == 2:
                 if isinstance(image, np.ndarray):
-                    plt.imshow(image, **plot_kws)
-                    plt.colorbar()
+                    im = fig.axes[0].imshow(image, **plot_kws)
+                    fig.colorbar(im)
+                    # TODO : verify this is clean with threads?
+                    # plt.colorbar(cax=ax)
             elif image.ndim == 3:
+                # make the fig again but with subplots
                 nimgs = image.shape[0]
                 dim = int(np.ceil(np.sqrt(nimgs)))
-                fig, axes = plt.subplots(dim, dim)
-                axes = np.array(axes).ravel()
+                # fig, axes = plt.subplots(dim, dim)
+                # trying to make this thread safe
+                gs = plt.GridSpec(dim, dim)
+                gs.update(hspace=0.0, wspace=0.0)
                 for j in range(len(image)):
                     if isinstance(image, np.ndarray):
-                        axes[j].imshow(image[j], **plot_kws)
+                        ax = fig.add_subplot(gs[j//dim, j % dim])
+                        ax.imshow(image[j], **plot_kws)
         else:
             print("Warning : key {} not found ".format(key) +
                   "in data for plotting(mpl)")
 
-    return xlims, ylims
+    return xlims, ylims, fig
 
 
 def correct_ylimits(ax):

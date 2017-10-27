@@ -3,8 +3,9 @@
 # test a XS run
 import time
 import numpy as np
-# import matplotlib
-# matplotlib.use("Agg")  # noqa
+import matplotlib
+matplotlib.use("Agg")  # noqa
+
 
 import matplotlib.pyplot as plt
 # plt.ion()  # noqa
@@ -29,7 +30,7 @@ from SciStreams.detectors.mask_generators import generate_mask
 # from SciStreams.core.StreamDoc import to_event_stream
 # import SciStreams.core.StreamDoc as sd
 
-# from SciStreams.globals import client
+from SciStreams.globals import client
 
 # the differen streams libs
 import streamz.core as sc
@@ -66,6 +67,28 @@ from SciStreams.streams.XS_Streams import make_calibration
 
 # from SciStreams.callbacks.live.core import LivePlot_Custom
 
+# Limit pressure by stopping submitting jobs after a max has been reached
+MAX_PROCESSING = 10000
+
+
+def wait_on_client():
+    ''' Wait on client to limit pressure.
+        Depends on globals client and MAX_PROCESSING.'''
+    while True:
+        if not hasattr(client, 'processing'):
+            return True
+        free = False
+        for key, val in client.processing().items():
+            if len(val) < MAX_PROCESSING:
+                free = True
+        if free:
+            break
+        else:
+            print("waiting on client (60s). Currently backed up...")
+            time.sleep(60)
+    return True
+
+
 # We need to normalize metadata, which is used for saving, somewhere
 # in our case, it's simpler to do this in the beginning
 sin = sc.Stream(stream_name="Input")
@@ -79,13 +102,13 @@ sin_primary, sout_primary, serr_primary = PrimaryFilteringStream()
 sin.connect(sin_primary)
 
 # sink to list for debugging
-L_primary = sout_primary.sink_to_list()
+# L_primary = sout_primary.sink_to_list()
 
 
 # get the attributes, clean them up and return
 # new sout_primary
 sin_attributes, sout_attributes = AttributeNormalizingStream()
-L_attributes = sout_attributes.sink_to_list()
+# L_attributes = sout_attributes.sink_to_list()
 sout_primary.connect(sin_attributes)
 
 sout_primary = scs.merge(sc.zip(sout_primary,
@@ -93,7 +116,7 @@ sout_primary = scs.merge(sc.zip(sout_primary,
 
 sin_calib, sout_calib = CalibrationStream()
 sout_attributes.connect(sin_calib)
-L_calib = sout_calib.sink_to_list()
+# L_calib = sout_calib.sink_to_list()
 
 # sout_calib2 = sout_calib
 # sout_calib = sc.Stream()
@@ -101,18 +124,18 @@ L_calib = sout_calib.sink_to_list()
 # the PrimaryFilteringStream already split the detectors
 # s_image = sc.Stream()
 s_image = scs.add_attributes(sout_primary, stream_name="image")
-L_image = s_image.sink_to_list()
+# L_image = s_image.sink_to_list()
 
 
 # TODO : fix and remove this is for pilatus300 should be in mask gen
 s_mask = scs.map(generate_mask, sout_attributes)
-L_mask = s_mask.sink_to_list()
+# L_mask = s_mask.sink_to_list()
 
 
 # #s_zipped =
 # #L_zipped= s_zipped.sink_to_list()
 s_imgmaskcalib = scs.merge(sc.zip(s_image, sout_calib, s_mask))
-L_imgmaskcalib = s_imgmaskcalib.sink_to_list()
+# L_imgmaskcalib = s_imgmaskcalib.sink_to_list()
 
 
 # some small streams
@@ -146,7 +169,7 @@ s_stitch = scs.map(get_stitch, sout_attributes)
 # circular average
 sin_circavg, sout_circavg = CircularAverageStream()
 s_imgmaskcalib.connect(sin_circavg)
-L_circavg = sout_circavg.sink_to_list()
+# L_circavg = sout_circavg.sink_to_list()
 
 # peak finding
 sin_peakfind, sout_peakfind = PeakFindingStream()
@@ -156,7 +179,7 @@ sout_circavg.connect(sin_peakfind)
 sout_sqpeaks = scs.merge(sc.zip(sout_circavg, scs.select(sout_peakfind,
                                 'inds_peak', 'peaksx', 'peaksy')))
 
-L_sqpeaks = sout_sqpeaks.sink_to_list()
+# L_sqpeaks = sout_sqpeaks.sink_to_list()
 
 
 def normexposure(image, exposure_time):
@@ -177,7 +200,7 @@ sin_stitched, sout_stitched = ImageStitchingStream(return_intermediate=True)
 # NOTE : disconnected image stitching
 s_imgmaskoriginstitch.connect(sin_stitched)
 
-L_stitched = sout_stitched.sink_to_list()
+# L_stitched = sout_stitched.sink_to_list()
 
 
 def get_shape(**kwargs):
@@ -209,7 +232,7 @@ def maskimg(image, mask):
 
 
 s_maskedimg = scs.map(maskimg, scs.select(s_imgmaskcalib, 'image', 'mask'))
-L_maskedimg = s_maskedimg.sink_to_list()
+# L_maskedimg = s_maskedimg.sink_to_list()
 
 # make qphiavg image
 #
@@ -221,7 +244,7 @@ s_img_mask_origin_qmap = scs.merge(sc.zip(s_img_mask_origin, s_qmap))
 sin_qphiavg, sout_qphiavg = QPHIMapStream()
 s_img_mask_origin_qmap.connect(sin_qphiavg)
 
-L_qphiavg = sout_qphiavg.sink_to_list()
+# L_qphiavg = sout_qphiavg.sink_to_list()
 
 sout_sqphipeaks = scs.merge(sc.zip(sout_qphiavg, scs.select(sout_peakfind,
                                                             'inds_peak',
@@ -230,11 +253,11 @@ sout_sqphipeaks = scs.merge(sc.zip(sout_qphiavg, scs.select(sout_peakfind,
 sout_sqphipeaks = scs.select(sout_sqphipeaks, ('sqphi', 'image'), ('qs', 'y'),
                              ('phis', 'x'), ('peaksx', 'vals'))
 
-L_sqphipeaks = sout_sqphipeaks.sink_to_list()
+# L_sqphipeaks = sout_sqphipeaks.sink_to_list()
 
 sin_linecuts, sout_linecuts = LineCutStream(axis=0)
 sout_sqphipeaks.connect(sin_linecuts)
-L_linecuts = sout_linecuts.sink_to_list()
+# L_linecuts = sout_linecuts.sink_to_list()
 
 
 sin_thumb, sout_thumb = ThumbStream(blur=2, crop=None, resize=10)
@@ -244,7 +267,7 @@ sin_angularcorr, sout_angularcorr = AngularCorrelatorStream(bins=(800, 360))
 s_img_mask_origin_qmap.connect(sin_angularcorr)
 
 
-L_angularcorr = sout_angularcorr.sink_to_list()
+# L_angularcorr = sout_angularcorr.sink_to_list()
 
 sout_angularcorrpeaks = scs.merge(sc.zip(sout_angularcorr,
                                          scs.select(sout_peakfind,
@@ -260,13 +283,13 @@ sout_angularcorrpeaks = scs.select(sout_angularcorrpeaks,
 sin_linecuts_angularcorr, sout_linecuts_angularcorr = \
     LineCutStream(axis=0, name="angularcorr")
 sout_angularcorrpeaks.connect(sin_linecuts_angularcorr)
-L_linecuts_angularcorr = sout_linecuts_angularcorr.sink_to_list()
+# L_linecuts_angularcorr = sout_linecuts_angularcorr.sink_to_list()
 
 
 sin_tag, sout_tag = ImageTaggingStream()
 s_maskedimg.connect(sin_tag)
 # s_maskedimg.sink(lambda x : print("masked img : {}".format(x)))
-L_tag = sout_tag.sink_to_list()
+# L_tag = sout_tag.sink_to_list()
 
 
 # custom written Stream
@@ -285,7 +308,7 @@ sin_gisaxs = sc.Stream()
 # get the line cuts
 sout_gisaxs_x = scs.map(collapse, sin_gisaxs, axis=1)
 sout_gisaxs_x = scs.add_attributes(sout_gisaxs_x, stream_name="gisaxs-linex")
-L_gisaxs_x = sout_gisaxs_x.sink_to_list()
+# L_gisaxs_x = sout_gisaxs_x.sink_to_list()
 
 sout_gisaxs_y = scs.map(collapse, sin_gisaxs, axis=0)
 sout_gisaxs_y = scs.add_attributes(sout_gisaxs_y, stream_name="gisaxs-liney")
@@ -338,11 +361,6 @@ if True:
         event_stream_sq.sink(scs.star(liveplot_sq))
         event_stream_maskedimg.sink(scs.star(liveimage_maskedimg))
 
-    def submit_stream(f, docpair):
-        name, doctuple = docpair
-        parent_uid, self_uid, doc = doctuple
-        return f(name, doctuple)
-
     # output to storing callbacks
 
     plot_storage_img = scs.star(SciStreamCallback(store_results_mpl,
@@ -351,11 +369,18 @@ if True:
     plot_storage_stitch = scs.star(SciStreamCallback(store_results_mpl,
                                                      images=['image'],
                                                      img_norm=normalizer))
+    xlbl = "$q,(\AA^{-1})$"
+    ylbl = "I(q)"
     plot_storage_sq = scs.star(SciStreamCallback(store_results_mpl,
-                                                 lines=[('sqx', 'sqy')]))
+                                                 lines=[('sqx', 'sqy')],
+                                                 scale='loglog', xlabel=xlbl,
+                                                 ylabel=ylbl))
     plot_storage_sqphi = scs.star(SciStreamCallback(store_results_mpl,
                                                     images=['sqphi'],
-                                                    img_norm=normalizer))
+                                                    img_norm=normalizer,
+                                                    aspect='auto',
+                                                    xlabel="$\phi\,$(radians)",
+                                                    ylabel="$q\,$(pixel)"))
     plot_storage_peaks = scs.star(SciStreamCallback(store_results_mpl,
                                                     lines=[dict(x='sqx',
                                                                 y='sqy'),
@@ -363,7 +388,8 @@ if True:
                                                                 y='peaksy',
                                                                 marker='o',
                                                                 color='r',
-                                                                linewidth=0)]))
+                                                                linewidth=0)],
+                                                    xlabel=xlbl, ylabel=ylbl))
     plot_storage_linecuts = \
         scs.star(SciStreamCallback(store_results_mpl,
                                    linecuts=[('linecuts_domain',  # x
@@ -375,14 +401,18 @@ if True:
     plot_storage_angularcorr = \
         scs.star(SciStreamCallback(store_results_mpl,
                                    images=['rdeltaphiavg_n'],
-                                   img_norm=normalizer, plot_kws=dict(vmin=0,
-                                                                      vmax=1)))
+                                   img_norm=normalizer, vmin=0, vmax=1,
+                                   xlabel="$\phi\,(radians)$",
+                                   ylabel="q\,(pixel)",
+                                   aspect='auto'))
 
     plot_storage_linecuts_angularcorr = \
         scs.star(SciStreamCallback(store_results_mpl,
                                    linecuts=[('linecuts_domain',  # x
                                               'linecuts',  # y
-                                              'linecuts_vals')]))  # value
+                                              'linecuts_vals')],
+                                   xlabel="$\Delta\phi$\,(radians)$",
+                                   ylabel="$c(\Delta\phi)$"))  # value
 
     plot_storage_gisaxs = scs.star(SciStreamCallback(store_results_mpl,
                                                      lines=['linecut']))
@@ -434,6 +464,7 @@ class BufferStream:
 
     def __call__(self, ndpair):
         name, doc = ndpair
+        parent_uid, self_uid = None, None
         if name == 'start':
             parent_uid, self_uid = None, doc['uid']
             # add the start that came through
@@ -525,15 +556,11 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
                                 'run_start': current_start})
     if uids is not None:
         print("Starting a run only on selected uids")
-        # REMOVE ME
-        # uids = ['3e5742d3-4e11-43d0-abe8-af6e44c26bf2']
-        # REMOVE ME
         hdrs = cmsdb[uids]
         loop_forever = False
 
     while True:
-        # UNCOMMENT ME
-        # hdrs = cmsdb(**kwargs)
+        hdrs = cmsdb(**kwargs)
         stream = stream_gen(hdrs)
 
         # stream converter
@@ -546,6 +573,8 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
         last_start = None
         while True:
             try:
+                # add a waiting loop
+                wait_on_client()
                 nds = stream_buffer(next(stream))
                 if nds[0] == 'start':
                     last_start = nds[1][2]
@@ -572,6 +601,7 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
         msg += "{} sec for more data...".format(poll_interval)
         print(msg)
         time.sleep(poll_interval)
+
 
 def start_callback():
     from bluesky.callbacks.zmq import RemoteDispatcher
