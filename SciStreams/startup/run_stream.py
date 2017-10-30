@@ -550,7 +550,9 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
                     if nds[0] == 'start':
                         current_start = nds[1]['uid']
                     yield nds
-            except FileNotFoundError:
+            except Exception:
+                # just stop and ignore this full event for any exception
+                # (including database read errors)
                 # don't yield event, just give a stop
                 yield ('stop', {'uid': str(uuid4()),
                                 'run_start': current_start})
