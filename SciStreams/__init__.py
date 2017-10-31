@@ -7,4 +7,5 @@ try:
     import matplotlib
     matplotlib.use("Agg")
 except ImportError:
+    print("Import error on matplotlib")
     pass
