@@ -1,10 +1,10 @@
 # this is the distributed version. It assumes that the StreamDocs are handled
 # as Futures
 # test a XS run
-import time
-import numpy as np
 import matplotlib
 matplotlib.use("Agg")  # noqa
+import time
+import numpy as np
 
 
 import matplotlib.pyplot as plt
@@ -92,6 +92,7 @@ def wait_on_client():
 # We need to normalize metadata, which is used for saving, somewhere
 # in our case, it's simpler to do this in the beginning
 sin = sc.Stream(stream_name="Input")
+# tmp123 = sin.map(print)
 
 stream_input = SciStreamCallback(sin.emit, remote=False)
 
@@ -264,7 +265,7 @@ sin_thumb, sout_thumb = ThumbStream(blur=2, crop=None, resize=10)
 s_image.connect(sin_thumb)
 
 sin_angularcorr, sout_angularcorr = AngularCorrelatorStream(bins=(800, 360))
-s_img_mask_origin_qmap.connect(sin_angularcorr)
+#s_img_mask_origin_qmap.connect(sin_angularcorr)
 
 
 # L_angularcorr = sout_angularcorr.sink_to_list()
@@ -282,7 +283,7 @@ sout_angularcorrpeaks = scs.select(sout_angularcorrpeaks,
 
 sin_linecuts_angularcorr, sout_linecuts_angularcorr = \
     LineCutStream(axis=0, name="angularcorr")
-sout_angularcorrpeaks.connect(sin_linecuts_angularcorr)
+#sout_angularcorrpeaks.connect(sin_linecuts_angularcorr)
 # L_linecuts_angularcorr = sout_linecuts_angularcorr.sink_to_list()
 
 
@@ -422,32 +423,47 @@ if True:
     sc.sink(event_stream_sq, plot_storage_sq)
     sc.sink(event_stream_sqphi, plot_storage_sqphi)
     sc.sink(event_stream_peaks, plot_storage_peaks)
-    sc.sink(event_stream_peaks,
-            scs.star(SciStreamCallback(store_results_hdf5)))
-    sc.sink(event_stream_linecuts, plot_storage_linecuts)
-    sc.sink(event_stream_thumb, plot_storage_thumb)
-    sc.sink(event_stream_angularcorr, plot_storage_angularcorr)
-    sc.sink(event_stream_linecuts_angularcorr,
-            plot_storage_linecuts_angularcorr)
-    sc.sink(event_stream_gisaxs_x, plot_storage_gisaxs)
-    sc.sink(event_stream_gisaxs_y, plot_storage_gisaxs)
+    #sc.sink(event_stream_peaks,
+            #scs.star(SciStreamCallback(store_results_hdf5)))
+    #sc.sink(event_stream_linecuts, plot_storage_linecuts)
+    #sc.sink(event_stream_thumb, plot_storage_thumb)
+    #sc.sink(event_stream_angularcorr, plot_storage_angularcorr)
+    #sc.sink(event_stream_linecuts_angularcorr,
+            #plot_storage_linecuts_angularcorr)
+    #sc.sink(event_stream_gisaxs_x, plot_storage_gisaxs)
+    #sc.sink(event_stream_gisaxs_y, plot_storage_gisaxs)
 
     # save the peaks info
-    sc.sink(event_stream_peaks,
-            scs.star(SciStreamCallback(store_results_hdf5)))
+    #sc.sink(event_stream_peaks,
+            #scs.star(SciStreamCallback(store_results_hdf5)))
 
-    sc.sink(event_stream_img,
-            scs.star(SciStreamCallback(store_results_hdf5)))
+    #sc.sink(event_stream_img,
+            #scs.star(SciStreamCallback(store_results_hdf5)))
 
-    sc.sink(event_stream_tag,
-            scs.star(SciStreamCallback(store_results_xml)))
+    #sc.sink(event_stream_tag,
+    #       scs.star(SciStreamCallback(store_results_xml)))
+    #sc.sink(event_stream_tag, print)
+
     sc.sink(event_stream_err_primary,
             scs.star(SciStreamCallback(store_results_xml,
                                        stream_name="error")))
-    sc.sink(event_stream_tag,
-            scs.star(SciStreamCallback(store_results_hdf5)))
+    #sc.sink(event_stream_tag,
+            #scs.star(SciStreamCallback(store_results_hdf5)))
     # scs.map(print, event_stream_img)
 
+def fill_events(doc, descriptor, db=None):
+    ''' fill events in place'''
+    # the subset of self.fields that are (1) in the doc and (2) unfilled
+    # print("Filled events")
+    # print(doc['filled'])
+    if 'filled' in doc:
+        non_filled = [key for key, val in doc['filled'].items() if not val]
+        # print("non filled : {}".format(non_filled))
+    else:
+        non_filled = []
+
+    if len(non_filled) > 0:
+        db.fill_event(event=doc, inplace=True)
 
 class BufferStream:
     ''' class mimicks callbacks, upgrades stream from a 'start', doc instance
@@ -458,9 +474,10 @@ class BufferStream:
 
         This unfortunately can't be distributed.
     '''
-    def __init__(self):
+    def __init__(self, db=None):
         self.start_docs = dict()
         self.descriptor_docs = dict()
+        self.db = db
 
     def __call__(self, ndpair):
         name, doc = ndpair
@@ -475,6 +492,11 @@ class BufferStream:
             self.descriptor_docs[self_uid] = parent_uid
         elif name == 'event':
             parent_uid, self_uid = doc['descriptor'], doc['uid']
+            # fill events if not filled
+            descriptor = self.descriptor_docs[doc['descriptor']]
+            # print("before filled events : {}".format(doc))
+            fill_events(doc, descriptor, db=self.db)
+            # print("filled events : {}".format(doc))
         elif name == 'stop':
             # if the stop is strange, just use it to clear everything
             if 'run_start' not in doc or 'uid' not in doc:
@@ -506,7 +528,7 @@ class BufferStream:
 
 
 def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
-              poll_interval=60):
+              poll_interval=60, maxrun=None):
     ''' Start running the streaming pipeline.
 
         start_time : str
@@ -524,6 +546,11 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
         poll_interval : int, optional
             poll interval (if loop is True)
             This is the interval to wait between checking for new data
+
+        maxrun : int, optional
+            DO NOT USE (for debugging only)
+            specify max number of documents to run
+            ensures that pipeline stops after finite time
     '''
     # patchy way to get stream for now, need to fix later
     from SciStreams.interfaces.databroker.databases import databases
@@ -560,6 +587,10 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
         hdrs = cmsdb[uids]
         loop_forever = False
 
+    if maxrun is not None:
+        cts = 0
+    else:
+        cts = None
     while True:
         hdrs = cmsdb(**kwargs)
         stream = stream_gen(hdrs)
@@ -574,6 +605,8 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
         last_start = None
         while True:
             try:
+                if cts is not None:
+                    cts +=1
                 # add a waiting loop
                 wait_on_client()
                 nds = stream_buffer(next(stream))
@@ -582,15 +615,21 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
                 print("iterating : {}".format(nds[0]))
                 stream_input(*nds)
                 plt.pause(.1)
+                if cts is not None:
+                    if cts > maxrun:
+                        break
             except StopIteration:
                 break
             except FileNotFoundError:
                 continue
-        if not loop_forever:
+        if not loop_forever or maxrun is not None:
             return
 
         # get the latest time, add 1 second to not overlap it
-        last_time = last_start['time']
+        if last_start is not None:
+            last_time = last_start['time']
+        else:
+            last_time = time.time()
         t1 = time.localtime(last_time)
         start_time = time.strftime("%Y-%m-%d %H:%M:%S", t1)
         kwargs['start_time'] = start_time
@@ -607,11 +646,21 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
 def start_callback():
     from bluesky.callbacks.zmq import RemoteDispatcher
     from SciStreams.config import config as configd
-    stream_buffer = BufferStream()
+
+    from SciStreams.interfaces.databroker.databases import databases
+    cmsdb = databases['cms:data']
+    # db needed to fill events
+    stream_buffer = BufferStream(db=cmsdb)
+    def callback(*nds):
+        nds = stream_buffer(nds)
+        stream_input(*nds)
     # get the dispatcher port for bluesky zeromq process
     ipstring = "localhost:{:4d}".format(configd['bluesky']['port'])
     d = RemoteDispatcher(ipstring)
-    d.subscribe(stream_buffer)
+    d.subscribe(callback)
+    #d.subscribe(print)
 
     # when done subscribing things and ready to use:
     d.start()  # runs event loop forever
+
+#sin.visualize()

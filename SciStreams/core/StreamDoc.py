@@ -23,8 +23,17 @@ import numpy as np
 # from ..config import default_timeout as DEFAULT_TIMEOUT
 
 from ..globals import client
-from ..config import debug
+from ..config import debug, modules
 
+# tau stuff, ignore if not here
+run_tau = modules.get('tau', {}).get('run', False)
+run_tau = False
+if run_tau:
+    import pytau
+else:
+    print("not runing tau")
+
+from ..globals import profile_dict
 
 # TODO : Make sure each element is Future aware
 
@@ -863,7 +872,30 @@ def parse_streamdoc(name, filter=False):
                 # print(kwargs_future)
                 # print(kwargs_future.result())
                 # print(kwargs_future)
+
+                # set profile id to be function name for now
+                # TODO make this decorator
+                if run_tau:
+                    profile_id = fnew.__name__
+                    profiler = profile_dict.get(profile_id, None)
+                    if profiler is None:
+                        print("Adding a new profiler")
+                        # add a new profiler
+                        profiler = pytau.profileTimer(profile_id)
+                        profile_dict[profile_id] = profiler
+
+                    print("begin tau profiling")
+                    print("function name : {}".format(fnew.__name__))
+                    pytau.start(profiler)
+
                 result = fnew(args, kwargs_future)
+
+                # TODO make this decorator (with previous TODO)
+                if run_tau:
+                    pytau.stop(profiler)
+                    print("end tau profiling")
+
+
                 # print(result)
                 # print(result.result())
                 # print("args : {}".format(args))

@@ -39,6 +39,7 @@ if __name__ == '__main__':
     parser.add_argument('-t0', '--start_time', dest='start_time', type=str)
     parser.add_argument('--stop_time', dest='stop_time', type=str)
     parser.add_argument('--test', dest='test', type=str)
+    parser.add_argument('--maxrun', dest='maxrun', type=str)
     args = parser.parse_args()
     if isinstance(args.test, str) and args.test.lower() == 'true':
         print("test mode, testing one uid")
@@ -60,4 +61,8 @@ if __name__ == '__main__':
         print("Searching for results " +
               "from {} onwards...".format(time.ctime(start_time)))
         # run pipeline
-        run_stream.start_run(start_time, stop_time=stop_time)
+        if hasattr(args, 'maxrun'):
+            maxrun = int(args.maxrun)
+        else:
+            maxrun = None
+        run_stream.start_run(start_time, stop_time=stop_time, maxrun=maxrun)
