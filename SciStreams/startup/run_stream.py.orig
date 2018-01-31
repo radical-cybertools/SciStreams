@@ -265,7 +265,7 @@ sin_thumb, sout_thumb = ThumbStream(blur=2, crop=None, resize=10)
 s_image.connect(sin_thumb)
 
 sin_angularcorr, sout_angularcorr = AngularCorrelatorStream(bins=(800, 360))
-#s_img_mask_origin_qmap.connect(sin_angularcorr)
+s_img_mask_origin_qmap.connect(sin_angularcorr)
 
 
 # L_angularcorr = sout_angularcorr.sink_to_list()
@@ -283,7 +283,7 @@ sout_angularcorrpeaks = scs.select(sout_angularcorrpeaks,
 
 sin_linecuts_angularcorr, sout_linecuts_angularcorr = \
     LineCutStream(axis=0, name="angularcorr")
-#sout_angularcorrpeaks.connect(sin_linecuts_angularcorr)
+sout_angularcorrpeaks.connect(sin_linecuts_angularcorr)
 # L_linecuts_angularcorr = sout_linecuts_angularcorr.sink_to_list()
 
 
@@ -318,25 +318,12 @@ sin_imgmask = scs.merge(s_image.zip(s_mask))
 sin_imgmask.connect(sin_gisaxs)
 
 
-def get_results(sdoc):
-
-    # should be moved to a general .gather() stream node method
-    if hasattr(sdoc["args"], "result"):
-        print("gathering result back to cluster")
-        sdoc['args'] = sdoc['args'].result()
-
-    if hasattr(sdoc["kwargs"], "result"):
-        print("gathering result back to cluster")
-        sdoc['kwargs'] = sdoc['kwargs'].result()
-
-
 # sample on how to plot to callback and file
 # (must make it an event stream again first)
 # set to True to enable plotting (opens many windows)
 liveplots = False
 # NOTE : disabled sinking
 if True:
-
     # make event streams for some sinks
     event_stream_err_primary = scs.to_event_stream(serr_primary)
     event_stream_img = scs.to_event_stream(s_image)
@@ -377,31 +364,24 @@ if True:
 
     # output to storing callbacks
 
-    # whether plots should be done remote or not
-    remote_plots=True
-
     plot_storage_img = scs.star(SciStreamCallback(store_results_mpl,
                                                   images=['image'],
-                                                  img_norm=normalizer,
-                                                  remote=remote_plots))
+                                                  img_norm=normalizer))
     plot_storage_stitch = scs.star(SciStreamCallback(store_results_mpl,
                                                      images=['image'],
-                                                     img_norm=normalizer,
-                                                     remote=remote_plots))
+                                                     img_norm=normalizer))
     xlbl = "$q,(\AA^{-1})$"
     ylbl = "I(q)"
     plot_storage_sq = scs.star(SciStreamCallback(store_results_mpl,
                                                  lines=[('sqx', 'sqy')],
                                                  scale='loglog', xlabel=xlbl,
-                                                 ylabel=ylbl,
-                                                 remote=remote_plots))
+                                                 ylabel=ylbl))
     plot_storage_sqphi = scs.star(SciStreamCallback(store_results_mpl,
                                                     images=['sqphi'],
                                                     img_norm=normalizer,
                                                     aspect='auto',
                                                     xlabel="$\phi\,$(radians)",
-                                                    ylabel="$q\,$(pixel)",
-                                                    remote=remote_plots))
+                                                    ylabel="$q\,$(pixel)"))
     plot_storage_peaks = scs.star(SciStreamCallback(store_results_mpl,
                                                     lines=[dict(x='sqx',
                                                                 y='sqy'),
@@ -410,26 +390,22 @@ if True:
                                                                 marker='o',
                                                                 color='r',
                                                                 linewidth=0)],
-                                                    xlabel=xlbl, ylabel=ylbl,
-                                                    remote=remote_plots))
+                                                    xlabel=xlbl, ylabel=ylbl))
     plot_storage_linecuts = \
         scs.star(SciStreamCallback(store_results_mpl,
                                    linecuts=[('linecuts_domain',  # x
                                               'linecuts',  # y
-                                              'linecuts_vals')],
-                                   remote=remote_plots))  # val
+                                              'linecuts_vals')]))  # val
     plot_storage_thumb = scs.star(SciStreamCallback(store_results_mpl,
                                                     images=['thumb'],
-                                                    img_norm=normalizer,
-                                                    remote=remote_plots))
+                                                    img_norm=normalizer))
     plot_storage_angularcorr = \
         scs.star(SciStreamCallback(store_results_mpl,
                                    images=['rdeltaphiavg_n'],
                                    img_norm=normalizer, vmin=0, vmax=1,
                                    xlabel="$\phi\,(radians)$",
                                    ylabel="q\,(pixel)",
-                                   aspect='auto',
-                                   remote=remote_plots))
+                                   aspect='auto'))
 
     plot_storage_linecuts_angularcorr = \
         scs.star(SciStreamCallback(store_results_mpl,
@@ -437,12 +413,10 @@ if True:
                                               'linecuts',  # y
                                               'linecuts_vals')],
                                    xlabel="$\Delta\phi$\,(radians)$",
-                                   ylabel="$c(\Delta\phi)$",
-                                   remote=remote_plots))  # value
+                                   ylabel="$c(\Delta\phi)$"))  # value
 
     plot_storage_gisaxs = scs.star(SciStreamCallback(store_results_mpl,
-                                                     lines=['linecut'],
-                                                     remote=remote_plots))
+                                                     lines=['linecut']))
 
     sc.sink(event_stream_img, plot_storage_img)
     sc.sink(event_stream_stitched, plot_storage_stitch)
@@ -451,13 +425,13 @@ if True:
     sc.sink(event_stream_peaks, plot_storage_peaks)
     #sc.sink(event_stream_peaks,
             #scs.star(SciStreamCallback(store_results_hdf5)))
-    #sc.sink(event_stream_linecuts, plot_storage_linecuts)
-    #sc.sink(event_stream_thumb, plot_storage_thumb)
-    #sc.sink(event_stream_angularcorr, plot_storage_angularcorr)
-    #sc.sink(event_stream_linecuts_angularcorr,
-            #plot_storage_linecuts_angularcorr)
-    #sc.sink(event_stream_gisaxs_x, plot_storage_gisaxs)
-    #sc.sink(event_stream_gisaxs_y, plot_storage_gisaxs)
+    sc.sink(event_stream_linecuts, plot_storage_linecuts)
+    sc.sink(event_stream_thumb, plot_storage_thumb)
+    sc.sink(event_stream_angularcorr, plot_storage_angularcorr)
+    sc.sink(event_stream_linecuts_angularcorr,
+            plot_storage_linecuts_angularcorr)
+    sc.sink(event_stream_gisaxs_x, plot_storage_gisaxs)
+    sc.sink(event_stream_gisaxs_y, plot_storage_gisaxs)
 
     # save the peaks info
     #sc.sink(event_stream_peaks,
@@ -466,10 +440,8 @@ if True:
     #sc.sink(event_stream_img,
             #scs.star(SciStreamCallback(store_results_hdf5)))
 
-    #sc.sink(event_stream_tag,
-    #       scs.star(SciStreamCallback(store_results_xml)))
-    #sc.sink(event_stream_tag, print)
-
+    sc.sink(event_stream_tag,
+            scs.star(SciStreamCallback(store_results_xml)))
     sc.sink(event_stream_err_primary,
             scs.star(SciStreamCallback(store_results_xml,
                                        stream_name="error")))
