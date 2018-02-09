@@ -40,6 +40,7 @@ if __name__ == '__main__':
     parser.add_argument('--stop_time', dest='stop_time', type=str)
     parser.add_argument('--test', dest='test', type=str)
     parser.add_argument('--maxrun', dest='maxrun', type=str)
+    parser.add_argument('--queue_monitor_filename', dest='queue_monitor_filename', type=str)
     args = parser.parse_args()
     if isinstance(args.test, str) and args.test.lower() == 'true':
         print("test mode, testing one uid")
@@ -62,7 +63,16 @@ if __name__ == '__main__':
               "from {} onwards...".format(time.ctime(start_time)))
         # run pipeline
         if hasattr(args, 'maxrun'):
-            maxrun = int(args.maxrun)
+            maxrun = args.maxrun
         else:
             maxrun = None
-        run_stream.start_run(start_time, stop_time=stop_time, maxrun=maxrun)
+        if maxrun is not None:
+            maxrun = int(maxrun)
+
+        if hasattr(args, 'queue_monitor_filename'):
+            queue_monitor_filename = args.queue_monitor_filename
+        else:
+            queue_monitor_filename = "out.txt"
+
+        run_stream.start_run(start_time, stop_time=stop_time, maxrun=maxrun,
+                            queue_monitor_filename=queue_monitor_filename)

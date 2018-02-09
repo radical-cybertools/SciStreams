@@ -106,23 +106,6 @@ def generate_mask_pilatus300(**md):
 def generate_mask_pilatus2M(**md):
     ''' generate mask from startdocument information
 
-        Mask generation is not very simple.
-        Across detector, it's easy since it's just a shift
-        However, when other components move, this is not simple.
-        For example, the beamstop shadow depends on the distance of beamtop to
-        sample, detector to sample, and the beam x, y position.
-
-        I noticed a 10 pixel discrepancy when moving the beamstop from what
-        would have been expected when shifiting it.
-
-        Therefore, another approach may be easier. We save masks for each
-        relevant motor position that is not SAXSx and SAXSy for now.
-        If we find we would benefit from interpolation, then we can write more
-        complex code to solve these problems. For now, I don't think they're
-        necessary. They solve such a small use case that they are not worth the
-        time considering all the other problems we have left to solve.
-
-
         The way this mask generator works is as follows:
             1. Search database for a mask that contains motor positions close
             to the ones given.

@@ -6,6 +6,8 @@ matplotlib.use("Agg")  # noqa
 import time
 import numpy as np
 
+from collections import deque
+
 
 import matplotlib.pyplot as plt
 # plt.ion()  # noqa
@@ -101,6 +103,15 @@ stream_input = SciStreamCallback(sin.emit, remote=False)
 # stream
 sin_primary, sout_primary, serr_primary = PrimaryFilteringStream()
 sin.connect(sin_primary)
+class _NUMBER_IMAGES:
+    NUMBER_IMAGES=0
+    def inc(self, *args, **kwargs):
+        self.NUMBER_IMAGES+=1
+    def __call__(self):
+        return self.NUMBER_IMAGES
+
+NUMBER_IMAGES = _NUMBER_IMAGES()
+sin.sink(NUMBER_IMAGES.inc)
 
 # sink to list for debugging
 # L_primary = sout_primary.sink_to_list()
@@ -449,8 +460,8 @@ if True:
     sc.sink(event_stream_sq, plot_storage_sq)
     sc.sink(event_stream_sqphi, plot_storage_sqphi)
     sc.sink(event_stream_peaks, plot_storage_peaks)
-    #sc.sink(event_stream_peaks,
-            #scs.star(SciStreamCallback(store_results_hdf5)))
+    sc.sink(event_stream_peaks,
+            scs.star(SciStreamCallback(store_results_hdf5)))
     #sc.sink(event_stream_linecuts, plot_storage_linecuts)
     #sc.sink(event_stream_thumb, plot_storage_thumb)
     #sc.sink(event_stream_angularcorr, plot_storage_angularcorr)
@@ -553,8 +564,40 @@ class BufferStream:
             self.descriptor_docs.pop(desc_uid)
 
 
+def future_collector(queue1, donequeue, delay=.1):
+    ''' Collect futures. Just call result()'''
+    while True:
+        print("Checking done status")
+        if len(donequeue) == 0  and len(queue1) == 0:
+            print("Done, exiting...")
+            break
+        print("Checking for a future...")
+        if len(queue1) > 0:
+            # pop first element
+            next_item = queue1.popleft()
+            print(next_item)
+            if next_item.done() is False:
+                # add to end
+                queue1.append(next_item)
+                time.sleep(delay)
+        else:
+            time.sleep(delay)
+
+
+def queue_monitor(queue1, donequeue, output_file):
+    print("##\nQueue monitor started\n")
+    t0 = time.time()
+    with open(output_file, "w") as f:
+        while len(donequeue) > 0:
+            print("Queue not done")
+            t1 = time.time()
+            msg = "{:4.2f}\t{}\t{}\n".format(t1-t0, len(queue1), len(donequeue)==0)
+            f.write(msg)
+            time.sleep(.1)
+    print("####\nQueue done!!!")
+
 def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
-              poll_interval=60, maxrun=None):
+              poll_interval=60, maxrun=None, queue_monitor_filename="out.txt"):
     ''' Start running the streaming pipeline.
 
         start_time : str
@@ -580,6 +623,18 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
     '''
     # patchy way to get stream for now, need to fix later
     from SciStreams.interfaces.databroker.databases import databases
+
+    #start the future collector
+    from threading import Thread
+    from SciStreams.globals import futures_cache_sinks
+    donequeue = deque()
+    donequeue.append(1)
+
+    thread = Thread(target=future_collector, args=(futures_cache_sinks,donequeue))
+    thread.start()
+
+    thread_mon = Thread(target=queue_monitor, args=(futures_cache_sinks, donequeue, queue_monitor_filename))
+    thread_mon.start()
 
     cmsdb = databases['cms:data']
 
@@ -613,10 +668,6 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
         hdrs = cmsdb[uids]
         loop_forever = False
 
-    if maxrun is not None:
-        cts = 0
-    else:
-        cts = None
     while True:
         hdrs = cmsdb(**kwargs)
         stream = stream_gen(hdrs)
@@ -631,8 +682,6 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
         last_start = None
         while True:
             try:
-                if cts is not None:
-                    cts +=1
                 # add a waiting loop
                 wait_on_client()
                 nds = stream_buffer(next(stream))
@@ -641,15 +690,19 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
                 print("iterating : {}".format(nds[0]))
                 stream_input(*nds)
                 plt.pause(.1)
-                if cts is not None:
-                    if cts > maxrun:
-                        break
+                if maxrun is not None and NUMBER_IMAGES() > maxrun:
+                    print("Computed {} images and maxrun is {}".format(NUMBER_IMAGES(), maxrun))
+                    print("Terminating...")
+                    break
+                print("\n\n\n\n####\n\nNumber of images sent : {}".format(NUMBER_IMAGES()))
+                print("\n\n\n\n####\n\nNumber of Futures: {}".format(len(futures_cache_sinks)))
             except StopIteration:
                 break
             except FileNotFoundError:
                 continue
         if not loop_forever or maxrun is not None:
-            return
+            print("Exiting loop")
+            break
 
         # get the latest time, add 1 second to not overlap it
         if last_start is not None:
@@ -667,6 +720,16 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
         msg += "{} sec for more data...".format(poll_interval)
         print(msg)
         time.sleep(poll_interval)
+
+    donequeue.pop()
+    print("Final Count : {} images analyzed".format(NUMBER_IMAGES()))
+    print("Now waiting for final results to finish")
+    while len(futures_cache_sinks) > 0:
+        time.sleep(1)
+        print("Not done, waiting...")
+
+    #thread.join()
+
 
 
 def start_callback():

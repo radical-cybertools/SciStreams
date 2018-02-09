@@ -252,6 +252,7 @@ def update_event(event, kwargs):
 
         kwargs : the incoming data
     '''
+    print("updating event")
     # I could fill descriptor and event at same time,
     # but I worry about time stamps
     for key, data in kwargs.items():
