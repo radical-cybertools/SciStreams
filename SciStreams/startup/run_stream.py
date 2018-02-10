@@ -456,6 +456,8 @@ if True:
                                                      remote=remote_plots))
 
     sc.sink(event_stream_img, plot_storage_img)
+    sc.sink(event_stream_img,
+            scs.star(SciStreamCallback(store_results_hdf5)))
     sc.sink(event_stream_stitched, plot_storage_stitch)
     sc.sink(event_stream_sq, plot_storage_sq)
     sc.sink(event_stream_sqphi, plot_storage_sqphi)
@@ -588,10 +590,10 @@ def queue_monitor(queue1, donequeue, output_file):
     print("##\nQueue monitor started\n")
     t0 = time.time()
     with open(output_file, "w") as f:
-        while len(donequeue) > 0:
+        while len(donequeue) > 0 or len(queue1) > 0:
             print("Queue not done")
             t1 = time.time()
-            msg = "{:4.2f}\t{}\t{}\n".format(t1-t0, len(queue1), len(donequeue)==0)
+            msg = "{:4.2f}\t{}\t{}\n".format(t1-t0, len(queue1), int(len(donequeue)==0))
             f.write(msg)
             time.sleep(.1)
     print("####\nQueue done!!!")
