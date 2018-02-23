@@ -11,7 +11,7 @@ def generate_mask(**md):
         This dispatches the generation to a mask generator function
             depending on the metadata.
     '''
-    print("Calling mask generator")
+    #print("Calling mask generator")
     # get name from det key
     detector_key = md.get('detector_key', None)
     if detector_key is not None:
@@ -32,7 +32,7 @@ def generate_mask(**md):
         mask = None
 
     if mask is not None:
-        print("Mask generation succeeded!")
+        #print("Mask generation succeeded!")
     return dict(mask=mask)
 
 import h5py
@@ -95,7 +95,7 @@ def generate_mask_pilatus2M(**md):
     mask_fname = mask_config.get('mask', {}).get('filename', None)
     mask_fname = master_dir + "/" + mask_fname
     # get the shape from config
-    print(mask_config)
+    #print(mask_config)
     mask_shape = np.array(mask_config['shape'])
 
     #print('mask shape : {}'.format(mask_shape))
@@ -133,9 +133,9 @@ def generate_mask_pilatus2M(**md):
 
     mask_expt = None
     if mask is not None and beam_center_experiment is not None:
-        print("got a mask!")
+        #print("got a mask!")
         mask_expt = make_subimage(mask, beam_center, mask_shape, beam_center_experiment)
-        print("Made sub image")
+        #print("Made sub image")
     else:
         if mask is None:
             print("No mask found")
@@ -143,7 +143,7 @@ def generate_mask_pilatus2M(**md):
             print("No beam center found")
 
     if blemish is not None:
-        print("got a blemish!")
+        #print("got a blemish!")
         if mask_expt is None:
             mask_expt = blemish
         else:
