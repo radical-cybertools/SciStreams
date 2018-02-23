@@ -161,9 +161,15 @@ else:
 MAX_FUTURE_NUM = 1000
 
 if server is not None:
-    print("Adding a client: {}".format(server))
-    from distributed import Client
-    client = Client(server)
+    try:
+        print("Adding a client: {}".format(server))
+        from distributed import Client
+        client = Client(server)
+    except ValueError:
+        print("Tried to start server but failed.")
+        print("Tried to connect to {}".format(server))
+        print("Please remove this line in the yml file if no")
+        print(" server connection is desired.")
 # no client, compute should compute and return nothing
 else:
     print("No client supported, running locally")

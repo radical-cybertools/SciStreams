@@ -3,7 +3,7 @@ from functools import wraps
 import streamz
 from SciStreams.core.StreamDoc import psdm, psda
 import SciStreams.core.StreamDoc as StreamDoc_core
-from SciStreams.globals import client
+from SciStreams.config import client
 
 
 def future_wrapper(f):

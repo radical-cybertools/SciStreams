@@ -568,12 +568,13 @@ class BufferStream:
 
 def future_collector(queue1, donequeue, delay=.1):
     ''' Collect futures. Just call result()'''
+    print("Started the future collector")
     while True:
-        print("Checking done status")
+        #print("Checking done status")
         if len(donequeue) == 0  and len(queue1) == 0:
             print("Done, exiting...")
             break
-        print("Checking for a future...")
+        #print("Checking for a future...")
         if len(queue1) > 0:
             # pop first element
             next_item = queue1.popleft()
@@ -584,6 +585,7 @@ def future_collector(queue1, donequeue, delay=.1):
                 time.sleep(delay)
         else:
             time.sleep(delay)
+    print("Finished")
 
 
 def queue_monitor(queue1, donequeue, output_file):
@@ -591,7 +593,7 @@ def queue_monitor(queue1, donequeue, output_file):
     t0 = time.time()
     with open(output_file, "w") as f:
         while len(donequeue) > 0 or len(queue1) > 0:
-            print("Queue not done")
+            #print("Queue not done")
             t1 = time.time()
             msg = "{:4.2f}\t{}\t{}\n".format(t1-t0, len(queue1), int(len(donequeue)==0))
             f.write(msg)
