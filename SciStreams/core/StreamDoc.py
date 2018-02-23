@@ -7,7 +7,6 @@ from functools import wraps, partial
 import time
 import sys
 from uuid import uuid4
-# from ..globals import debugcache
 
 from distributed import Future
 
@@ -22,8 +21,7 @@ import numpy as np
 
 # from ..config import default_timeout as DEFAULT_TIMEOUT
 
-from ..globals import client
-from ..config import debug, modules
+from ..config import debug, modules, client
 
 # tau stuff, ignore if not here
 #run_tau = modules.get('tau', {}).get('run', False)
@@ -33,7 +31,7 @@ from ..config import debug, modules
 #else:
     #print("not runing tau")
 
-from ..globals import profile_dict
+from ..config import profile_dict
 
 # TODO : Make sure each element is Future aware
 
@@ -517,7 +515,7 @@ class StreamDoc(dict):
             else:
                 args, kwargs = _select_from_mapping(args, kwargs, *mapping)
 
-            # from SciStreams.globals import debugcache
+            # from SciStreams.config import debugcache
             # debugcache.append(args)
             # debugcache.append(kwargs)
 

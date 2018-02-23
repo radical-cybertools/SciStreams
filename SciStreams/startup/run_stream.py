@@ -32,7 +32,7 @@ from SciStreams.detectors.mask_generators import generate_mask
 # from SciStreams.core.StreamDoc import to_event_stream
 # import SciStreams.core.StreamDoc as sd
 
-from SciStreams.globals import client
+from SciStreams.config import client
 
 # the differen streams libs
 import streamz.core as sc
@@ -628,7 +628,7 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
 
     #start the future collector
     from threading import Thread
-    from SciStreams.globals import futures_cache_sinks
+    from SciStreams.config import futures_cache_sinks
     donequeue = deque()
     donequeue.append(1)
 
@@ -754,4 +754,4 @@ def start_callback():
     # when done subscribing things and ready to use:
     d.start()  # runs event loop forever
 
-#sin.visualize()
+sin.visualize()

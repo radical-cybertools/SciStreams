@@ -1,7 +1,7 @@
 from distributed import Future
 from SciStreams.core.StreamDoc import StreamDoc
-from SciStreams.globals import client
-from SciStreams import globals
+from SciStreams.config import client
+from SciStreams import config
 
 from functools import wraps
 
@@ -119,7 +119,7 @@ class SciStreamCallback(CallbackBase):
             res = client.submit(wraps(self.func)(eval_func), self.func, start,
                                 descriptor, doc, *self.args, **kwargs)
             if isinstance(res, Future):
-                globals.futures_cache_sinks.append(res)
+                config.futures_cache_sinks.append(res)
         else:
             # don't do things remotely, so block if things are Futures
             if isinstance(doc, Future):

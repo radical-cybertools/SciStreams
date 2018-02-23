@@ -32,7 +32,7 @@ import streamz as sc
 import SciStreams.core.scistreams as scs
 import SciStreams.core.StreamDoc as sd
 
-from SciStreams.globals import futures_cache
+from SciStreams.config import futures_cache
 
 keymaps = config['keymaps']
 

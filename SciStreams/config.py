@@ -1,82 +1,31 @@
 # these read the configuration file and setup extra configuration of parameters
 import yaml
+import os
 import os.path
 import numpy as np
 import numbers
 
+# these are static things to the library
+from dask import set_options
+from collections import deque
 
-# reads yaml file from user directory
+
+# First step is to read yaml file from user directory
 filename = os.path.expanduser("~/.config/scistreams/scistreams.yml")
+cwd = os.getcwd()
+filename = cwd + "/scistreams.yml"
 try:
     f = open(filename)
     config = yaml.load(f)
 except FileNotFoundError:
+    print("Warning, scistreams.yml in current working directory not found")
+    print("Not loading any configuration.")
     config = dict()
 
 
 # make it an empty dict if not there
-if 'directories' not in config:
-    config['directories'] = dict()
+config['directories'] = config.get('directories', {})
 directories = config['directories']
-
-# read the mask conf file
-# ignore the mask yml now, just use mask_dir
-filename_masks = os.path.expanduser("~/.config/scistreams/masks.yml")
-try:
-    f = open(filename_masks)
-    mask_config = yaml.load(f)
-    for key in mask_config.keys():
-        for key2 in mask_config[key].keys():
-            fname = mask_config[key][key2]['filename']
-            # prepend the mask directory to filename then save
-            newfname = directories['masks'] + "/" + key + "/" + fname
-            mask_config[key][key2]['filename'] = newfname
-        # now populate the master mask databases for each mask
-except FileNotFoundError:
-    mask_config = dict()
-# populate the masks
-
-# TODO :clean this up, make more scalable
-# should be a matter of replacing mask reading with a file handler
-# and populating a database of masks with some other form of masks
-master_masks = dict()
-if 'masks' in directories:
-    maskdir = directories.get('masks', None)
-    # print("Reading masks from : {}".format(maskdir))
-
-    # each dir is a key
-    keys = os.listdir(maskdir)
-    # only directories
-    keys = [key for key in keys if os.path.isdir(maskdir + "/" + key)]
-    # print("directories : {}".format(keys))
-    for key in keys:
-        master_masks[key] = list()
-        # now populate each mask
-        mask_subdir = maskdir + "/" + key
-        # TODO : replace with file handlers
-        filenames = os.listdir(mask_subdir)
-        # print('reading from subdir {}'.format(mask_subdir))
-        filenames = [filename for filename in filenames
-                     if os.path.isfile(mask_subdir + "/" + filename)]
-        # print("filenames : {}".format(filenames))
-        for filename in filenames:
-            # look for npz files
-            fname = mask_subdir + '/' + filename
-            print('loading {}'.format(fname))
-            try:
-                res = np.load(fname)
-                print('reading items')
-                newdict = dict()
-                for subkey, val in res.items():
-                    # don't read the actual masks
-                    if 'mask' not in subkey:
-                        newdict[subkey] = res[subkey]
-                newdict['filename'] = fname
-
-                master_masks[key].append(newdict)
-            except Exception:
-                print("Error, could not load filename {}".format(fname))
-
 
 detector_names = dict(pilatus300='saxs', psccd='waxs', pilatus2M='saxs')
 
@@ -194,3 +143,48 @@ else:
                 return f(*args, **kwargs)
             return fnew
         return dec
+
+
+# client information
+# TODO : remove this client information
+
+MAX_FUTURE_NUM = 1000
+
+if server is not None:
+    print("Adding a client: {}".format(server))
+    from distributed import Client
+    client = Client(server)
+# no client, compute should compute and return nothing
+else:
+    print("No client supported, running locally")
+
+    class Client:
+        # make unbound method
+
+        def submit(self, f, *args, **kwargs):
+            return f(*args, **kwargs)
+
+        def gather(self, future):
+            # it's not a future, just a regular result
+            return future
+
+    client = Client()
+
+futures_cache = deque()#maxlen=MAX_FUTURE_NUM)
+# allow for 100,000 sinks for these (so we don't lose them)
+futures_cache_sinks = deque()#maxlen=100000)
+
+# assume all functions are pure globally
+try:
+    from dask.cache import Cache
+    cache = Cache(1e9)
+    cache.register()
+except ImportError:
+    print("Error cachey not available. Will not be caching")
+    pass
+
+# make everything pure by default
+set_options(delayed_pure=True)
+
+# TAU STUFF Profiler dictionaries
+profile_dict = dict()

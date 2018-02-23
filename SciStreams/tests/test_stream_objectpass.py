@@ -3,7 +3,7 @@ from dask import delayed, compute, set_options, get
 # for testing the caching
 from dask.base import normalize_token
 # need this to make sure cache is registered
-import SciStreams.globals  # noqa
+import SciStreams.config  # noqa
 
 # make everything pure by default
 set_options(delayed_pure=True)
