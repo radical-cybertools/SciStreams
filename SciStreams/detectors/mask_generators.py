@@ -31,7 +31,7 @@ def generate_mask(**md):
     else:
         mask = None
 
-    if mask is not None:
+    #if mask is not None:
         #print("Mask generation succeeded!")
     return dict(mask=mask)
 
