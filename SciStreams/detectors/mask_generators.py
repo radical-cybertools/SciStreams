@@ -31,8 +31,8 @@ def generate_mask(**md):
     else:
         mask = None
 
-    #if mask is not None:
-        #print("Mask generation succeeded!")
+    if mask is not None:
+        print("A mask has been found and generated.")
     return dict(mask=mask)
 
 import h5py
@@ -208,29 +208,29 @@ def make_subimage(master_image, refpoint, new_shape, new_refpoint):
         Internally, all reference points refer as y, x
         Interpolation is used for subpixel shifts
     '''
-    print("refpoint is {}".format(refpoint))
-    print("new refpoint is {}".format(new_refpoint))
-    print("master image shape : {}".format(master_image.shape))
-    print("new shape : {}".format(new_shape))
+    #print("refpoint is {}".format(refpoint))
+    #print("new refpoint is {}".format(new_refpoint))
+    #print("master image shape : {}".format(master_image.shape))
+    #print("new shape : {}".format(new_shape))
     x_master = np.arange(master_image.shape[1]) - refpoint[1]
     y_master = np.arange(master_image.shape[0]) - refpoint[0]
 
-    print("initializing interpolator")
+    #print("initializing interpolator")
     interpolator = RegularGridInterpolator((y_master, x_master), master_image,
                                            bounds_error=False, fill_value=0)
 
-    print("interpolating")
+    #print("interpolating")
     # make sub image, also make origin the ref point
-    print('new_shape[1] : {}'.format(new_shape[1]))
-    print('new_refpoint[1] : {}'.format(new_refpoint[1]))
+    #print('new_shape[1] : {}'.format(new_shape[1]))
+    #print('new_refpoint[1] : {}'.format(new_refpoint[1]))
     x = np.arange(int(new_shape[1])) - new_refpoint[1]
-    print("x dim: {}".format(x))
+    #print("x dim: {}".format(x))
     y = np.arange(new_shape[0]) - new_refpoint[0]
     X, Y = np.meshgrid(x, y)
     points = (Y.ravel(), X.ravel())
-    print("points : {}".format(points))
+    #print("points : {}".format(points))
     # it's a linear interpolator, so we just cast to ints (non-border regions
     # should just be 1)
     subimage = interpolator(points).reshape(new_shape)
-    print("done interpolating")
+    #print("done interpolating")
     return subimage
