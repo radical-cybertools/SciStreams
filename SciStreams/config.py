@@ -33,9 +33,6 @@ except FileNotFoundError:
     masks_config = {}
 
 
-# make it an empty dict if not there
-config['directories'] = config.get('directories', {})
-directories = config['directories']
 
 detector_names = dict(pilatus300='saxs', psccd='waxs', pilatus2M='saxs')
 
@@ -49,10 +46,7 @@ _DEFAULTS = {
     'debug': False,
     'required_attributes': dict(main=dict()),
     'default_timeout': None,
-    'storagedir': os.path.expanduser("~/storage"),
-    'maskdir': os.path.expanduser("~/storage/masks"),
     'resultsroot': os.path.expanduser("/GPFS/pipeline"),
-    'filestoreroot': os.path.expanduser("~/sqlite/filestore"),
     'delayed': True,
     'server': None,
     'databases': default_databases,
@@ -60,11 +54,6 @@ _DEFAULTS = {
     'TFLAGS': {'out_dir': '/GPFS/pipeline/ml-tmp',
                'num_batches': 16}
 }
-
-
-# get from directories file
-storagedir = directories.get('storage', _DEFAULTS['storagedir'])
-maskdir = directories.get('masks', _DEFAULTS['maskdir'])
 
 default_timeout = config.get('default_timeout', _DEFAULTS['default_timeout'])
 delayed = config.get('delayed', _DEFAULTS['delayed'])

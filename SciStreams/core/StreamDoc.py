@@ -227,11 +227,12 @@ def update_descriptor(descriptor, kwargs):
     return descriptor
 
 
-def init_event(event_uid, start_uid, descriptor_uid):
+def init_event(event_uid, start, descriptor_uid):
     ''' Initialize an event
 
         Need the start_uid and descriptor_uid
     '''
+    start_uid = start['uid']
     event = dict()
     event['uid'] = event_uid
     event['run_start'] = start_uid
@@ -240,7 +241,13 @@ def init_event(event_uid, start_uid, descriptor_uid):
     event['filled'] = dict()
     event['data'] = dict()
     event['timestamps'] = dict()
-    event['seq_num'] = 1
+    # this is a patch to allow sequence numbers from previous events to pass
+    # through. This is needed to generate non-colliding filenames
+    if 'seq_num' in start:
+        seq_num = start['seq_num']
+    else:
+        seq_num = 1
+    event['seq_num'] = seq_num
 
     return event
 
@@ -330,10 +337,10 @@ def _to_event_stream(sdoc):
         descriptor = update_descriptor(descriptor, kwargs)
 
     if isremote:
-        event = client.submit(init_event, event_uid, start_uid, descriptor_uid)
+        event = client.submit(init_event, event_uid, start, descriptor_uid)
         event = client.submit(update_event, event, kwargs)
     else:
-        event = init_event(event_uid, start_uid, descriptor_uid)
+        event = init_event(event_uid, start, descriptor_uid)
         event = update_event(event, kwargs)
 
     if isremote:

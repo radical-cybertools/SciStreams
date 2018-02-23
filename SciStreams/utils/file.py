@@ -84,9 +84,13 @@ def _make_fname_from_attrs(attrs, filetype="xml", strict=False,
 
     scan_id = check_and_get(attrs, 'scan_id', strict=strict, default='scan_id')
 
+    seq_num = check_and_get(attrs, 'seq_num', strict=strict, default=0)
+    seq_num = str(seq_num)
+    print("Got sequence number : {}\n\n".format(seq_num))
+
     outdir = rootdir + "/" + detector_savedir + "/" + stream_name \
         + "/" + filetype
     make_dir(outdir)
-    outfile = outdir + "/" + sample_savename + "_" + scan_id + "." + filetype
+    outfile = outdir + "/" + sample_savename + "_" + scan_id + "_" + seq_num + "." + filetype
 
     return outfile

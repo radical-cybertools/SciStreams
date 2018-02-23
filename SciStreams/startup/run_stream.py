@@ -422,6 +422,7 @@ if True:
                                                                 color='r',
                                                                 linewidth=0)],
                                                     xlabel=xlbl, ylabel=ylbl,
+                                                    scale='loglog',
                                                     remote=remote_plots))
     plot_storage_linecuts = \
         scs.star(SciStreamCallback(store_results_mpl,

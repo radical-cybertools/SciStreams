@@ -166,6 +166,8 @@ def eval_func(func, start, descriptor, event, *args, **kwargs):
     # now make data
     sdoc = StreamDoc()
     sdoc.add(attributes=start)
+    # allow seq_num to be passed
+    sdoc['attributes']['seq_num'] = event['seq_num']
     # no args since each element in a doc is named
     sdoc.add(kwargs=data)
     checkpoint = dict(parent_uids=[start_uid])
