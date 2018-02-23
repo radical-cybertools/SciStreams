@@ -2,28 +2,15 @@ from .detectors2D import detectors2D
 import numpy as np
 from PIL import Image
 
-from SciStreams.config import master_masks, mask_config
-from SciStreams.data.Mask import MaskGenerator, MasterMask
-
+from SciStreams.config import masks_config
 
 # TODO : need to fix again...
 def generate_mask(**md):
-    # print("generating mask from metadata : {}".format(md))
-    if 'override' in md:
-        # override mask generator with simple loader
-        # override should be filename
-        # TODO : make read different formats
-        mask = np.load(md['override'])
+    ''' Generate a mask.
 
-        # load the blemish
-        detector_key = md['detector_key']
-        blemish_kwargs = mask_config[detector_key]['blemish']
-        blemish = np.array(Image.open(blemish_kwargs['filename']))
-        if blemish.ndim == 3:
-            blemish = blemish[:, :, 0]
-
-        return dict(mask=mask*blemish)
-
+        This dispatches the generation to a mask generator function
+            depending on the metadata.
+    '''
     # get name from det key
     detector_key = md.get('detector_key', None)
     detector_name = detector_key[::-1].split("_", 1)[-1][::-1]
@@ -57,159 +44,158 @@ def generate_mask_pilatus300(**md):
         The mask generator takes the position pair as y, x as input, and *not*
         x, y
     '''
-    detector_key = 'pilatus300_image'
+    raise NotImplementedError("Error, we don't implement this yet")
 
-    pilatus_masks = master_masks[detector_key]
-    # the keys that contain data to describe the mask
-    # TODO : make neater once thought is more complete
-    # have to add .item() because I saved as npy file
-    # don't have time to resolve this now
+import h5py
+def load_blemish(fname):
+    ''' load blemish file. Just the 'blemish' keyword
+        of the file. It is not "mask" to allow for the saving of a
+        blemish file with a mask in the same file.'''
+    f = h5py.File(fname, "r")
+    # make a copy before closing
+    blemish = np.array(f['blemish'])
+    f.close()
+    return blemish
 
-    # required keys and tolerances
-    # keys = [doc[0] for doc in pilatus_masks['motors']]
-    # tolerances = [doc[1] for doc in pilatus_masks['motors']]
-    keys = ['motor_bsphi', 'motor_bsx', 'motor_bsy']
-    # the errors tolerated in the positions
-    tolerances = [.1, .3, .3]
-
-    master_mask = find_best_mask(pilatus_masks, keys, tolerances, md)
-
-    # now the blemish
-    blemish_kwargs = mask_config[detector_key]['blemish']
-    blemish = np.array(Image.open(blemish_kwargs['filename']))
-    if blemish.ndim == 3:
-        blemish = blemish[:, :, 0]
-
-    if master_mask is not None:
-        mmg = MaskGenerator(master_mask, blemish=blemish)
-
-        print("Generating mask")
-        # hard coded
-        motory = md['motor_SAXSy']
-        motorx = md['motor_SAXSx']
-        mask = mmg.generate(motory, motorx)
-    else:
-        # get detector shape from det file and make empty mask
-        detector_name = _make_detector_name_from_key(detector_key)
-        shape = detectors2D[detector_name]['shape']['value']
-        msg = "No suitable mask found, "
-        msg += "generating ones with shape {}".format(shape)
-        print(msg)
-        motor_list = {key: md.get(key, None) for key in keys}
-        print("Motors : {}".format(motor_list))
-
-        mask = np.ones(shape)
-
+def load_mask(fname):
+    ''' load mask
+        just reads from hdf5 file.
+        Returns a mask and reference point (beam center)
+    '''
+    f = h5py.File(fname, "r")
+    # make a copy before closing
+    mask = np.array(f['mask'])
+    f.close()
     return mask
 
+def load_beamcenter(fname):
+    '''
+        load beam center. just looks for
+            beam_center_x0
+            beam_center_y0
+        in hdf5 file.
+    '''
+    f = h5py.File(fname, "r")
+    # make a copy before closing
+    if 'beam_center_x0' not in f:
+        print("Did not find 'beam_center_x0'")
+        return None
+    if 'beam_center_y0' not in f:
+        print("Did not find 'beam_center_y0'")
+        return None
+    beamx0 = np.array(f['beam_center_x0'])
+    beamy0 = np.array(f['beam_center_y0'])
+    f.close()
+    return dict(beamx0=beamx0, beamy0=beamy0)
 
 def generate_mask_pilatus2M(**md):
     ''' generate mask from startdocument information
 
-        The way this mask generator works is as follows:
-            1. Search database for a mask that contains motor positions close
-            to the ones given.
-            2. When found, shift this mask appropriately so that it aligns with
-            the current detector position.
+        This will read from local config files for the mask
+        filenames if they exist.
     '''
     detector_key = 'pilatus2M_image'
 
-    pilatus_masks = master_masks[detector_key]
-    # the keys that contain data to describe the mask
-    # TODO : make neater once thought is more complete
-    # have to add .item() because I saved as npy file
-    # don't have time to resolve this now
+    mask_config = masks_config.get(detector_key, {})
 
-    # required keys and tolerances
-    # keys = [doc[0] for doc in pilatus_masks['motors']]
-    # tolerances = [doc[1] for doc in pilatus_masks['motors']]
-    keys = ['motor_bsphi', 'motor_bsx', 'motor_bsy']
-    # the errors tolerated in the positions
-    tolerances = [10, 1, 1]
+    # get filenames from config
+    blemish_fname = mask_config.get('blemish', {}).get('filename', None)
+    mask_fname = mask_config.get('mask', {}).get('filename', None)
+    # get the shape from config
+    mask_shape = mask_config['shape']
 
-    master_mask = find_best_mask(pilatus_masks, keys, tolerances, md)
-
-    # now the blemish
-    blemish_kwargs = mask_config[detector_key]['blemish']
-    blemish = np.array(Image.open(blemish_kwargs['filename']))
-    if blemish.ndim == 3:
-        blemish = blemish[:, :, 0]
-
-    if master_mask is not None:
-        mmg = MaskGenerator(master_mask, blemish=blemish)
-
-        print("Generating mask")
-        # hard coded
-        motory = md['motor_SAXSy']
-        motorx = md['motor_SAXSx']
-        mask = mmg.generate(motory, motorx)
+    if blemish_fname is not None:
+        blemish = load_blemish(blemish_fname)
     else:
-        # get detector shape from det file and make empty mask
-        detector_name = _make_detector_name_from_key(detector_key)
-        shape = detectors2D[detector_name]['shape']['value']
-        msg = "No suitable mask found, "
-        msg += "generating ones with shape {}".format(shape)
-        print(msg)
-        motor_list = {key: md.get(key, None) for key in keys}
-        print("Motors : {}".format(motor_list))
-        print("Available masks : {}".format(pilatus_masks))
-        mask = np.ones(shape)
+        blemish = None
 
-    return mask
-
-
-def _make_detector_name_from_key(name):
-    # remove last "_" character
-    return name[::-1].split("_", maxsplit=1)[-1][::-1]
-
-
-def find_best_mask(masks, keys, tolerances, md):
-    ''' Search file system for best mask that matches
-        the keys keys with errors smaller than tolerances (tolerance).
-
-        masks:  a parameter tree of parameters for each mask
-           it includes its filename. This allows more convenient lookup of
-           masks (i.e. you don't have to keep reading each mask file to
-           retrieve metadata)
-           This is also written in hopes to have this saved the databroker way
-            (i.e. filename will be a descriptor that gets sent to an asset
-            handler)
-
-        md : the metadata
-
-        each mask is also an npz array with more information than just the mask
-        use MasterMask to conveniently load it.
-    '''
-    # first check that the keys are in metadata
-    for key in keys:
-        if key not in md:
-            return None
-    # search for the right mask that matches data
-    retrieved_mask = None
-    # find the first mask that matches all motors
-    found_mask = False
-    for mask_params in masks:
-        if found_mask:
-            break
-        filename = mask_params['filename']
-        found_mask = True
-        for key, tolerance in zip(keys, tolerances):
-            print("comparing {} with {}".format(mask_params[key], md[key]))
-            # err1 = np.abs(mask_params[key]-md[key])
-            # if err1 > tolerance:
-            a = mask_params[key]
-            b = md[key]
-            if not np.allclose(a, b, atol=tolerance):
-                print("Error too big : {} is not close to {}".format(a, b))
-                print("Tolerance : +/- {}".format(tolerance))
-                found_mask = False
-    if found_mask:
-        retrieved_mask = MasterMask(filename)
+    if mask_fname is not None:
+        mask = load_mask(mask_fname)
+        beam_center = load_beamcenter(mask_fname)
     else:
-        retrieved_mask = None
-    return retrieved_mask
+        print("No mask found, ignoring")
+        mask = None
+        beam_center = None
+
+    # now interpolate the beam center from the actual beam center
+    beamcenterx = md.get('detector_saxs_x0_pix', None)
+    beamcentery = md.get('detector_saxs_y0_pix', None)
+    if beamcenterx is not None and beamcentery is not None:
+        beam_center_experiment = dict(beam_center_x0=beamcenterx,
+                                      beam_center_y0=beamcentery,
+                                      )
+    else:
+        beam_center_experiment = None
+        print("No beam center found")
+
+    mask_expt = None
+    if mask is not None and beam_center_experiment is not None:
+        mask_expt = make_subimage(mask, beam_center, beam_center_experiment)
+    else:
+        if mask is None:
+            print("No mask found")
+        if beam_center_experiment is None:
+            print("No beam center found")
+
+    if blemish is not None:
+        if mask_expt is None:
+            mask_expt = blemish
+        else:
+            mask_expt = blemish*mask_expt
+
+    # just in case, make it a float
+    mask_expt = mask_expt.astype(float)
+
+    return mask_expt
 
 
 # hard coded mask generators built into the library
 mask_generators = dict(pilatus300=generate_mask_pilatus300,
                        pilatus2M=generate_mask_pilatus2M)
+
+
+# helper functions
+from scipy.interpolate import RegularGridInterpolator
+import numpy as np
+
+def make_subimage(master_image, refpoint, shape, new_refpoint):
+    ''' Make a subimage from the master image.
+
+        Parameters
+        ----------
+        master_image: 2d np.ndarray
+            The master image
+
+        refpoint: number
+            The reference point
+
+        shape: 2-tuple
+            The desired shape of the sub image
+
+        new_refpoint: number
+            The reference point for the new image
+
+        Notes
+        ------
+        refpoint and new_refpoint are in row,col format (y,x)
+            This is the reference point that should register
+                images together
+        Internally, all reference points refer as y, x
+        Interpolation is used for subpixel shifts
+    '''
+    # print("refpoint is {}".format(refpoint))
+    x_master = np.arange(master_image.shape[1]) - refpoint[1]
+    y_master = np.arange(master_image.shape[0]) - refpoint[0]
+
+    interpolator = RegularGridInterpolator((y_master, x_master), master_image,
+                                           bounds_error=False, fill_value=0)
+
+    # make sub image, also make origin the ref point
+    x = np.arange(shape[1]) - new_refpoint[1]
+    y = np.arange(shape[0]) - new_refpoint[0]
+    X, Y = np.meshgrid(x, y)
+    points = (Y.ravel(), X.ravel())
+    # it's a linear interpolator, so we just cast to ints (non-border regions
+    # should just be 1)
+    subimage = interpolator(points).reshape(shape)
+    return subimage

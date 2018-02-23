@@ -11,7 +11,6 @@ from collections import deque
 
 
 # First step is to read yaml file from user directory
-filename = os.path.expanduser("~/.config/scistreams/scistreams.yml")
 cwd = os.getcwd()
 filename = cwd + "/scistreams.yml"
 try:
@@ -21,6 +20,17 @@ except FileNotFoundError:
     print("Warning, scistreams.yml in current working directory not found")
     print("Not loading any configuration.")
     config = dict()
+
+
+cwd = os.getcwd()
+filename_masks = cwd + "/masks.yml"
+try:
+    fmask = open(filename_masks)
+    masks_config = yaml.load(fmask)
+except FileNotFoundError:
+    print("Warning, could not find {}".format(filename_masks))
+    print("Will proceed without any masks")
+    masks_config = {}
 
 
 # make it an empty dict if not there
