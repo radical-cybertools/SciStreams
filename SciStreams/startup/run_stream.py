@@ -457,8 +457,8 @@ if True:
                                                      remote=remote_plots))
 
     sc.sink(event_stream_img, plot_storage_img)
-    sc.sink(event_stream_img,
-            scs.star(SciStreamCallback(store_results_hdf5)))
+    #sc.sink(event_stream_img,
+    #scs.star(SciStreamCallback(store_results_hdf5)))
     sc.sink(event_stream_stitched, plot_storage_stitch)
     sc.sink(event_stream_sq, plot_storage_sq)
     sc.sink(event_stream_sqphi, plot_storage_sqphi)
