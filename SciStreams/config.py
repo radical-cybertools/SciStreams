@@ -147,7 +147,7 @@ else:
 # client information
 # TODO : remove this client information
 
-MAX_FUTURE_NUM = 1000
+#MAX_FUTURE_NUM = 1000
 
 if server is not None:
     try:
@@ -175,6 +175,15 @@ else:
 
     client = Client()
 
+#futures_total = 0
+class _COUNTER:
+    COUNT=0
+    def inc(self, *args, **kwargs):
+        self.COUNT+=1
+    def __call__(self):
+        return self.COUNT
+
+futures_total = _COUNTER()
 futures_cache = deque()#maxlen=MAX_FUTURE_NUM)
 # allow for 100,000 sinks for these (so we don't lose them)
 futures_cache_sinks = deque()#maxlen=100000)

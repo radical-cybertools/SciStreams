@@ -86,7 +86,7 @@ def pick_allowed_detectors(sdoc):
 # filter a streamdoc with certain attributes (set in the yml file)
 # required_attributes, typesdict globals needed
 def filter_attributes(sdoc, type='main'):
-    print("filterting attributes")
+    #print("filterting attributes")
     attr = sdoc['attributes']
     # get the sub required attributes
     reqattr = required_attributes['main']
@@ -99,7 +99,7 @@ def filter_attributes(sdoc, type='main'):
             print("bad attributes")
             print("key {} not an instance of {}".format(key, val))
             return False
-    print("good attributes")
+    #print("good attributes")
     return True
 
 

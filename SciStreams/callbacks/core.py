@@ -114,12 +114,13 @@ class SciStreamCallback(CallbackBase):
         kwargs = self.kwargs.copy()
         if self.remote:
             # run but don't return result
-            msg = 'submitting function {} to server'.format(self.func.__name__)
-            print(msg)
+            #msg = 'submitting function {} to server'.format(self.func.__name__)
+            #print(msg)
             res = client.submit(wraps(self.func)(eval_func), self.func, start,
                                 descriptor, doc, *self.args, **kwargs)
             if isinstance(res, Future):
                 config.futures_cache_sinks.append(res)
+                config.futures_total.inc()
         else:
             # don't do things remotely, so block if things are Futures
             if isinstance(doc, Future):
@@ -159,7 +160,7 @@ class SciStreamCallback(CallbackBase):
 
 
 def eval_func(func, start, descriptor, event, *args, **kwargs):
-    print("on cluster, computing {}".format(func.__name__))
+    #print("on cluster, computing {}".format(func.__name__))
     start_uid = start['uid']
     data = event['data']
 
