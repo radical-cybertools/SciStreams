@@ -103,15 +103,19 @@ stream_input = SciStreamCallback(sin.emit, remote=False)
 # stream
 sin_primary, sout_primary, serr_primary = PrimaryFilteringStream()
 sin.connect(sin_primary)
-class _NUMBER_IMAGES:
-    NUMBER_IMAGES=0
+class _COUNTER:
+    COUNTER=0
     def inc(self, *args, **kwargs):
-        self.NUMBER_IMAGES+=1
+        self.COUNTER+=1
+    def set(self, val):
+        self.COUNTER=val
     def __call__(self):
-        return self.NUMBER_IMAGES
+        return self.COUNTER
 
-NUMBER_IMAGES = _NUMBER_IMAGES()
-NUMBER_IMAGES_ALL = _NUMBER_IMAGES()
+NUMBER_IMAGES = _COUNTER()
+NUMBER_IMAGES_ALL = _COUNTER()
+QUEUEDONE = _COUNTER()
+QUEUEDONE.set(0)
 sin.sink(NUMBER_IMAGES_ALL.inc)
 sout_primary.sink(NUMBER_IMAGES.inc)
 
@@ -569,12 +573,12 @@ class BufferStream:
             self.descriptor_docs.pop(desc_uid)
 
 
-def future_collector(queue1, donequeue, delay=.1):
+def future_collector(queue1, queuedone, delay=.1):
     ''' Collect futures. Just call result()'''
     print("Started the future collector")
     while True:
         #print("Checking done status")
-        if len(donequeue) == 0  and len(queue1) == 0:
+        if queuedone() == 1  and len(queue1) == 0:
             print("Done, exiting...")
             break
         #print("Checking for a future...")
@@ -591,23 +595,23 @@ def future_collector(queue1, donequeue, delay=.1):
     print("Finished")
 
 
-def queue_monitor(queue1, donequeue, output_file):
+def queue_monitor(queue1, queuedone, output_file):
     print("##\nQueue monitor started\n")
     t0 = time.time()
     with open(output_file, "w") as f:
-        while len(donequeue) > 0 or len(queue1) > 0:
+        while queuedone() == 0 or len(queue1) > 0:
             #print("Queue not done")
             t1 = time.time()
-            msg = "{:4.2f}\t{}\t{}\n".format(t1-t0, len(queue1), int(len(donequeue)==0))
+            msg = "{:4.2f}\t{}\t{}\n".format(t1-t0, len(queue1), queuedone())
             f.write(msg)
             time.sleep(.1)
     print("####\nQueue done!!!")
 
-def val_monitor(val1, donequeue, output_file):
+def val_monitor(val1, queuedone, output_file):
     '''
         monitor a value:
             val1 : callable that returns a value
-            donequeue: a queue with 1 elem. when elemen is gone queue is done
+            queuedone: callable returns result 0 if not done 1 if done
             output_file : the output file
 
         note : this is very messy. need to clean up with time...
@@ -615,10 +619,10 @@ def val_monitor(val1, donequeue, output_file):
     print("##\nVal monitor started\n")
     t0 = time.time()
     with open(output_file, "w") as f:
-        while len(donequeue):
+        while queuedone() != 1:
             #print("Queue not done")
             t1 = time.time()
-            msg = "{:4.2f}\t{}\t{}\n".format(t1-t0, val1())
+            msg = "{:4.2f}\t{}\n".format(t1-t0, val1(), queuedone())
             f.write(msg)
             time.sleep(.1)
     print("####\nQueue done!!!")
@@ -654,22 +658,24 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
     #start the future collector
     from threading import Thread
     from SciStreams.config import futures_cache_sinks, futures_total
-    donequeue = deque()
-    donequeue.append(1)
+    queuedone = _COUNTER()
 
-    thread = Thread(target=future_collector, args=(futures_cache_sinks,donequeue))
+    thread = Thread(target=future_collector, args=(futures_cache_sinks,queuedone))
     thread.start()
 
     # also make a file of the totals
     total_filename = queue_monitor_filename + ".total.txt"
 
     thread_mon = Thread(target=queue_monitor, args=(futures_cache_sinks,
-                                                    donequeue,
+                                                    queuedone,
                                                     queue_monitor_filename,))
-    thread_mon_totals = Thread(target=queue_monitor, args=(futures_total,
-                                                    donequeue,
+
+    thread_mon_totals = Thread(target=val_monitor, args=(futures_total,
+                                                    queuedone,
                                                     total_filename,))
+
     thread_mon.start()
+    thread_mon_totals.start()
 
     cmsdb = databases['cms:data']
 
@@ -775,15 +781,17 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
         print(msg)
         time.sleep(poll_interval)
 
-    donequeue.pop()
+    # set queuedone to 1
+    queuedone.set(1)
     print("Final Count : {} images analyzed".format(NUMBER_IMAGES()))
     print("Now waiting for final results to finish")
     while len(futures_cache_sinks) > 0:
         time.sleep(1)
-        print("Not done, waiting...")
+        print("Not done, waiting, {} jobs left...".format(len(futures_cache_sinks)))
 
     thread.join()
     thread_mon.join()
+    thread_mon_totals.join()
 
 
 
