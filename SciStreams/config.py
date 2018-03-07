@@ -191,7 +191,7 @@ futures_cache_sinks = deque()#maxlen=100000)
 # assume all functions are pure globally
 try:
     from dask.cache import Cache
-    cache = Cache(1e9)
+    cache = Cache(1e6)
     cache.register()
 except ImportError:
     print("Error cachey not available. Will not be caching")

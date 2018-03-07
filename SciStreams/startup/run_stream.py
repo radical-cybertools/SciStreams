@@ -70,7 +70,7 @@ from SciStreams.streams.XS_Streams import make_calibration
 # from SciStreams.callbacks.live.core import LivePlot_Custom
 
 # Limit pressure by stopping submitting jobs after a max has been reached
-MAX_PROCESSING = 1000000
+MAX_PROCESSING = 10000
 
 
 def wait_on_client():
@@ -462,13 +462,21 @@ if True:
                                                      lines=['linecut'],
                                                      remote=remote_plots))
 
-    sc.sink(event_stream_img, plot_storage_img)
+    #sc.sink(event_stream_img, plot_storage_img)
+    sc.sink(event_stream_img,
+            scs.star(SciStreamCallback(store_results_hdf5)))
     #sc.sink(event_stream_img,
     #scs.star(SciStreamCallback(store_results_hdf5)))
-    sc.sink(event_stream_stitched, plot_storage_stitch)
-    sc.sink(event_stream_sq, plot_storage_sq)
-    sc.sink(event_stream_sqphi, plot_storage_sqphi)
-    sc.sink(event_stream_peaks, plot_storage_peaks)
+    #sc.sink(event_stream_stitched, plot_storage_stitch)
+    sc.sink(event_stream_stitched,
+            scs.star(SciStreamCallback(store_results_hdf5)))
+    #sc.sink(event_stream_sq, plot_storage_sq)
+    sc.sink(event_stream_sq,
+            scs.star(SciStreamCallback(store_results_hdf5)))
+    #sc.sink(event_stream_sqphi, plot_storage_sqphi)
+    sc.sink(event_stream_sqphi,
+            scs.star(SciStreamCallback(store_results_hdf5)))
+    #sc.sink(event_stream_peaks, plot_storage_peaks)
     sc.sink(event_stream_peaks,
             scs.star(SciStreamCallback(store_results_hdf5)))
     #sc.sink(event_stream_linecuts, plot_storage_linecuts)
@@ -573,7 +581,7 @@ class BufferStream:
             self.descriptor_docs.pop(desc_uid)
 
 
-def future_collector(queue1, queuedone, delay=.1):
+def future_collector(queue1, queuedone, errorqueue, delay=.1):
     ''' Collect futures. Just call result()'''
     print("Started the future collector")
     while True:
@@ -588,8 +596,26 @@ def future_collector(queue1, queuedone, delay=.1):
             #print(next_item)
             if next_item.done() is False:
                 # add to end
-                queue1.append(next_item)
-                time.sleep(delay)
+                if next_item.status == 'pending':
+                    print("{} not done, popping back".format(next_item))
+                    queue1.append(next_item)
+                    time.sleep(delay)
+                elif next_item.status == 'error':
+                    print("There was an error with this computation.")
+                    print("Putting to error queue: {}".format(next_item))
+                    next_item.cancel()
+                    error_queue.append(next_item.key)
+                    del next_item
+                else:
+                    print("Unknown status: {}".format(next_item.status))
+                    print("Putting to error queue: {}".format(next_item))
+                    next_item.cancel()
+                    error_queue.append(next_item.key)
+                    del next_item
+            else:
+                # release the result first just in case
+                # TODO : put in some deque to save for later
+                next_item.release()
         else:
             time.sleep(delay)
     print("Finished")
@@ -659,8 +685,9 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
     from threading import Thread
     from SciStreams.config import futures_cache_sinks, futures_total
     queuedone = _COUNTER()
+    errorqueue = deque()
 
-    thread = Thread(target=future_collector, args=(futures_cache_sinks,queuedone))
+    thread = Thread(target=future_collector, args=(futures_cache_sinks,queuedone, errorqueue))
     thread.start()
 
     # also make a file of the totals
