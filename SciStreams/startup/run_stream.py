@@ -136,9 +136,12 @@ def fill_events(sdoc, dbname=None, remote=True):
     non_filled = sdoc.get('_unfilled', [])
 
     def _fill_events(data, non_filled, dbname=None):
+        print("preparing to remotely fill")
         from SciStreams.interfaces.databroker.databases import databases
         db = databases[dbname]
+        print("preparing to fill {}".format(non_filled))
         for key in non_filled:
+            print("filling key {}".format(key))
             # should not raise KeyError
             # because _unfilled should be set correctly
             # swap out the datum_id with the data
@@ -148,9 +151,10 @@ def fill_events(sdoc, dbname=None, remote=True):
 
     if remote:
         # submit remotely
-        print("remotely filling")
-        sdoc['kwargs'] = client.submit(_fill_events, sdoc['kwargs'],
-                                       non_filled, dbname="cms:data")
+        print("remotely filling to client {}".format(client))
+        #sdoc['kwargs'] = client.submit(_fill_events, sdoc['kwargs'],
+                                       #non_filled, dbname="cms:data")
+        sdoc['kwargs'] = client.submit(lambda *x, **x2 : print('foo'))
         print("done remotely filling")
     else:
         sdoc['kwargs'] = _fill_events(sdoc['kwargs'], non_filled, dbname="cms:data")
