@@ -6,6 +6,8 @@ matplotlib.use("Agg")  # noqa
 import time
 import numpy as np
 
+from functools import partial
+
 from collections import deque
 
 
@@ -26,6 +28,7 @@ import matplotlib.pyplot as plt
 from SciStreams.callbacks import SciStreamCallback
 
 from SciStreams.detectors.mask_generators import generate_mask
+from SciStreams.interfaces.databroker.databases import databases
 
 # from SciStreams.core.StreamDoc import StreamDoc
 # StreamDoc to event stream
@@ -96,7 +99,12 @@ def wait_on_client():
 sin = sc.Stream(stream_name="Input")
 # tmp123 = sin.map(print)
 
-stream_input = SciStreamCallback(sin.emit, remote=False)
+# TODO : remote is false because I can't pickle this
+# this will take documents, buffer them then package them into a streamdoc
+# and export them to a function
+# don't till the events yet
+stream_input = SciStreamCallback(sin.emit, remote=False, dbname='cms:data',
+                                 remote_load=True, fill=False)
 
 # these are abbreviations just to make streams access easier
 # this stream filters out data. only outputs data that will work in rest of
@@ -119,6 +127,40 @@ QUEUEDONE.set(0)
 sin.sink(NUMBER_IMAGES_ALL.inc)
 sout_primary.sink(NUMBER_IMAGES.inc)
 
+
+def fill_events(sdoc, dbname=None, remote=True):
+    ''' fill events in place'''
+    # the subset of self.fields that are (1) in the doc and (2) unfilled
+    # print("Filled events")
+    # print(doc['filled'])
+    non_filled = sdoc.get('_unfilled', [])
+
+    def _fill_events(data, non_filled, dbname=None):
+        from SciStreams.interfaces.databroker.databases import databases
+        db = databases[dbname]
+        for key in non_filled:
+            # should not raise KeyError
+            # because _unfilled should be set correctly
+            # swap out the datum_id with the data
+            datum_id = data[key]
+            data[key] = db.reg.retrieve(datum_id)
+        return data
+
+    if remote:
+        # submit remotely
+        print("remotely filling")
+        sdoc['kwargs'] = client.submit(_fill_events, sdoc['kwargs'],
+                                       non_filled, dbname="cms:data")
+        print("done remotely filling")
+    else:
+        sdoc['kwargs'] = _fill_events(sdoc['kwargs'], non_filled, dbname="cms:data")
+
+    return sdoc
+
+
+# remote is True always by default
+sout_filled = sout_primary.map(partial(fill_events, dbname='cms:data'), remote=True)
+
 # sink to list for debugging
 # L_primary = sout_primary.sink_to_list()
 
@@ -127,9 +169,9 @@ sout_primary.sink(NUMBER_IMAGES.inc)
 # new sout_primary
 sin_attributes, sout_attributes = AttributeNormalizingStream()
 # L_attributes = sout_attributes.sink_to_list()
-sout_primary.connect(sin_attributes)
+sout_filled.connect(sin_attributes)
 
-sout_primary = scs.merge(sc.zip(sout_primary,
+sout_filled= scs.merge(sc.zip(sout_filled,
                          scs.to_attributes(sout_attributes)))
 
 sin_calib, sout_calib = CalibrationStream()
@@ -141,7 +183,7 @@ sout_attributes.connect(sin_calib)
 
 # the PrimaryFilteringStream already split the detectors
 # s_image = sc.Stream()
-s_image = scs.add_attributes(sout_primary, stream_name="image")
+s_image = scs.add_attributes(sout_filled, stream_name="image")
 # L_image = s_image.sink_to_list()
 
 
@@ -462,24 +504,27 @@ if True:
                                                      lines=['linecut'],
                                                      remote=remote_plots))
 
-    #sc.sink(event_stream_img, plot_storage_img)
-    sc.sink(event_stream_img,
-            scs.star(SciStreamCallback(store_results_hdf5)))
+    sc.sink(event_stream_img, plot_storage_img)
+    #sc.sink(event_stream_img, print)
+    #sc.sink(event_stream_img, lambda x : print(x[1][2].result()))
+    #sc.sink(event_stream_img,
+            #scs.star(SciStreamCallback(store_results_hdf5)))
     #sc.sink(event_stream_img,
     #scs.star(SciStreamCallback(store_results_hdf5)))
-    #sc.sink(event_stream_stitched, plot_storage_stitch)
-    sc.sink(event_stream_stitched,
-            scs.star(SciStreamCallback(store_results_hdf5)))
-    #sc.sink(event_stream_sq, plot_storage_sq)
-    sc.sink(event_stream_sq,
-            scs.star(SciStreamCallback(store_results_hdf5)))
-    #sc.sink(event_stream_sqphi, plot_storage_sqphi)
-    sc.sink(event_stream_sqphi,
-            scs.star(SciStreamCallback(store_results_hdf5)))
-    #sc.sink(event_stream_peaks, plot_storage_peaks)
+    sc.sink(event_stream_stitched, plot_storage_stitch)
+
+    #sc.sink(event_stream_stitched,
+            #scs.star(SciStreamCallback(store_results_hdf5)))
+    sc.sink(event_stream_sq, plot_storage_sq)
+    #sc.sink(event_stream_sq,
+            #scs.star(SciStreamCallback(store_results_hdf5)))
+    sc.sink(event_stream_sqphi, plot_storage_sqphi)
+    #sc.sink(event_stream_sqphi,
+            #scs.star(SciStreamCallback(store_results_hdf5)))
+    sc.sink(event_stream_peaks, plot_storage_peaks)
     sc.sink(event_stream_peaks,
             scs.star(SciStreamCallback(store_results_hdf5)))
-    #sc.sink(event_stream_linecuts, plot_storage_linecuts)
+    sc.sink(event_stream_linecuts, plot_storage_linecuts)
     #sc.sink(event_stream_thumb, plot_storage_thumb)
     #sc.sink(event_stream_angularcorr, plot_storage_angularcorr)
     #sc.sink(event_stream_linecuts_angularcorr,
@@ -505,19 +550,7 @@ if True:
             #scs.star(SciStreamCallback(store_results_hdf5)))
     # scs.map(print, event_stream_img)
 
-def fill_events(doc, descriptor, db=None):
-    ''' fill events in place'''
-    # the subset of self.fields that are (1) in the doc and (2) unfilled
-    # print("Filled events")
-    # print(doc['filled'])
-    if 'filled' in doc:
-        non_filled = [key for key, val in doc['filled'].items() if not val]
-        # print("non filled : {}".format(non_filled))
-    else:
-        non_filled = []
 
-    if len(non_filled) > 0:
-        db.fill_event(event=doc, inplace=True)
 
 class BufferStream:
     ''' class mimicks callbacks, upgrades stream from a 'start', doc instance
@@ -528,9 +561,16 @@ class BufferStream:
 
         This unfortunately can't be distributed.
     '''
-    def __init__(self, db=None):
+    def __init__(self, dbname=None):
         self.start_docs = dict()
         self.descriptor_docs = dict()
+        self.dbname = dbname
+
+        if dbname is not None:
+            db = databases[dbname]
+        else:
+            db = None
+
         self.db = db
 
     def __call__(self, ndpair):
@@ -549,7 +589,7 @@ class BufferStream:
             # fill events if not filled
             descriptor = self.descriptor_docs[doc['descriptor']]
             # print("before filled events : {}".format(doc))
-            fill_events(doc, descriptor, db=self.db)
+            #doc = fill_events(doc, dbname=dbname)#db=self.db)
             # print("filled events : {}".format(doc))
         elif name == 'stop':
             # if the stop is strange, just use it to clear everything
@@ -597,7 +637,7 @@ def future_collector(queue1, queuedone, errorqueue, delay=.1):
             if next_item.done() is False:
                 # add to end
                 if next_item.status == 'pending':
-                    print("{} not done, popping back".format(next_item))
+                    #print("{} not done, popping back".format(next_item))
                     queue1.append(next_item)
                     time.sleep(delay)
                 elif next_item.status == 'error':
@@ -732,11 +772,14 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
                 print(exc)
             if done:
                 break
-            gen = hdr.documents(fill=True)
+            gen = hdr.documents(fill=False)
             try:
                 for nds in gen:
                     if nds[0] == 'start':
                         current_start = nds[1]['uid']
+                    elif nds[0] == 'stop':
+                        # reset the start
+                        current_start = None
                     yield nds
             # except FileNotFoundError:
             except Exception:
@@ -753,12 +796,12 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
         stream = stream_gen(hdrs)
 
         # stream converter
-        stream_buffer = BufferStream()
+        stream_buffer = BufferStream(dbname="cms:data")
 
         # some loop over stream
         # TODO look for FileNotFoundError in nds iteration
         # make sure it's an iterator
-        stream = iter(stream)
+        #stream = iter(stream)
         last_start = None
         while True:
             try:
@@ -768,7 +811,10 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
                 if nds[0] == 'start':
                     last_start = nds[1][2]
                 #print("iterating : {}".format(nds[0]))
+                t0 = time.time()
+                print("sending to stream {} s".format(time.time()-t0))
                 stream_input(*nds)
+                print("done : {} s".format(time.time()-t0))
                 #plt.pause(.1)
                 if maxrun is not None and NUMBER_IMAGES() > maxrun:
                     print("Computed {} images and maxrun is {}".format(NUMBER_IMAGES(), maxrun))
@@ -826,10 +872,8 @@ def start_callback():
     from bluesky.callbacks.zmq import RemoteDispatcher
     from SciStreams.config import config as configd
 
-    from SciStreams.interfaces.databroker.databases import databases
-    cmsdb = databases['cms:data']
     # db needed to fill events
-    stream_buffer = BufferStream(db=cmsdb)
+    stream_buffer = BufferStream(dbname='cms:data')
     def callback(*nds):
         nds = stream_buffer(nds)
         stream_input(*nds)

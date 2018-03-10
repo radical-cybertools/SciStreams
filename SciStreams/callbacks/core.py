@@ -62,17 +62,37 @@ class SciStreamCallback(CallbackBase):
     ''' This will take a start document and events and output
         each event to a function as a StreamDoc.
 
+        Note: the data elements are saved as doctuples, basically:
+                parent_uid, self_uid, document
+        This allows for introspecting the tree structure without actually
+        calculating the document itself.
+
         remote :
             Force computations to be remote
     '''
     # dictionary of start documents
-    def __init__(self, func, *args, remote=True, **kwargs):
+    def __init__(self, func, *args, dbname='cms:data', remote=True,
+                 fill=False, remote_load=False,
+                 **kwargs):
+        '''
+            remote : bool, optional
+                decide whether or not to run on cluster
+                    (doesn't work for streams)
+            remote_load : bool, optional
+                decide whether or not to fill events on cluster or locally
+                defaults to true (load on cluster)
+            fill : bool, optional
+                decide whether or not to fill events
+        '''
         # args and kwargs reserved to forward to the functions
         # print("initiated with kwargs {}".format(kwargs))
+        self.dbname = dbname
         self.args = args
         self.kwargs = kwargs
         self.func = func
+        self.fill = fill
         self.remote = remote
+        self.remote_load = remote_load
         self.start_docs = dict()
         self.descriptors = dict()
         # right now init doesn't really do anything
@@ -99,6 +119,8 @@ class SciStreamCallback(CallbackBase):
         self.descriptors[descriptor_uid] = (start_uid, doc)
 
     def event(self, doctuple):
+        dbname = self.dbname
+        remote_load = self.remote_load
         # parent_uid, self_uid, doc
         descriptor_uid, event_uid, doc = doctuple
         # descriptor_uid = doc['descriptor']
@@ -116,20 +138,33 @@ class SciStreamCallback(CallbackBase):
             # run but don't return result
             #msg = 'submitting function {} to server'.format(self.func.__name__)
             #print(msg)
-            res = client.submit(wraps(self.func)(eval_func), self.func, start,
-                                descriptor, doc, *self.args, **kwargs)
+            #print("about to submit function {}".format(self.func))
+            #print("start : {}".format(start))
+            #print("descriptor : {}".format(descriptor))
+            #print("doc : {}".format(doc))
+            #res = client.submit(wraps(self.func)(eval_func), self.func, start,
+            # TODO find out why I can't use "wraps" (scheduler complains about pickling)
+            res = client.submit(eval_func, self.func, start, descriptor, doc,
+                                *self.args, fill=self.fill,
+                                remote_load=remote_load, dbname=dbname,
+                                **kwargs)
+            # the client may not submit remotely but return a value
+            # (depending on the client setup)
             if isinstance(res, Future):
                 config.futures_cache_sinks.append(res)
                 config.futures_total.inc()
         else:
             # don't do things remotely, so block if things are Futures
+            #print("not remote")
             if isinstance(doc, Future):
                 doc = doc.result()
             if isinstance(descriptor, Future):
                 descriptor = descriptor.result()
             if isinstance(start, Future):
                 start = start.result()
+            #print("Running function {}".format(self.func))
             eval_func(self.func, start, descriptor, doc, *self.args,
+                      fill=self.fill, dbname=dbname, remote_load=remote_load,
                       **kwargs)
 
     def stop(self, doctuple):
@@ -158,23 +193,88 @@ class SciStreamCallback(CallbackBase):
         if desc_uid in self.descriptors:
             self.descriptors.pop(desc_uid)
 
+from SciStreams.interfaces.databroker.databases import databases
+def fill_events(doc, dbname=None):
+    ''' fill events in place'''
+    # the subset of self.fields that are (1) in the doc and (2) unfilled
+    # print("Filled events")
+    # print(doc['filled'])
 
-def eval_func(func, start, descriptor, event, *args, **kwargs):
+    db = databases[dbname]
+    if 'filled' in doc:
+        non_filled = [key for key, val in doc['filled'].items() if not val]
+        # print("non filled : {}".format(non_filled))
+    else:
+        non_filled = []
+
+    if len(non_filled) > 0:
+        db.fill_event(event=doc, inplace=True)
+
+    return doc
+
+
+def export_streamdoc(start, descriptor, event, fill=True, seq_num=0,
+                     dbname=None):
+    ''' turn a set of documents into a stream doc.
+
+        Parameters
+        ----------
+        start : dict
+            start document
+        descriptor : dict
+            descriptor document
+        event : dict
+            event document
+        fill : bool, optional
+            whether or not to fill event
+        seq_num : int
+            the sequence number
+
+        Returns
+        -------
+        sdoc : a StreamDoc
+        '''
     #print("on cluster, computing {}".format(func.__name__))
     start_uid = start['uid']
-    data = event['data']
+    if fill:
+        event = fill_events(event, dbname=dbname)
+    else:
+        # flag unfilled keys
+        if 'filled' in event:
+            non_filled = [key for key, val in event['filled'].items() if not val]
+            # print("non filled : {}".format(non_filled))
+        else:
+            non_filled = []
+        # TODO : make this a descriptor
 
+
+    data = event['data']
     # now make data
     sdoc = StreamDoc()
     sdoc.add(attributes=start)
     # allow seq_num to be passed
-    sdoc['attributes']['seq_num'] = event['seq_num']
+    sdoc['attributes']['seq_num'] = seq_num
+    # TODO : make this a descriptor
+    sdoc['_unfilled'] = non_filled
+
     # no args since each element in a doc is named
     sdoc.add(kwargs=data)
     checkpoint = dict(parent_uids=[start_uid])
     provenance = dict(name="SciStreamCallback")
     sdoc.add(checkpoint=checkpoint)
     sdoc.add(provenance=provenance)
+    return sdoc
+
+
+def eval_func(func, start, descriptor, event, *args, dbname=None,
+              fill=True, remote_load=False, seq_num=0, **kwargs):
+    '''
+        fill : bool, optional
+            whether to fill events or not
+    '''
+    #print("on cluster, computing {}".format(func.__name__))
+    sdoc = export_streamdoc(start, descriptor, event, dbname=dbname,
+                            fill=fill, seq_num=seq_num)
     # finally, evaluate the function
     # print("calling function {} with sdoc {}".format(func, sdoc))
     # print("calling function {} with extra args : {}".format(func, args))

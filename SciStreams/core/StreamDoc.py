@@ -425,7 +425,6 @@ class StreamDoc(dict):
         # if it was all local, then keep local (the latter blocks, so be
         # careful)
         if isinstance(kwargs, Future) or isinstance(self['kwargs'], Future):
-
             self['kwargs'] = client.submit(update_future_dict, self['kwargs'],
                                            kwargs)
         else:

@@ -2,6 +2,8 @@
 # inter-module gaps
 from collections import deque
 from numbers import Number
+from SciStreams.config import client
+from distributed import Future
 
 # from .. import globals as streams_globals
 
@@ -52,24 +54,30 @@ def pick_allowed_detectors(sdoc):
     sdocs = list()
     md = sdoc.attributes
     kwargs = sdoc.kwargs
+    #print(kwargs)
+    has_futures = False
     for key in allowed_detector_keys:
         if key in kwargs:
             data = kwargs[key]
         else:
             continue
-        if hasattr(data, 'ndim') and data.ndim > 0:
+        #if hasattr(data, 'ndim') and data.ndim > 0:
+        if True:
             # this picks data of dimensions 2 only
             # but also outputs some hints (in case we get a different
             # detector that outputs different data. for ex: time series etc)
-            if data.ndim == 1:
+            #if data.ndim == 1:
+            if False:
                 # TODO : return an sdoc that can raise something if needed
                 print("Found a 1D line of data? Ignoring...")
                 continue
-            elif data.ndim == 3:
+            elif False:
+            #elif data.ndim == 3:
                 msg = "Found 3D array data. Ignoring (but make sure this"
                 msg += " is not something you want to analyze"
                 continue
-            elif data.ndim > 3:
+            #elif data.ndim > 3:
+            elif False:
                 continue
         else:
             continue
@@ -77,6 +85,12 @@ def pick_allowed_detectors(sdoc):
         new_md = dict(md)
         new_md.update(detector_key=key)
         new_kwargs = dict(image=data)
+        def make_dict(key, data):
+            return {'image' : data}
+
+        if isinstance(data, Future):
+            new_kwargs = client.submit(make_dict, key, data)
+
         sdoc_new = sd.StreamDoc(kwargs=new_kwargs, attributes=new_md)
         sdocs.append(sdoc_new)
 
@@ -244,8 +258,8 @@ def AttributeNormalizingStream(external_keymap=None):
     # they are also always unique to each data so caching doesn't make sense
     sout = scs.get_attributes(sin)
     sout = scs.map(normalize_calib_dict, sout, external_keymap=external_keymap,
-                   remote=False)
-    sout = scs.map(add_detector_info, sout, remote=False)
+                   remote=True)
+    sout = scs.map(add_detector_info, sout, remote=True)
     return sin, sout
 
 
@@ -388,7 +402,7 @@ def CalibrationStream():
     global global_calib
     sin = sc.Stream(stream_name="Calibration")
     # force computation to come back here
-    sout = scs.map(make_calibration, sin, remote=False)
+    sout = scs.map(make_calibration, sin, remote=True)
 
     # this piece should be computed using Dask
     def _generate_qxyz_maps(calibration):
