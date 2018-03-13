@@ -53,14 +53,13 @@ if __name__ == '__main__':
         # "(default is 24 hrs prior to now)")
         if args.start_time is not None:
             # will raise a ValueError
-            start_time = check_time(args.start_time)
+            start_time = args.start_time
         else:
             # 1 day earlier
             start_time = time.time()-24*3600
         stop_time = args.stop_time
 
-        print("Searching for results " +
-              "from {} onwards...".format(time.ctime(start_time)))
+        print("Searching for results from {} to {}".format(start_time, stop_time))
         # run pipeline
         if hasattr(args, 'maxrun'):
             maxrun = args.maxrun

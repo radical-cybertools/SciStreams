@@ -11,6 +11,9 @@ from functools import partial
 from collections import deque
 
 
+# temporary futures cache
+futures_cache = deque()
+
 import matplotlib.pyplot as plt
 # plt.ion()  # noqa
 
@@ -128,6 +131,21 @@ sin.sink(NUMBER_IMAGES_ALL.inc)
 sout_primary.sink(NUMBER_IMAGES.inc)
 
 
+def _fill_events1(data, non_filled, dbname=None):
+    from SciStreams.interfaces.databroker.databases import databases
+
+    db = databases[dbname]
+    print("preparing to fill {}".format(non_filled))
+    for key in non_filled:
+        print("filling key {}".format(key))
+        # should not raise KeyError
+        # because _unfilled should be set correctly
+        # swap out the datum_id with the data
+        datum_id = data[key]
+        data[key] = db.reg.retrieve(datum_id)
+    return data
+
+
 def fill_events(sdoc, dbname=None, remote=True):
     ''' fill events in place'''
     # the subset of self.fields that are (1) in the doc and (2) unfilled
@@ -135,35 +153,26 @@ def fill_events(sdoc, dbname=None, remote=True):
     # print(doc['filled'])
     non_filled = sdoc.get('_unfilled', [])
 
-    def _fill_events(data, non_filled, dbname=None):
-        print("preparing to remotely fill")
-        from SciStreams.interfaces.databroker.databases import databases
-        db = databases[dbname]
-        print("preparing to fill {}".format(non_filled))
-        for key in non_filled:
-            print("filling key {}".format(key))
-            # should not raise KeyError
-            # because _unfilled should be set correctly
-            # swap out the datum_id with the data
-            datum_id = data[key]
-            data[key] = db.reg.retrieve(datum_id)
-        return data
-
     if remote:
         # submit remotely
-        print("remotely filling to client {}".format(client))
-        #sdoc['kwargs'] = client.submit(_fill_events, sdoc['kwargs'],
-                                       #non_filled, dbname="cms:data")
-        sdoc['kwargs'] = client.submit(lambda *x, **x2 : print('foo'))
-        print("done remotely filling")
+        #print("remotely filling to client {}".format(client))
+        #print("data : {}".format(sdoc['kwargs']))
+        sdoc['kwargs'] = client.submit(_fill_events1, data=sdoc['kwargs'],
+                                       non_filled=non_filled,
+                                       dbname="cms:data")
+        #futures_cache.append(sdoc['kwargs'])
+        #sdoc['kwargs'] = client.submit(lambda *x, **x2 : print('foo'))
+        #print("done remotely filling")
     else:
-        sdoc['kwargs'] = _fill_events(sdoc['kwargs'], non_filled, dbname="cms:data")
-
+        sdoc['kwargs'] = _fill_events1(sdoc['kwargs'], non_filled, dbname="cms:data")
+    #print("kwargs of sdoc now : {}".format(sdoc['kwargs'].result()))
+    # assume it's filled now
+    sdoc['_unfilled'] = []
     return sdoc
 
 
 # remote is True always by default
-sout_filled = sout_primary.map(partial(fill_events, dbname='cms:data'), remote=True)
+sout_filled = sc.map(sout_primary, fill_events, dbname='cms:data', remote=True)
 
 # sink to list for debugging
 # L_primary = sout_primary.sink_to_list()
@@ -173,10 +182,11 @@ sout_filled = sout_primary.map(partial(fill_events, dbname='cms:data'), remote=T
 # new sout_primary
 sin_attributes, sout_attributes = AttributeNormalizingStream()
 # L_attributes = sout_attributes.sink_to_list()
-sout_filled.connect(sin_attributes)
+sout_primary.connect(sin_attributes)
 
 sout_filled= scs.merge(sc.zip(sout_filled,
                          scs.to_attributes(sout_attributes)))
+
 
 sin_calib, sout_calib = CalibrationStream()
 sout_attributes.connect(sin_calib)
@@ -225,7 +235,7 @@ def get_stitch(**kwargs):
 
 s_origin = scs.map(get_origin, sout_attributes)
 
-s_exposure = scs.map(get_exposure, sout_attributes)
+s_exposure = scs.map(get_exposure, sout_attributes, remote=True)
 
 s_stitch = scs.map(get_stitch, sout_attributes)
 # name the stream for proper output
@@ -258,11 +268,12 @@ s_imgmaskoriginstitch = scs.merge(sc.zip(s_imagenorm,
                                          s_mask,
                                          s_origin,
                                          s_stitch))
+#s_imgmaskoriginstitch.sink(lambda *x, **x2: print("sin: {} {}".format(x, x2)))
 
 
 sin_stitched, sout_stitched = ImageStitchingStream(return_intermediate=True)
 # NOTE : disconnected image stitching
-s_imgmaskoriginstitch.connect(sin_stitched)
+#s_imgmaskoriginstitch.connect(sin_stitched)
 
 # L_stitched = sout_stitched.sink_to_list()
 
@@ -284,10 +295,11 @@ def get_shape(**kwargs):
 
 
 # TODO : only spawn new process if a condition is met
-sout_stitched_attributes = scs.map(get_shape, sout_stitched)
-sout_stitched_attributes = scs.merge(sc.zip(sout_attributes,
-                                            sout_stitched_attributes))
-s_calib_stitched = scs.map(make_calibration, sout_stitched_attributes)
+#sout_stitched_attributes = scs.map(get_shape, sout_stitched)
+#sout_stitched_attributes = scs.merge(sc.zip(sout_attributes,
+                                            #sout_stitched_attributes))
+
+#s_calib_stitched = scs.map(make_calibration, sout_stitched_attributes)
 
 
 # the masked image. sometimes useful to use
@@ -306,7 +318,7 @@ s_qmap = scs.map(lambda calibration: dict(q_map=calibration.q_map),
 s_img_mask_origin_qmap = scs.merge(sc.zip(s_img_mask_origin, s_qmap))
 
 sin_qphiavg, sout_qphiavg = QPHIMapStream()
-s_img_mask_origin_qmap.connect(sin_qphiavg)
+#s_img_mask_origin_qmap.connect(sin_qphiavg)
 
 # L_qphiavg = sout_qphiavg.sink_to_list()
 
@@ -325,7 +337,8 @@ sout_sqphipeaks.connect(sin_linecuts)
 
 
 sin_thumb, sout_thumb = ThumbStream(blur=2, crop=None, resize=10)
-s_image.connect(sin_thumb)
+#s_image.connect(sin_thumb)
+#s_image.sink(lambda x : print("masked img : {}".format(x)))
 
 sin_angularcorr, sout_angularcorr = AngularCorrelatorStream(bins=(800, 360))
 #s_img_mask_origin_qmap.connect(sin_angularcorr)
@@ -352,7 +365,6 @@ sin_linecuts_angularcorr, sout_linecuts_angularcorr = \
 
 sin_tag, sout_tag = ImageTaggingStream()
 s_maskedimg.connect(sin_tag)
-# s_maskedimg.sink(lambda x : print("masked img : {}".format(x)))
 # L_tag = sout_tag.sink_to_list()
 
 
@@ -407,7 +419,7 @@ if True:
     event_stream_sq = scs.to_event_stream(sout_circavg)
     event_stream_peaks = scs.to_event_stream(sout_sqpeaks)
     event_stream_maskedimg = scs.to_event_stream(s_maskedimg)
-    event_stream_stitched = scs.to_event_stream(sout_stitched)
+    #event_stream_stitched = scs.to_event_stream(sout_stitched)
     event_stream_linecuts = scs.to_event_stream(sout_linecuts)
     event_stream_thumb = scs.to_event_stream(sout_thumb)
     event_stream_angularcorr = scs.to_event_stream(sout_angularcorr)
@@ -447,10 +459,10 @@ if True:
                                                   images=['image'],
                                                   img_norm=normalizer,
                                                   remote=remote_plots))
-    plot_storage_stitch = scs.star(SciStreamCallback(store_results_mpl,
-                                                     images=['image'],
-                                                     img_norm=normalizer,
-                                                     remote=remote_plots))
+    #plot_storage_stitch = scs.star(SciStreamCallback(store_results_mpl,
+                                                     #images=['image'],
+                                                     #img_norm=normalizer,
+                                                     #remote=remote_plots))
     xlbl = "$q,(\AA^{-1})$"
     ylbl = "I(q)"
     plot_storage_sq = scs.star(SciStreamCallback(store_results_mpl,
@@ -515,7 +527,7 @@ if True:
             #scs.star(SciStreamCallback(store_results_hdf5)))
     #sc.sink(event_stream_img,
     #scs.star(SciStreamCallback(store_results_hdf5)))
-    sc.sink(event_stream_stitched, plot_storage_stitch)
+    #sc.sink(event_stream_stitched, plot_storage_stitch)
 
     #sc.sink(event_stream_stitched,
             #scs.star(SciStreamCallback(store_results_hdf5)))
@@ -796,6 +808,21 @@ def start_run(start_time=None, stop_time=None, uids=None, loop_forever=True,
         loop_forever = False
 
     while True:
+        # set to true for quick debugging
+        if False:
+            print("kwargs : {}".format(kwargs))
+            print("checking number of headers")
+            cnt = 0;nhdrs = 0;
+
+            hdrs = cmsdb(**kwargs)#start_time="2017-11-05", stop_time="2017-11-06")
+            for hdr in hdrs:
+                nhdrs += 1
+                stream=hdr.documents()
+                for name, doc in stream:
+                    if name=="event":
+                        cnt +=1
+            print("{} headers, {} events total".format(nhdrs, cnt))
+
         hdrs = cmsdb(**kwargs)
         stream = stream_gen(hdrs)
 

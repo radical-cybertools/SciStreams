@@ -202,3 +202,5 @@ set_options(delayed_pure=True)
 
 # TAU STUFF Profiler dictionaries
 profile_dict = dict()
+
+last_run_time = None

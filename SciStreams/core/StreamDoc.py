@@ -20,6 +20,7 @@ from dask.base import normalize_token
 import numpy as np
 
 # from ..config import default_timeout as DEFAULT_TIMEOUT
+from SciStreams import config
 
 from ..config import debug, modules, client
 
@@ -358,7 +359,7 @@ def _to_event_stream(sdoc):
 
 class StreamDoc(dict):
     def __init__(self, streamdoc=None, args=[], kwargs={},
-                 attributes={}, sdoc_type='full'):
+                 attributes={}, unfilled=[], sdoc_type='full'):
         ''' A generalized document meant to be parsed by Streams.
 
             sdoc_type : {'full', 'empty', 'error'}
@@ -384,6 +385,7 @@ class StreamDoc(dict):
         self['args'] = list()
         self['provenance'] = dict()
         self['checkpoint'] = dict()
+        self['_unfilled'] = []
 
         # these two pieces are specific to the run
         self['statistics'] = dict(cumulative_time=0.)
@@ -400,18 +402,19 @@ class StreamDoc(dict):
             self.updatedoc(streamdoc)
 
         # override with args
-        self.add(args=args, kwargs=kwargs, attributes=attributes)
+        self.add(args=args, kwargs=kwargs, attributes=attributes, unfilled=unfilled)
 
     def updatedoc(self, streamdoc):
         # print("in StreamDoc : {}".format(streamdoc))
         self.add(args=streamdoc['args'], kwargs=streamdoc['kwargs'],
                  attributes=streamdoc['attributes'],
-                 statistics=streamdoc['statistics'])
+                 statistics=streamdoc['statistics'],
+                 unfilled=streamdoc['_unfilled'])
 
     # arguments can be a Future
     # so everything involving it should be submitted to cluster
     def add(self, args=[], kwargs={}, attributes={}, statistics={},
-            provenance={}, checkpoint={}):
+            provenance={}, checkpoint={}, unfilled=[]):
         ''' add args and kwargs'''
         def update_future_dict(old_dict, update_dict):
             new_dict = dict(old_dict)
@@ -448,10 +451,11 @@ class StreamDoc(dict):
         else:
             self['args'].extend(args)
 
-        self['attributes'].update(attributes)
+
         self['statistics'].update(statistics)
         self['provenance'].update(provenance)
         self['checkpoint'].update(checkpoint)
+        self['_unfilled'].extend(unfilled)
 
         return self
 
@@ -734,6 +738,15 @@ def parse_streamdoc(name, filter=False):
                     return new_kwargs
                 else:
                     return {}
+            if isinstance(x.get('kwargs', {}), Future):
+                print("passing a future of kwargs")
+            else:
+                print("NOT passing a future of kwargs")
+
+            if isinstance(x.get('args', []), Future):
+                print("passing a future of args")
+            else:
+                print("NOT passing a future of args")
 
             # add a time out to f
             # TODO : replace with custom time out per stream
@@ -946,6 +959,12 @@ def parse_streamdoc(name, filter=False):
             # {}".format(attributes['function_list']))
             attributes['function_list'].append(getattr(f, '__name__',
                                                'unnamed'))
+            print("runtime : {}".format(t2-t1))
+            print("func list : {}".format(attributes['function_list']))
+            if config.last_run_time is None:
+                config.last_run_time = t1
+            print("delay since last run: {}".format(t2 - config.last_run_time))
+            config.last_run_time = t2
             # print("Running function {}".format(f.__name__))
             # instantiate new stream doc
             streamdoc = StreamDoc(attributes=attributes, sdoc_type=sdoc_type)

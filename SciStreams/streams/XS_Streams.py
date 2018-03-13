@@ -91,7 +91,9 @@ def pick_allowed_detectors(sdoc):
         if isinstance(data, Future):
             new_kwargs = client.submit(make_dict, key, data)
 
-        sdoc_new = sd.StreamDoc(kwargs=new_kwargs, attributes=new_md)
+        # the key is now image
+        sdoc_new = sd.StreamDoc(kwargs=new_kwargs, attributes=new_md,
+                                unfilled=['image'])
         sdocs.append(sdoc_new)
 
     return sdocs
@@ -1057,9 +1059,9 @@ def ThumbStream(blur=None, crop=None, resize=None):
     sin = sc.Stream(stream_name="Thumbnail Stream")
     sout = scs.add_attributes(sin, stream_name="thumb")
     # s1 = sin.add_attributes(stream_name="ThumbStream")
-    sout = scs.map(_blur, sout, sigma=blur)
-    sout = scs.map(_crop, sout, crop=crop)
-    sout = scs.map(_resize, sout, resize=resize)
+    sout = scs.map(_blur, sout, sigma=blur, remote=True)
+    sout = scs.map(_crop, sout, crop=crop, remote=True)
+    sout = scs.map(_resize, sout, resize=resize, remote=True)
     # change the key from image to thumb
     sout = scs.select(sout, ('image', 'thumb'))
 

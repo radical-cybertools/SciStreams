@@ -213,7 +213,7 @@ def fill_events(doc, dbname=None):
     return doc
 
 
-def export_streamdoc(start, descriptor, event, fill=True, seq_num=0,
+def export_streamdoc(start, descriptor, event, fill=True,
                      dbname=None):
     ''' turn a set of documents into a stream doc.
 
@@ -233,7 +233,7 @@ def export_streamdoc(start, descriptor, event, fill=True, seq_num=0,
         Returns
         -------
         sdoc : a StreamDoc
-        '''
+    '''
     #print("on cluster, computing {}".format(func.__name__))
     start_uid = start['uid']
     if fill:
@@ -253,7 +253,8 @@ def export_streamdoc(start, descriptor, event, fill=True, seq_num=0,
     sdoc = StreamDoc()
     sdoc.add(attributes=start)
     # allow seq_num to be passed
-    sdoc['attributes']['seq_num'] = seq_num
+    if 'seq_num' in event and 'seq_num' not in sdoc['attributes']:
+        sdoc['attributes']['seq_num'] = event['seq_num']
     # TODO : make this a descriptor
     sdoc['_unfilled'] = non_filled
 
@@ -267,14 +268,14 @@ def export_streamdoc(start, descriptor, event, fill=True, seq_num=0,
 
 
 def eval_func(func, start, descriptor, event, *args, dbname=None,
-              fill=True, remote_load=False, seq_num=0, **kwargs):
+              fill=True, remote_load=False, **kwargs):
     '''
         fill : bool, optional
             whether to fill events or not
     '''
     #print("on cluster, computing {}".format(func.__name__))
-    sdoc = export_streamdoc(start, descriptor, event, dbname=dbname,
-                            fill=fill, seq_num=seq_num)
+    sdoc = export_streamdoc(start, descriptor, event, dbname=dbname, fill=fill)
+    #, seq_num=seq_num)
     # finally, evaluate the function
     # print("calling function {} with sdoc {}".format(func, sdoc))
     # print("calling function {} with extra args : {}".format(func, args))
