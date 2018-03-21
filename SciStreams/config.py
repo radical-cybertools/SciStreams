@@ -46,12 +46,12 @@ _DEFAULTS = {
     'debug': False,
     'required_attributes': dict(main=dict()),
     'default_timeout': None,
-    'resultsroot': os.path.expanduser("/GPFS/pipeline"),
+    'resultsroot': os.path.expanduser("/GPFS/xf11bm/pipeline"),
     'delayed': True,
     'server': None,
     'databases': default_databases,
     # tensorflow storage stuff
-    'TFLAGS': {'out_dir': '/GPFS/pipeline/ml-tmp',
+    'TFLAGS': {'out_dir': '/GPFS/xf11bm/pipeline/ml-tmp',
                'num_batches': 16}
 }
 

@@ -2,6 +2,7 @@ from distributed import Future
 from SciStreams.core.StreamDoc import StreamDoc
 from SciStreams.config import client
 from SciStreams import config
+import time
 
 from functools import wraps
 
@@ -119,15 +120,20 @@ class SciStreamCallback(CallbackBase):
         self.descriptors[descriptor_uid] = (start_uid, doc)
 
     def event(self, doctuple):
+        t1_ev = time.time()
+        print("Timing: event callback")
         dbname = self.dbname
         remote_load = self.remote_load
         # parent_uid, self_uid, doc
         descriptor_uid, event_uid, doc = doctuple
         # descriptor_uid = doc['descriptor']
         if descriptor_uid not in self.descriptors:
+            t2_ev = time.time()
+            print("Timing: event callback FAILED result : {}s".format(t2_ev-t1_ev))
             msg = "Missing descriptor for event"
             msg += "\nEvent uid : {}".format(event_uid)
             msg += "\nDescriptor uid: {}".format(descriptor_uid)
+            print(msg)
             raise Exception(msg)
 
         start_uid, descriptor = self.descriptors[descriptor_uid]
@@ -144,10 +150,14 @@ class SciStreamCallback(CallbackBase):
             #print("doc : {}".format(doc))
             #res = client.submit(wraps(self.func)(eval_func), self.func, start,
             # TODO find out why I can't use "wraps" (scheduler complains about pickling)
+            print("Submitting callback remotely")
+            t1 = time.time()
             res = client.submit(eval_func, self.func, start, descriptor, doc,
                                 *self.args, fill=self.fill,
                                 remote_load=remote_load, dbname=dbname,
                                 **kwargs)
+            t2 = time.time()
+            print("Took {} secs".format(t2-t1))
             # the client may not submit remotely but return a value
             # (depending on the client setup)
             if isinstance(res, Future):
@@ -166,6 +176,8 @@ class SciStreamCallback(CallbackBase):
             eval_func(self.func, start, descriptor, doc, *self.args,
                       fill=self.fill, dbname=dbname, remote_load=remote_load,
                       **kwargs)
+        t2_ev = time.time()
+        print("Timing: event callback result : {}s".format(t2_ev-t1_ev))
 
     def stop(self, doctuple):
         ''' Stop is where the garbage collection happens.'''

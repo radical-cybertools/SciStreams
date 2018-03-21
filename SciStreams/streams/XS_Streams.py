@@ -55,7 +55,6 @@ def pick_allowed_detectors(sdoc):
     md = sdoc.attributes
     kwargs = sdoc.kwargs
     #print(kwargs)
-    has_futures = False
     for key in allowed_detector_keys:
         if key in kwargs:
             data = kwargs[key]
@@ -94,6 +93,7 @@ def pick_allowed_detectors(sdoc):
         # the key is now image
         sdoc_new = sd.StreamDoc(kwargs=new_kwargs, attributes=new_md,
                                 unfilled=['image'])
+        print("pick_allowed_detectors: got an sdoc")
         sdocs.append(sdoc_new)
 
     return sdocs

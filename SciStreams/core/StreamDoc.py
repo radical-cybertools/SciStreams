@@ -509,6 +509,7 @@ class StreamDoc(dict):
             args, kwargs = self['args'], self['kwargs']
             if isinstance(args, Future) or \
                     isinstance(kwargs, Future):
+                #print("Selecting remotely")
                 # do computation remotely
                 # self.etc should be okay (if not, change to staticmethod)
                 res = client.submit(_select_from_mapping, args,
@@ -523,6 +524,7 @@ class StreamDoc(dict):
                 args = client.submit(get_args, res)
                 kwargs = client.submit(get_kwargs, res)
             else:
+                #print("Not selecting remotely")
                 args, kwargs = _select_from_mapping(args, kwargs, *mapping)
 
             # from SciStreams.config import debugcache
@@ -731,6 +733,8 @@ def parse_streamdoc(name, filter=False):
     def streamdoc_dec(f, remote=True):
         @wraps(f)
         def f_new(x, x2=None, **kwargs_additional):
+            print("timing #1")
+            t1_kwargs = time.time()
             def update_kwargs(old_kwargs, in_kwargs, empty=False):
                 if not empty:
                     new_kwargs = old_kwargs.copy()
@@ -814,8 +818,14 @@ def parse_streamdoc(name, filter=False):
                 return empty
 
             if remote:
+                print("remote update sdoc")
+                t1_kwargs = time.time()
                 sdoc_empty = client.submit(empty_sdoc, sdoc_type, sdoc2_type)
+                t2_kwargs= time.time()
+                print("took {} secs".format(t2_kwargs-t1_kwargs))
             else:
+                print("non-remote empty sdoc")
+                t1_kwargs = time.time()
                 if isinstance(sdoc_type, Future):
                     sdoc_type = sdoc_type.result()
 
@@ -823,18 +833,26 @@ def parse_streamdoc(name, filter=False):
                     sdoc2_type = sdoc2_type.result()
 
                 sdoc_empty = empty_sdoc(sdoc_type, sdoc2_type)
+                t2_kwargs= time.time()
+                print("took {} secs".format(t2_kwargs-t1_kwargs))
 
             # kwargs is a Future so we need to be careful
             # print(kwargs)
             # print(kwargs_additional)
             if remote:
+                print("remote update kwargs")
+                t1_kwargs = time.time()
                 kwargs_future = client.submit(update_kwargs, kwargs,
                                               kwargs_additional,
                                               empty=sdoc_empty)
+                t2_kwargs= time.time()
+                print("took {} secs".format(t2_kwargs-t1_kwargs))
                 # print("Sent to cluster")
             else:
                 # we don't want to run on cluster
                 # check if they're Futures first and turn them to concrete data
+                print("non-remote update kwargs")
+                t1_kwargs = time.time()
                 # if yes
                 if isinstance(kwargs, Future):
                     kwargs = kwargs.result()
@@ -843,6 +861,8 @@ def parse_streamdoc(name, filter=False):
 
                 kwargs_future = update_kwargs(kwargs, kwargs_additional,
                                               empty=sdoc_empty)
+                t2_kwargs= time.time()
+                print("took {} secs".format(t2_kwargs-t1_kwargs))
 
             @wraps(f)
             def unwrap(f, args, kwargs, empty=False):
@@ -969,6 +989,7 @@ def parse_streamdoc(name, filter=False):
             # instantiate new stream doc
             streamdoc = StreamDoc(attributes=attributes, sdoc_type=sdoc_type)
             streamdoc['statistics'] = statistics
+            # print("Running function {}".format(f.__name__))
             # load in attributes
             # Save outputs to StreamDoc
             # parse arguments to an object with args and kwargs members
@@ -997,36 +1018,33 @@ def parse_streamdoc(name, filter=False):
                     return []
 
             # TODO : filter is not being used, should use or delete later?
-            if not filter:
-                if remote:
-                    kwargs = client.submit(get_kwargs, result)
-                    args = client.submit(get_args, result)
-                    # print("Computation key : {}".format(result.key))
-                    # print("Computation status : {}".format(result.status))
-                    # print("Computation : {}".format(f.__name__))
-                else:
-                    kwargs = get_kwargs(result)
-                    args = get_args(result)
-                streamdoc.add(kwargs=kwargs, args=args)
+            if remote:
+                print("get kwargs streamdoc")
+                t1_kwargs = time.time()
+                kwargs = client.submit(get_kwargs, result)
+                args = client.submit(get_args, result)
+                t2_kwargs = time.time()
+                print("took {} sec".format(t2_kwargs-t1_kwargs))
+                # print("Computation key : {}".format(result.key))
+                # print("Computation status : {}".format(result.status))
+                # print("Computation : {}".format(f.__name__))
             else:
-                # for filter, we pass old streamdoc but change it's state
-                # if filter predicate is True (state can also be Future)
-                # make a new StreamDoc
-                streamdoc = StreamDoc(x)
+                print("non-remote get kwargs streamdoc")
+                t1_kwargs = time.time()
+                kwargs = client.submit(get_kwargs, result)
+                kwargs = get_kwargs(result)
+                args = get_args(result)
+                t2_kwargs = time.time()
+                print("took {} sec".format(t2_kwargs-t1_kwargs))
 
-                def parse_predicate(sdoc_type, result):
-                    if result is True and sdoc_type == 'full':
-                        return 'full'
-                    else:
-                        return 'empty'
+            print("adding streamdoc")
+            t1_kwargs = time.time()
+            streamdoc.add(kwargs=kwargs, args=args)
+            t2_kwargs = time.time()
+            print("took {} sec".format(t2_kwargs-t1_kwargs))
 
-                if remote:
-                    result = client.submit(parse_predicate, sdoc_type, result)
-                else:
-                    result = parse_predicate(sdoc_type, result)
-
-                streamdoc['_StreamDoc_Type'] = result
-
+            t2_kwargs = time.time()
+            print("timing #1 : took {} sec".format(t2_kwargs-t1_kwargs))
             return streamdoc
 
         return f_new

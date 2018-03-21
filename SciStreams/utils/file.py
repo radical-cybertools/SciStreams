@@ -90,6 +90,7 @@ def _make_fname_from_attrs(attrs, filetype="xml", strict=False,
 
     outdir = rootdir + "/" + detector_savedir + "/" + stream_name \
         + "/" + filetype
+    print("making directory {}".format(outdir))
     make_dir(outdir)
     outfile = outdir + "/" + sample_savename + "_" + scan_id + "_" + seq_num + "." + filetype
 
