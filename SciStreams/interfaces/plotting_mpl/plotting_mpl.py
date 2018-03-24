@@ -55,7 +55,7 @@ class FigureGetter:
 
 # TODO move to general tools
 
-def store_results_mpl(sdoc, **kwargs):
+def store_results_mpl(data, attrs, **kwargs):
     ''' Store the results to a numpy file.
         This saves to numpy format by default.
         May raise an error if it doesn't understand data.
@@ -80,13 +80,8 @@ def store_results_mpl(sdoc, **kwargs):
                 title
                 all others are sent as plot options forwarded to matplotlib
     '''
-    # if a failure don't even plot
-    if 'status' in sdoc and sdoc['status'].lower() == 'failure':
-        return
-    data = sdoc['kwargs']
-    attrs = sdoc['attributes']
-    # NOTE : This is different from the interface version which expect a
-    # StreamDoc as input
+    #data = sdoc['kwargs']
+    #attrs = sdoc['attributes']
     img_norm = kwargs.pop('img_norm', None)
     # make import local so objects are not pickled
     # TODO : move some of the plotting into a general object
