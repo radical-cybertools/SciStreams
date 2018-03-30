@@ -89,6 +89,9 @@ def primary_func(data, store, signal, context):
                         dag_name = signal.start_dag(one_image_dag, data=new_data)
                         print("primary node, dag name: {}".format(dag_name))
                         dag_names.append(dag_name)
+                    else:
+                        print("Did not find a good image")
+                        print(new_data['md'])
             except FileNotFoundError as exc:
                 print("Error, could not find file, ignoring...")
                 print(exc)

@@ -25,6 +25,9 @@ from SciStreams.detectors.mask_generators import generate_mask
 # for circular average
 from SciStreams.processing.circavg import circavg
 
+# for qphiavg
+from SciStreams.processing.qphiavg import qphiavg
+
 keymaps = config['keymaps']
 
 # helper functions
@@ -195,10 +198,12 @@ def make_calibration(**md):
 # TODO : is this necessary or can a DAG have multiple roots?
 def input_func(data, store, signal, context):
     # pass the stream name
+    print("Beginning of one image pipeline")
     data['md']['stream_name'] = context.task_name
 
 # this splits images into one image to send to tasks
 def to_thumb_func(data, store, signal, context):
+    print("Making thumb of image")
     data_dict = dict(img=data['img'])
     attrs = data['md']
     store_results_mpl(data_dict, attrs, images=['img'])
@@ -208,6 +213,7 @@ def to_thumb_func(data, store, signal, context):
 
 
 def parse_attributes_func(data, store, signal, context):
+    print("Parsing attributes")
     md = data['md']
     md = normalize_calib_dict(**md)
     md = add_detector_info(**md)
@@ -219,6 +225,7 @@ def parse_attributes_func(data, store, signal, context):
 
 
 def make_calibration_func(data, store, signal, context):
+    print("Making calibration")
     md = data['md']
     #print("making calibration from metadata {}".format(md))
     calibration = make_calibration(**md)
@@ -230,6 +237,7 @@ def make_calibration_func(data, store, signal, context):
     data['md']['stream_name'] = context.task_name
 
 def generate_mask_func(data, store, signal, context):
+    print("Generating mask")
     md = data['md']
     mask = generate_mask(**md)['mask']
     data['mask'] = mask
@@ -238,11 +246,13 @@ def generate_mask_func(data, store, signal, context):
     data['md']['stream_name'] = context.task_name
 
 def save_mask_func(data, store, signal, context):
+    print("Saving thumb of mask")
     data_dict = dict(mask=data['mask'])
     attrs = data['md']
     store_results_mpl(data_dict, attrs, images=['mask'])
 
 def circavg_func(data, store, signal, context):
+    print("Computing circular average")
     image = data.get_by_alias('image')['img']
     calibration = data.get_by_alias('calibration')['calibration']
     q_map = calibration.q_map
@@ -264,6 +274,7 @@ def circavg_func(data, store, signal, context):
     data['md']['stream_name'] = context.task_name
 
 def circavg_plot_func(data, store, signal, context):
+    print("Plotting circular average")
     data_dict = dict()
     data_dict['sqx'] = data['sqx']
     data_dict['sqy'] = data['sqy']
@@ -274,6 +285,78 @@ def circavg_plot_func(data, store, signal, context):
                       lines=[('sqx', 'sqy')],
                       scale='loglog', xlabel=xlbl,
                       ylabel=ylbl,)
+
+
+# try peak finding code
+def peakfind_func(data, signal, store, context):
+    print("Finding peaks")
+    from SciStreams.processing.peak_finding import peak_finding
+
+    sqx = data['sqx']
+    sqy = data['sqy']
+
+    res = peak_finding(intensity=sqy, frac=0.0001).peak_position()
+
+    model = res[0]
+    y_origin = res[1]
+    inds_peak = res[2]
+    xdata = res[3]
+    ratio = res[4]
+    ydata = res[5]
+    wdata = res[6]
+    bkgd = res[7]
+    variance = res[8]
+    variance_mean = res[9]
+
+    peaksx = list()
+    peaksy = list()
+
+    for ind in inds_peak:
+        peaksx.append(sqx[ind])
+        peaksy.append(sqy[ind])
+
+    res_dict = dict(
+            model=model,
+            y_origin=y_origin,
+            inds_peak=inds_peak,
+            xdata=xdata,
+            ratio=ratio,
+            ydata=ydata,
+            wdata=wdata,
+            bkgd=bkgd,
+            variance=variance,
+            variance_mean=variance_mean,
+            peaksx=peaksx,
+            peaksy=peaksy,
+            )
+    for key in res_dict.keys():
+        data[key] = res_dict[key]
+
+def peakfind_plot_func(data, store, signal, context):
+    print("Plotting found peaks")
+    store_results_mpl(lines=[dict(x='sqx', y='sqy'), dict(x='peaksx',
+                                                           y='peaksy',
+                                                           marker='o',
+                                                           color='r',
+                                                           linewidth=0)],
+                      xlabel=xlbl, ylabel=ylbl, scale='loglog',)
+
+
+def qphiavg_func(data, store, signal, context):
+    print("making qphiavg")
+    image = data['img']
+    calibration = data.get_by_alias('calibration')['calibration']
+    q_map = calibration.q_map
+    phi_map = calibration.phi_map
+    mask = data.get_by_alias('mask')['mask']
+    data['sqphi'] = qphiavg(image, q_map=None, phi_map=None, mask=None,
+                            bins=(800, 360), origin=None, range=None,
+                            statistic='mean')
+
+def qphiavg_plot_func(data, store, signal, context):
+    print("Plotting qphiavg")
+    store_results_mpl(images=['sqphi'], img_norm=normalizer, aspect='auto',
+                      xlabel="$\phi\,$(radians)", ylabel="$q\,$(pixel)",)
 
 
 # create the main DAG that spawns others
@@ -302,17 +385,34 @@ circavg_task = PythonTask(name="circavg",
 circavg_plot_task = PythonTask(name="circavg_plot",
                                callback=circavg_plot_func)
 
+peakfind_task = PythonTask(name="peakfind",
+                               callback=peakfind_func,)
+
+peakfind_plot_task = PythonTask(name="peakfind",
+                               callback=peakfind_plot_func,)
+
+qphiavg_task = PythonTask(name="qphiavg",
+                               callback=qphiavg_func,)
+
+qphiavg_plot_task = PythonTask(name="qphiavg_plot",
+                                callback=qphiavg_plot_func)
+
 img_dag_dict = {
     input_task: {to_thumb_task: None,
                  parse_attributes_task: None,
-                 circavg_task: 'image'},
+                 circavg_task: 'image',
+                 qphiavg_task: None,
+                },
     parse_attributes_task: [make_calibration_task,
                             generate_mask_task],
     #parse_attributes_task: generate_mask_task,
     # TODO : Adding these seems to affect keys that make_calibration_task gets
     make_calibration_task: {circavg_task: 'calibration'},
     generate_mask_task: {save_mask_task: None, circavg_task: 'mask'},
-    circavg_task: circavg_plot_task,
+    #circavg_task: circavg_plot_task,
+    circavg_task: [circavg_plot_task, peakfind_task],
+    peakfind_task: peakfind_plot_task,
+    qphiavg_task: qphiavg_plot_task
     }
 
 one_image_dag = Dag("img", autostart=False)

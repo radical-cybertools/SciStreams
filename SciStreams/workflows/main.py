@@ -6,7 +6,7 @@
     then spawn?
 """
 
-from lightflow.models import Dag
+from lightflow.models import Parameters, Option, Dag
 from lightflow.tasks import PythonTask
 
 # TODO : make callback something else callback
@@ -22,6 +22,14 @@ import time
 # TODO : sort this out
 from SciStreams.workflows.primary import primary_dag
 from SciStreams.workflows.one_image import one_image_dag
+
+parameters = Parameters([
+        Option('start_time', help='Specify a start time', type=str),
+        Option('stop_time', help='specify a stop time', type=str),
+        #Option('iterations', default=1, help='The number of iterations', type=int),
+        #Option('threshold', default=0.4, help='The threshold value', type=float)
+])
+
 
 #from SciStreams.workflows.circavg import ciravg_dag
 
@@ -48,8 +56,12 @@ def main_func(data, store, signal, context):
     '''
     # this grabs from the args
     # send data in event by event from headers
+    print("In Main DAG")
+    import time
     start_time = get(data, 'start_time', time.time()-3600*24)
     stop_time = get(data, 'stop_time', time.time())
+    start_time = "2017-11-06"
+    stop_time = "2017-11-07"
     dbname = get(data, 'dbname', 'cms')
 
     # get the databroker instance
@@ -57,8 +69,8 @@ def main_func(data, store, signal, context):
     # we might want to think about how to wrap to this
     # or write our own
     db = Broker.named(dbname)
-    print(start_time)
-    print(stop_time)
+    #print(time.ctime(start_time))
+    #print(time.ctime(stop_time))
     hdrs = db(start_time=start_time, stop_time=stop_time)
     # for now test with this
     #hdrs = [db["00ca7bd0-3589-4a39-bced-e78febceba85"]]
@@ -66,6 +78,9 @@ def main_func(data, store, signal, context):
     # TODO : some filtering of data
     dag_names = list()
     cnt = 0
+    # maximum number of jobs to submit
+    # this was a temp tweak
+    MAXNUM = 100
     for hdr in hdrs:
         cnt += 1
         uid = hdr.start['uid']
@@ -85,7 +100,7 @@ def main_func(data, store, signal, context):
                 dag_name = signal.start_dag(primary_dag, data=data)
                 print("dag name: {}".format(dag_name))
                 dag_names.append(dag_name)
-        if cnt == 8:
+        if cnt >= MAXNUM:
             break
     print("Main job submission finished, found {} images".format(cnt))
 
