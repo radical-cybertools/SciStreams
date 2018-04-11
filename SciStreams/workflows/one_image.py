@@ -1,5 +1,8 @@
 # TODO : make callback something else callback
 # 
+import matplotlib
+matplotlib.use("Agg")
+
 from lightflow.models import Dag
 from lightflow.tasks import PythonTask
 
@@ -27,8 +30,42 @@ from SciStreams.processing.circavg import circavg
 
 # for qphiavg
 from SciStreams.processing.qphiavg import qphiavg
+from SciStreams.tools.image import normalizer
 
-keymaps = config['keymaps']
+import yaml
+# quick fix for a bug i dont understand
+keymaps = yaml.load('''
+keymaps:
+    cms:
+        wavelength:
+            name: calibration_wavelength_A
+            default_value: None
+            default_unit: Angstrom
+        beamx0:
+            name: detector_SAXS_x0_pix
+            default_value: null
+            default_unit: pixel
+        beamy0:
+            name: detector_SAXS_y0_pix
+            default_value: null
+            default_unit: pixel
+        sample_det_distance:
+            name: detector_SAXS_distance_m
+            default_value: null
+            default_unit: m
+        pixel_size_x:
+            name:
+            default_value: null
+            default_unit: pixel
+        pixel_size_y:
+            name:
+            default_value: null
+            default_unit: pixel
+        detector_key:
+            name: detector_key
+            default_value: null
+            default_unit: string
+                    ''')['keymaps']
 
 # helper functions
 def normalize_calib_dict(external_keymap=None, **md):
@@ -46,6 +83,8 @@ def normalize_calib_dict(external_keymap=None, **md):
         etc...
     '''
     if external_keymap is None:
+        #from SciStreams.config import config
+        #keymaps = config['keymaps']
         keymap_name = md.get("keymap_name", "cms")
         keymap = keymaps[keymap_name]
     else:
@@ -245,11 +284,11 @@ def generate_mask_func(data, store, signal, context):
     # pass the stream name
     data['md']['stream_name'] = context.task_name
 
-def save_mask_func(data, store, signal, context):
-    print("Saving thumb of mask")
-    data_dict = dict(mask=data['mask'])
-    attrs = data['md']
-    store_results_mpl(data_dict, attrs, images=['mask'])
+#def save_mask_func(data, store, signal, context):
+    #print("Saving thumb of mask")
+    #data_dict = dict(mask=data['mask'])
+    #attrs = data['md']
+    #store_results_mpl(data_dict, attrs, images=['mask'])
 
 def circavg_func(data, store, signal, context):
     print("Computing circular average")
@@ -279,8 +318,8 @@ def circavg_plot_func(data, store, signal, context):
     data_dict['sqx'] = data['sqx']
     data_dict['sqy'] = data['sqy']
     attrs = data['md']
-    xlbl = ""#"$q\,(\AA^\{-1\})$"
-    ylbl = ""#"$I(q)$"
+    xlbl = "$q\,(\AA^\{-1\})$"
+    ylbl = "$I(q)$"
     store_results_mpl(data_dict, attrs,
                       lines=[('sqx', 'sqy')],
                       scale='loglog', xlabel=xlbl,
@@ -334,11 +373,18 @@ def peakfind_func(data, signal, store, context):
 
 def peakfind_plot_func(data, store, signal, context):
     print("Plotting found peaks")
-    store_results_mpl(lines=[dict(x='sqx', y='sqy'), dict(x='peaksx',
-                                                           y='peaksy',
-                                                           marker='o',
-                                                           color='r',
-                                                           linewidth=0)],
+    data_dict = dict()
+    data_dict['sqx'] = data['sqx']
+    data_dict['sqy'] = data['sqy']
+    data_dict['peaksx'] = data['peaksx']
+    data_dict['peaksy'] = data['peaksy']
+    xlbl = "$q,(\AA^{-1})$"
+    ylbl = "I(q)"
+    store_results_mpl(data_dict, data['md'], lines=[dict(x='sqx', y='sqy'),
+                                                    dict(x='peaksx',
+                                                         y='peaksy',
+                                                         marker='o', color='r',
+                                                         linewidth=0)],
                       xlabel=xlbl, ylabel=ylbl, scale='loglog',)
 
 
@@ -347,7 +393,7 @@ def qphiavg_func(data, store, signal, context):
     image = data['img']
     calibration = data.get_by_alias('calibration')['calibration']
     q_map = calibration.q_map
-    phi_map = calibration.phi_map
+    phi_map = calibration.angle_map
     mask = data.get_by_alias('mask')['mask']
     data['sqphi'] = qphiavg(image, q_map=None, phi_map=None, mask=None,
                             bins=(800, 360), origin=None, range=None,
@@ -355,7 +401,9 @@ def qphiavg_func(data, store, signal, context):
 
 def qphiavg_plot_func(data, store, signal, context):
     print("Plotting qphiavg")
-    store_results_mpl(images=['sqphi'], img_norm=normalizer, aspect='auto',
+    data_dict = dict(sqphi = data['sqphi'])
+    attr = data['md']
+    store_results_mpl(data_dict, attr, img_norm=normalizer, aspect='auto',
                       xlabel="$\phi\,$(radians)", ylabel="$q\,$(pixel)",)
 
 
@@ -376,8 +424,8 @@ make_calibration_task = PythonTask(name="make_calibration",
 generate_mask_task = PythonTask(name="generate_mask",
                                    callback=generate_mask_func)
 
-save_mask_task = PythonTask(name="save_mask",
-                                   callback=save_mask_func)
+#save_mask_task = PythonTask(name="save_mask",
+                                   #callback=save_mask_func)
 
 circavg_task = PythonTask(name="circavg",
                           callback=circavg_func)
@@ -407,8 +455,10 @@ img_dag_dict = {
                             generate_mask_task],
     #parse_attributes_task: generate_mask_task,
     # TODO : Adding these seems to affect keys that make_calibration_task gets
-    make_calibration_task: {circavg_task: 'calibration'},
-    generate_mask_task: {save_mask_task: None, circavg_task: 'mask'},
+    make_calibration_task: {circavg_task: 'calibration',
+                            qphiavg_task: 'calibration'},
+    generate_mask_task: {circavg_task: 'mask',
+                         qphiavg_task: 'mask'},
     #circavg_task: circavg_plot_task,
     circavg_task: [circavg_plot_task, peakfind_task],
     peakfind_task: peakfind_plot_task,

@@ -88,10 +88,14 @@ def _make_fname_from_attrs(attrs, filetype="xml", strict=False,
     seq_num = str(seq_num)
     print("Got sequence number : {}\n\n".format(seq_num))
 
+    imageseq = check_and_get(attrs, 'image_sequence', strict=strict, default=0)
+    imageseq = str(imageseq)
+    print("Got image sequence number : {}\n\n".format(imageseq))
+
     outdir = rootdir + "/" + detector_savedir + "/" + stream_name \
         + "/" + filetype
     print("making directory {}".format(outdir))
     make_dir(outdir)
-    outfile = outdir + "/" + sample_savename + "_" + scan_id + "_" + seq_num + "." + filetype
+    outfile = outdir + "/" + sample_savename + "_" + scan_id + "_" + seq_num + "_" + imageseq + "." + filetype
 
     return outfile

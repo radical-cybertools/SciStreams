@@ -9,6 +9,8 @@ import numbers
 from dask import set_options
 from collections import deque
 
+print("SciStreams: Importing config")
+
 
 # First step is to read yaml file from user directory
 cwd = os.getcwd()

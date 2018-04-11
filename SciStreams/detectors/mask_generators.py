@@ -91,12 +91,16 @@ def generate_mask_pilatus2M(**md):
     # get filenames from config
     master_dir = mask_config.get('mask_dir', ".")
     blemish_fname = mask_config.get('blemish', {}).get('filename', None)
-    blemish_fname = master_dir + "/" + blemish_fname
+    if blemish_fname is not None:
+        blemish_fname = master_dir + "/" + blemish_fname
     mask_fname = mask_config.get('mask', {}).get('filename', None)
-    mask_fname = master_dir + "/" + mask_fname
+    if mask_fname is not None:
+        mask_fname = master_dir + "/" + mask_fname
     # get the shape from config
     #print(mask_config)
-    mask_shape = np.array(mask_config['shape'])
+    mask_shape = mask_config.get('shape', None)
+    if mask_shape is not None:
+        mask_shape = np.array(mask_shape)
 
     #print('mask shape : {}'.format(mask_shape))
 
@@ -132,7 +136,7 @@ def generate_mask_pilatus2M(**md):
         print("No beam center found")
 
     mask_expt = None
-    if mask is not None and beam_center_experiment is not None:
+    if mask is not None and beam_center_experiment is not None and mask_shape is not None:
         #print("got a mask!")
         mask_expt = make_subimage(mask, beam_center, mask_shape, beam_center_experiment)
         #print("Made sub image")
@@ -150,7 +154,8 @@ def generate_mask_pilatus2M(**md):
             mask_expt = blemish*mask_expt
 
     # just in case, make it a float
-    mask_expt = mask_expt.astype(float)
+    if mask_expt is not None:
+        mask_expt = mask_expt.astype(float)
 
     return mask_expt
 
