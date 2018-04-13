@@ -28,7 +28,7 @@ parameters = Parameters([
         Option('start_time', help='Specify start_time', type=str),
         Option('stop_time', help='Specify stop_time', type=str),
         Option('dbname', help='Specify database name', type=str),
-        Option('max_images', default=None, help='Specify max images', type=int),
+        Option('max_images', help='Specify max images', type=int),
 ])
 
 #from SciStreams.workflows.circavg import ciravg_dag
@@ -59,7 +59,7 @@ def main_func(data, store, signal, context):
     start_time = store.get('start_time')
     stop_time = store.get('stop_time')
     dbname = store.get('dbname')
-    MAXNUM = store.get('max_images')
+    #MAXNUM = store.get('max_images')
 
     # get the databroker instance
     # TODO: this should be store eventually
@@ -97,8 +97,9 @@ def main_func(data, store, signal, context):
                 #dag_names.append(dag_name)
                 # I will join after every send for debugging
                 signal.join_dags([dag_name])
-        if MAXNUM is not None and cnt > MAXNUM:
-            break
+        # ignore maxnum for now
+        #if MAXNUM is not None and cnt > MAXNUM:
+            #break
     print("Main job submission finished, found {} images".format(cnt))
 
     #signal.join_dags(dag_names)

@@ -8,13 +8,11 @@ from functools import partial
 from lightflow.models import Dag
 from lightflow.tasks import PythonTask
 
-from databroker import Broker
 import matplotlib.pyplot as plt
 import numpy as np
 
 
 from SciStreams.interfaces.plotting_mpl import store_results_mpl
-from SciStreams.config import config
 
 # detecotr info
 from SciStreams.detectors.detectors2D import detectors2D

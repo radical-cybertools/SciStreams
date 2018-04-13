@@ -20,6 +20,11 @@ import numpy as np
 
 from SciStreams.workflows.one_image import one_image_dag
 
+import numbers
+# TODO : put in config files in this repo
+required_attributes = {'main': {}}
+typesdict = {'float': float, 'int': int, 'number': numbers.Number, 'str': str}
+
 
 # filter a streamdoc with certain attributes (set in the yml file)
 # required_attributes, typesdict globals needed
@@ -30,7 +35,6 @@ def filter_attributes(attr, type='main'):
         Note that this ultimately checks that attributes match what is seen in
         yml file.
     '''
-    from SciStreams.config import required_attributes, typesdict
     #print("filterting attributes")
     # get the sub required attributes
     reqattr = required_attributes['main']
