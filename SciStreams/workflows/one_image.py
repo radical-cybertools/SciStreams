@@ -11,7 +11,6 @@ from lightflow.tasks import PythonTask
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 from SciStreams.interfaces.plotting_mpl import store_results_mpl
 
 # detecotr info
@@ -31,6 +30,8 @@ from SciStreams.processing.circavg import circavg
 # for qphiavg
 from SciStreams.processing.qphiavg import qphiavg
 from SciStreams.tools.image import normalizer
+
+from SciStreams.loggers import logger
 
 import yaml
 # quick fix for a bug i dont understand
@@ -103,7 +104,7 @@ def normalize_calib_dict(external_keymap=None, **md):
             tmpval = md.pop(name, val['default_value'])
             default_unit = val['default_unit']
             new_md[key] = dict(value=tmpval, unit=default_unit)
-
+    logger.info("Finished calibration normalization")
     return new_md
 
 
@@ -237,12 +238,12 @@ def make_calibration(**md):
 # TODO : is this necessary or can a DAG have multiple roots?
 def input_func(data, store, signal, context):
     # pass the stream name
-    print("Beginning of one image pipeline")
+    logger.debug("Beginning of one image pipeline")
     data['md']['stream_name'] = context.task_name
 
 # this splits images into one image to send to tasks
 def to_thumb_func(data, store, signal, context):
-    print("Making thumb of image")
+    logger.debug("Making thumb of image")
     data_dict = dict(img=data['img'])
     attrs = data['md']
     store_results_mpl(data_dict, attrs, images=['img'])
@@ -252,7 +253,7 @@ def to_thumb_func(data, store, signal, context):
 
 
 def parse_attributes_func(data, store, signal, context):
-    print("Parsing attributes")
+    logger.debug("Parsing attributes")
     md = data['md']
     md = normalize_calib_dict(**md)
     md = add_detector_info(**md)
@@ -264,7 +265,7 @@ def parse_attributes_func(data, store, signal, context):
 
 
 def make_calibration_func(data, store, signal, context):
-    print("Making calibration")
+    logger.debug("Making calibration")
     md = data['md']
     #print("making calibration from metadata {}".format(md))
     calibration = make_calibration(**md)
@@ -276,7 +277,7 @@ def make_calibration_func(data, store, signal, context):
     data['md']['stream_name'] = context.task_name
 
 def generate_mask_func(data, store, signal, context):
-    print("Generating mask")
+    logger.debug("Generating mask")
     md = data['md']
     mask = generate_mask(**md)['mask']
     data['mask'] = mask
@@ -291,7 +292,7 @@ def generate_mask_func(data, store, signal, context):
     #store_results_mpl(data_dict, attrs, images=['mask'])
 
 def circavg_func(data, store, signal, context):
-    print("Computing circular average")
+    logger.debug("Computing circular average")
     image = data.get_by_alias('image')['img']
     calibration = data.get_by_alias('calibration')['calibration']
     q_map = calibration.q_map
@@ -313,7 +314,7 @@ def circavg_func(data, store, signal, context):
     data['md']['stream_name'] = context.task_name
 
 def circavg_plot_func(data, store, signal, context):
-    print("Plotting circular average")
+    logger.debug("Plotting circular average")
     data_dict = dict()
     data_dict['sqx'] = data['sqx']
     data_dict['sqy'] = data['sqy']
@@ -328,7 +329,7 @@ def circavg_plot_func(data, store, signal, context):
 
 # try peak finding code
 def peakfind_func(data, signal, store, context):
-    print("Finding peaks")
+    logger.debug("Finding peaks")
     from SciStreams.processing.peak_finding import peak_finding
 
     sqx = data['sqx']
@@ -370,9 +371,11 @@ def peakfind_func(data, signal, store, context):
             )
     for key in res_dict.keys():
         data[key] = res_dict[key]
+    data['md']['stream_name'] = context.task_name
 
 def peakfind_plot_func(data, store, signal, context):
-    print("Plotting found peaks")
+    logger.debug("Plotting found peaks")
+    data['md']['stream_name'] = 'peakfind'
     data_dict = dict()
     data_dict['sqx'] = data['sqx']
     data_dict['sqy'] = data['sqy']
@@ -389,7 +392,7 @@ def peakfind_plot_func(data, store, signal, context):
 
 
 def qphiavg_func(data, store, signal, context):
-    print("making qphiavg")
+    logger.debug("making qphiavg")
     image = data['img']
     calibration = data.get_by_alias('calibration')['calibration']
     q_map = calibration.q_map
@@ -398,12 +401,15 @@ def qphiavg_func(data, store, signal, context):
     data['sqphi'] = qphiavg(image, q_map=None, phi_map=None, mask=None,
                             bins=(800, 360), origin=None, range=None,
                             statistic='mean')
+    data['md']['stream_name'] = context.task_name
 
 def qphiavg_plot_func(data, store, signal, context):
-    print("Plotting qphiavg")
+    logger.debug("Plotting qphiavg")
     data_dict = dict(sqphi = data['sqphi'])
     attr = data['md']
+    attr['stream_name'] = 'qphiavg'
     store_results_mpl(data_dict, attr, img_norm=normalizer, aspect='auto',
+                      images=['sqphi'],
                       xlabel="$\phi\,$(radians)", ylabel="$q\,$(pixel)",)
 
 

@@ -2,8 +2,8 @@
     This is the main dag. It reads data, then
     executes another DAG to run on.
 
-    Efficiency Question : should we spawn new DAG's for each subtask or create one big DAG
-    then spawn?
+    Efficiency Question : should we spawn new DAG's for each subtask or create
+    one big DAG then spawn?
 """
 
 from lightflow.models import Dag, Parameters, Option

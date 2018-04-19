@@ -11,6 +11,8 @@ from ...tools.image import findLowHigh
 
 from ...utils.file import _make_fname_from_attrs
 
+from SciStreams.loggers import logger
+
 
 _ROOTDIR = config.resultsroot
 _ROOTMAP = config.resultsrootmap
@@ -131,12 +133,17 @@ def store_results_mpl(data, attrs, **kwargs):
 
         # only plot either of the three
         if len(images) > 0:
+            logger.debug("store_results_mpl: got images")
+            logger.debug("store_results_mpl: got images: {}".format(images))
             xlims, ylims, fig = plot_images(images, data, img_norm, plot_kws,
                                             fig=fig)
         elif len(lines) > 0:
+            logger.debug("store_results_mpl: got lines")
+            logger.debug("store_results_mpl: got lines: {}".format(lines))
             xlims, ylims, fig = plot_lines(lines, data, img_norm, plot_kws,
                                            xlims=xlims, ylims=ylims, fig=fig)
         elif len(linecuts) > 0:
+            logger.debug("store_results_mpl: got linecuts: {}".format(linecuts))
             plot_linecuts(linecuts, data, img_norm, plot_kws,
                           xlims=xlims, ylims=ylims, fig=fig)
 
@@ -187,10 +194,11 @@ def store_results_mpl(data, attrs, **kwargs):
                 ax.set_ylim(*ylims)
 
         # save
+        logger.debug("store_results_mpl : Trying to save to {}".format(outfile))
         try:
             fig.savefig(outfile)
         except Exception:
-            print("Error in fig saving, ignoring... file : {}".format(outfile))
+            logger.debug("Error in fig saving, ignoring... file : {}".format(outfile))
             raise
         # make sure no mem leaks, just close
         # figuregetter takes care of closing

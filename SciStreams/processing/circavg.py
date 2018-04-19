@@ -2,6 +2,8 @@ import numpy as np
 from skbeam.core.accumulators.binned_statistic import BinnedStatistic1D
 from .partitioning import center2edge
 
+from SciStreams.loggers import logger
+
 
 def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
     ''' computes the circular average.'''
@@ -16,6 +18,9 @@ def circavg(image, q_map=None, r_map=None,  bins=None, mask=None, **kwargs):
             # choose 1 pixel bins (roughly, not true at very high angles)
             # print("rmap not none, mask shape : {}, rmap shape :
             # {}".format(mask.shape, r_map.shape))
+            logger.info("circavg: mask.shape: {}".format(mask.shape))
+            logger.info("circavg: r_map.shape: {}".format(r_map.shape))
+            logger.info("circavg: image.shape: {}".format(image.shape))
             pxlst = np.where(mask == 1)
             nobins = int(np.max(r_map[pxlst]) - np.min(r_map[pxlst]) + 1)
             # print("rmap is not none, decided on {} bins".format(nobins))

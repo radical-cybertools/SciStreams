@@ -54,7 +54,11 @@ _DEFAULTS = {
     'databases': default_databases,
     # tensorflow storage stuff
     'TFLAGS': {'out_dir': '/GPFS/xf11bm/pipeline/ml-tmp',
-               'num_batches': 16}
+               'num_batches': 16},
+    'logfiles' : {
+        'info': '/home/xf11bm/logs/sciscreams.info.log',
+        'debug': '/home/xf11bm/logs/sciscreams.debug.log',
+    }
 }
 
 default_timeout = config.get('default_timeout', _DEFAULTS['default_timeout'])
@@ -63,6 +67,7 @@ resultsroot = config.get('resultsroot', _DEFAULTS['resultsroot'])
 required_attributes = config.get('required_attributes',
                                  _DEFAULTS['required_attributes'])
 debug = config.get('debug', _DEFAULTS['debug'])
+logfiles = config.get('logfiles', _DEFAULTS['logfiles'])
 
 # TODO : need way of dynamically doing this
 modules = config.get('modules', {})
@@ -206,3 +211,4 @@ set_options(delayed_pure=True)
 profile_dict = dict()
 
 last_run_time = None
+
