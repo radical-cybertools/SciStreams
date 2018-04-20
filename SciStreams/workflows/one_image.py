@@ -33,6 +33,8 @@ from SciStreams.tools.image import normalizer
 
 from SciStreams.loggers import logger
 
+from celery.contrib import rdb
+
 import yaml
 # quick fix for a bug i dont understand
 keymaps = yaml.load('''
@@ -398,9 +400,14 @@ def qphiavg_func(data, store, signal, context):
     q_map = calibration.q_map
     phi_map = calibration.angle_map
     mask = data.get_by_alias('mask')['mask']
-    data['sqphi'] = qphiavg(image, q_map=None, phi_map=None, mask=None,
+
+    res = qphiavg(image, q_map=None, phi_map=None, mask=None,
                             bins=(800, 360), origin=None, range=None,
                             statistic='mean')
+    data['sqphi'] = res['sqphi']
+    data['qs'] = res['qs']
+    data['phis'] = res['phis']
+
     data['md']['stream_name'] = context.task_name
 
 def qphiavg_plot_func(data, store, signal, context):

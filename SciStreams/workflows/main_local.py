@@ -74,7 +74,7 @@ def primary_func(data, store, signal, context):
     files = [data_folder + "/" + filename for filename in files
              if os.path.isfile(data_folder+'/'+filename)]
 
-    # limit to 5 for now
+    # limit to 1 for now
     files = files[:1]
     detector_key = 'pilatus2M_image'
     for filename in files:
