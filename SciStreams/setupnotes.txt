@@ -1,4 +1,4 @@
-Extra notes for setup (eventually should go in some documentation):
+:Extra notes for setup (eventually should go in some documentation):
 - config file. Should place it in ~/config/scistreams/scistreams.yml
 - mask : need to set the maskdir parameter to where masks are stored
 	- masks should be stored in

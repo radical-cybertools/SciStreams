@@ -14,7 +14,7 @@ default_timeout : 10
 # swap out a portion of where results are stored with this new path prefix
 # this replaces the first part of 'experiment_alias_directory with the second part
 # this is used by many interfaces that write to file
-resultsroot : ['/home/georgeha/data','/home/georgeha/data']
+resultsroot : ['/work/01131/tg804093/wrangler/lightsource-cms/out', '/work/01131/tg804093/wrangler/lightsource-cms/out']
 # for saving to filestore (not used yet)
 databases :
     cms :
@@ -105,5 +105,5 @@ modules:
         tracedir : "/home/xf11bm/tau-traces"
         tracefiles : ["events.0.edf", "events.-1.edf",  "tautrace.0.0.0.trc"]
 logfiles:
-    info: /home/georgeha/bnl-flow/logs/scistreams.info.log
-    debug: /home/georgeha/bnl-flow/logs/scistreams.debug.log
+    info: /work/01131/tg804093/wrangler/lightsource-cms/logs/scistreams.info.log
+    debug: /work/01131/tg804093/wrangler/lightsource-cms/logs/scistreams.debug.log
