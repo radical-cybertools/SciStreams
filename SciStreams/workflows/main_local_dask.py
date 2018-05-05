@@ -11,7 +11,6 @@
 """
 # TODO : make callback something else callback
 # 
-from databroker import Broker
 import matplotlib.pyplot as plt
 import numpy as np
 
