@@ -3,7 +3,6 @@
 
 import matplotlib 
 matplotlib.use('Agg')
-from databroker import Broker
 
 import workflows.main_local_dask as main_local_dask
 
