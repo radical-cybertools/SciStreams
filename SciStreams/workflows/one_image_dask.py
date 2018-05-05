@@ -29,7 +29,7 @@ from SciStreams.processing.circavg import circavg
 
 # for qphiavg
 from SciStreams.processing.qphiavg import qphiavg
-from SciStreams.processing.nn_fbbenet import infer_from_dict
+#from SciStreams.processing.nn_fbbenet import infer_from_dict
 from SciStreams.tools.image import normalizer
 
 from SciStreams.loggers import logger

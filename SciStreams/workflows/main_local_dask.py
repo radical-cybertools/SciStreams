@@ -20,7 +20,9 @@ from workflows.one_image_dask import (input_func, to_thumb_func,
                                       make_calibration_func,
                                       generate_mask_func, circavg_func,
                                       circavg_plot_func, peakfind_func,
-                                      peakfind_plot_func, infer_from_dict)
+                                      peakfind_plot_func,
+                                      #infer_from_dict
+                                      )
 
 import numbers
 
@@ -61,19 +63,21 @@ import h5py
 # this splits images into one image to send to tasks
 def primary_func(data):
     futures = list()
-    data_folder = data['data_folder']
+    data_folder = data['data_folder'] 
     print("Going through directory contents")
 
     files = os.listdir(data_folder)
     files = [data_folder + "/" + filename for filename in files
              if os.path.isfile(data_folder+'/'+filename)]
 
+    
     # limit to 1 for now
     files = files[:1]
     print(files)
     detector_key = 'pilatus2M_image'
     for filename in files:
-        f = h5py.File(filename, "r")
+        afile = os.path.join(data_folder,filename)
+        f = h5py.File(afile, "r")
 
         md = dict()
         for attr, val in f['attributes'].items():
@@ -109,7 +113,7 @@ def primary_func(data):
             res_peak = peakfind_func(res_circavg)
 
             res_peakplot = peakfind_plot_func(res_peak)
-            res_infer = infer_from_dict(new_data)
+            #res_infer = infer_from_dict(new_data)
             print("Good attributes")
             #futures.append(future)
         else:

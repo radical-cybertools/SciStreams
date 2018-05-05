@@ -14,7 +14,7 @@ default_timeout : 10
 # swap out a portion of where results are stored with this new path prefix
 # this replaces the first part of 'experiment_alias_directory with the second part
 # this is used by many interfaces that write to file
-resultsroot : ['/home/georgeha/data','/home/georgeha/data']
+resultsroot : ['/home/georgeha/data']
 # for saving to filestore (not used yet)
 databases :
     cms :

@@ -48,7 +48,7 @@ _DEFAULTS = {
     'debug': False,
     'required_attributes': dict(main=dict()),
     'default_timeout': None,
-    'resultsroot': os.path.expanduser("/GPFS/xf11bm/pipeline"),
+    'resultsroot': os.path.expanduser("/home/georgeha/bnl-flow/pipeline"),
     'delayed': True,
     'server': None,
     'databases': default_databases,
@@ -56,8 +56,8 @@ _DEFAULTS = {
     'TFLAGS': {'out_dir': '/GPFS/xf11bm/pipeline/ml-tmp',
                'num_batches': 16},
     'logfiles' : {
-        'info': '/home/xf11bm/logs/sciscreams.info.log',
-        'debug': '/home/xf11bm/logs/sciscreams.debug.log',
+        'info': '/home/georgeha/bnl-flow/logs/sciscreams.info.log', 
+        'debug': '/home/georgeha/bnl-flow/logs/sciscreams.debug.log',
     }
 }
 
