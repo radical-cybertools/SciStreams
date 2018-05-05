@@ -3,12 +3,11 @@
 
 import matplotlib 
 matplotlib.use('Agg')
-from databroker import Broker
 
 import workflows.main_local_dask as main_local_dask
 
 data = dict()
-data['data_folder'] = "/home/georgeha/data/fa466942"
+data['data_folder'] = "/data/03662/tg829618/SciStreams/data/fa466942"
 import time
 t1 = time.time()
 main_local_dask.primary_func(data)

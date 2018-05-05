@@ -7,3 +7,16 @@
 		maskdir/pilatus300_image/
 		maskdir/pilatus2M_image/
 		etc
+
+
+conda create -n python=3.6 distributed Pillow h5py  scipy statsmodels
+conda install -c conda-forge scikit-beam
+install SciStreams repo (current repo)
+specify to  start_pipeline_loop_dask.py where are the images /data/djfsk
+
+
+in scistreams.yml change:
+
+resultsroot and log roots
+
+
