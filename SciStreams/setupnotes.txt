@@ -20,3 +20,20 @@ in scistreams.yml change:
 resultsroot and log roots
 
 
+
+
+TO USE the pipeline with dask:
+
+add to ~/.bashrc
+
+source activate <virtualenv name>
+cd <path-to: dask_start_pipeline.py>
+
+
+You can use start_dask.sh to startup the dask cluster
+
+
+
+After the cluster is running:
+   specify to : dask_start_pipeline.py the ip of the dask Client
+
