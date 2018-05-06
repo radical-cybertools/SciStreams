@@ -11,6 +11,8 @@
 """
 # TODO : make callback something else callback
 # 
+import matplotlib
+matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 import numpy as np
 
