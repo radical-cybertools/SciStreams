@@ -60,23 +60,25 @@ def filter_attributes(attr, type='main'):
 import os
 import h5py
 # this splits images into one image to send to tasks
-def primary_func(data):
+def primary_func(data,files):
+    
     futures = list()
     data_folder = data['data_folder'] 
     print("Going through directory contents")
 
-    files = os.listdir(data_folder)
-    files = [data_folder + "/" + filename for filename in files
-             if os.path.isfile(data_folder+'/'+filename)]
+    #files = os.listdir(data_folder)
+    #files = [data_folder + "/" + filename for filename in files
+    #         if os.path.isfile(data_folder+'/'+filename)]
 
     
     # limit to 1 for now
-    files = files[:1]
-    print(files)
+    #files = files[:1]
+    #print(files)
     detector_key = 'pilatus2M_image'
     for filename in files:
-        afile = os.path.join(data_folder,filename)
-        f = h5py.File(afile, "r")
+        #afile = os.path.join(data_folder,filename)
+        
+        f = h5py.File(filename, "r")
 
         md = dict()
         for attr, val in f['attributes'].items():
