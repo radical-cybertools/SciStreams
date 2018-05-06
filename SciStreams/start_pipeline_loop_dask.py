@@ -7,7 +7,7 @@ matplotlib.use('Agg')
 import workflows.main_local_dask as main_local_dask
 
 data = dict()
-data['data_folder'] = "/data/03662/tg829618/SciStreams/data/fa466942"
+data['data_folder'] = "/work/01131/tg804093/wrangler/lightsource-cms/data/9b85b965"
 import time
 t1 = time.time()
 main_local_dask.primary_func(data)
