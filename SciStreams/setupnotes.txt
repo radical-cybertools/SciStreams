@@ -9,7 +9,7 @@ Extra notes for setup (eventually should go in some documentation):
 		etc
 
 
-conda create -n python=3.6 distributed Pillow h5py  scipy statsmodels
+conda create -n python=3.6 distributed Pillow h5py  scipy statsmodels matplotlib
 conda install -c conda-forge scikit-beam
 install SciStreams repo (current repo)
 specify to  start_pipeline_loop_dask.py where are the images /data/djfsk
@@ -29,6 +29,8 @@ add to ~/.bashrc
 source activate <virtualenv name>
 cd <path-to: dask_start_pipeline.py>
 
+add to PYTHONPATH the directory of the the dask_start_pipeline.py file
+
 
 You can use start_dask.sh to startup the dask cluster
 
@@ -36,4 +38,12 @@ You can use start_dask.sh to startup the dask cluster
 
 After the cluster is running:
    specify to : dask_start_pipeline.py the ip of the dask Client
+
+
+on comet:
+
+use: sbatch submit.sh script to startup a dask cluster and submit the job 
+
+
+
 
