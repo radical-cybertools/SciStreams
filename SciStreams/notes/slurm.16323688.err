@@ -1,0 +1,1367 @@
+distributed.scheduler - INFO - -----------------------------------------------
+distributed.scheduler - INFO - Clear task state
+distributed.scheduler - INFO -   Scheduler at: tcp://198.202.112.231:8786
+distributed.scheduler - INFO - Local Directory:    /tmp/scheduler-h_i7cn1i
+distributed.scheduler - INFO - -----------------------------------------------
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:34927'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:42019'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:46078'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:34547'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:43942'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:35608'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:39398'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:46161'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:45725'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:38799'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:44470'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:36047'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:44537'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:40506'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:44099'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:33101'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:36542'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:42860'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:43574'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:42112'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:33674'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:41019'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:41993'
+distributed.nanny - INFO -         Start Nanny at: 'tcp://198.202.112.231:45110'
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:43113
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:43113
+distributed.worker - INFO -              nanny at:      198.202.112.231:34927
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-s_1yb2ce
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:43113
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:43113
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:42975
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:42975
+distributed.worker - INFO -              nanny at:      198.202.112.231:46078
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-0use3tzw
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:42975
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:42975
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:42149
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:42149
+distributed.worker - INFO -              nanny at:      198.202.112.231:40506
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-jg9ch0cu
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:42149
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:42149
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:43734
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:43734
+distributed.worker - INFO -              nanny at:      198.202.112.231:35608
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-an8qvmr6
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:44188
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:44188
+distributed.worker - INFO -              nanny at:      198.202.112.231:42112
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-muu09tn4
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:43734
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:43734
+distributed.scheduler - INFO - Register tcp://198.202.112.231:44188
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:44188
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:33736
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:33736
+distributed.worker - INFO -              nanny at:      198.202.112.231:42019
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-zsf16mkx
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:33736
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:33736
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:39163
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:39163
+distributed.worker - INFO -              nanny at:      198.202.112.231:34547
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-ghxbtqp9
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:39163
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:39163
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:37570
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:37570
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:40384
+distributed.worker - INFO -              nanny at:      198.202.112.231:39398
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:40384
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO -              nanny at:      198.202.112.231:46161
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-tna1h67i
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-1yinwtl2
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:43729
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:43729
+distributed.worker - INFO -              nanny at:      198.202.112.231:41993
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-y2lvw7ix
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:37570
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:40384
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:43729
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:37570
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:40384
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:43729
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:39450
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:43701
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:39450
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:43701
+distributed.worker - INFO -              nanny at:      198.202.112.231:33674
+distributed.worker - INFO -              nanny at:      198.202.112.231:33101
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-9oxdnt3n
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-rrfzu9nk
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:38275
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:38275
+distributed.worker - INFO -              nanny at:      198.202.112.231:36047
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-6wl4so0b
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:33695
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:33695
+distributed.worker - INFO -              nanny at:      198.202.112.231:45110
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-og8qc6op
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:33546
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:33546
+distributed.worker - INFO -              nanny at:      198.202.112.231:43574
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-hgeowfxf
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:43701
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:39450
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:33695
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:33546
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:38275
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:43701
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:39450
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:33695
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:33546
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:38275
+distributed.scheduler - INFO - Receive client connection: Client-e0809838-5875-11e8-82a4-a0000a20fe80
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.09s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.10s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.08s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.10s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.11s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.11s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.10s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.11s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.11s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.12s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.12s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.12s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.15s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.14s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.14s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:33322
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:33322
+distributed.worker - INFO -              nanny at:      198.202.112.231:42860
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-nrj6k_60
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:36516
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:36516
+distributed.worker - INFO -              nanny at:      198.202.112.231:36542
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-qbrqm7om
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:37996
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:37996
+distributed.worker - INFO -              nanny at:      198.202.112.231:43942
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-rsy7sqi2
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:36516
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:36516
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:33322
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:34798
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:34798
+distributed.worker - INFO -              nanny at:      198.202.112.231:41019
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-0nly3asx
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:37996
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:33322
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:37996
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:34798
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:34798
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 6.06s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 6.21s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 6.23s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 6.32s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:40594
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:40594
+distributed.worker - INFO -              nanny at:      198.202.112.231:45725
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-qunbb3ud
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:40594
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:40594
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 4.95s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/0000078e.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+distributed.utils_perf - INFO - full garbage collection released 227.80 MB from 11922 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+distributed.utils_perf - INFO - full garbage collection released 227.80 MB from 10027 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.80 MB from 12579 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.80 MB from 12369 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.80 MB from 12497 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.80 MB from 12589 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.80 MB from 13203 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+distributed.utils_perf - INFO - full garbage collection released 227.82 MB from 9235 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.80 MB from 11316 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.75 MB from 11679 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.79 MB from 12211 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+distributed.utils_perf - INFO - full garbage collection released 227.80 MB from 13189 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 237.68 MB from 13996 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.80 MB from 13213 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 237.71 MB from 13341 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+distributed.utils_perf - INFO - full garbage collection released 237.71 MB from 11994 reference cycles (threshold: 10.00 MB)
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:44564
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:44564
+distributed.worker - INFO -              nanny at:      198.202.112.231:44099
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-j9ky3dpr
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:38587
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:38587
+distributed.worker - INFO -              nanny at:      198.202.112.231:44470
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-o3wsxe5p
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:38587
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:33374
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:33374
+distributed.worker - INFO -              nanny at:      198.202.112.231:38799
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-lc0qwqv9
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -       Start worker at: tcp://198.202.112.231:40452
+distributed.worker - INFO -          Listening to: tcp://198.202.112.231:40452
+distributed.worker - INFO -              nanny at:      198.202.112.231:44537
+distributed.worker - INFO - Waiting to connect to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.worker - INFO -               Threads:                          1
+distributed.worker - INFO -                Memory:                    5.62 GB
+distributed.worker - INFO -       Local Directory: /home/georgeha/Repos/SciStreams/SciStreams/dask-worker-space/worker-zxemmirf
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:44564
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:40452
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Register tcp://198.202.112.231:33374
+distributed.worker - INFO -         Registered to: tcp://comet-14-01.sdsc.edu:8786
+distributed.worker - INFO - -------------------------------------------------
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:38587
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:44564
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:40452
+distributed.scheduler - INFO - Starting worker compute stream, tcp://198.202.112.231:33374
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+distributed.utils_perf - INFO - full garbage collection released 237.71 MB from 13599 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 237.67 MB from 11865 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/00000ee4.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/00000a54.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.82s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.87s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 2.95s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.core - INFO - Event loop was unresponsive in Worker for 3.47s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 217.93 MB from 33172 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 31130 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.71 MB from 30465 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 28250 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 31727 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.98 MB from 25202 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 26084 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.91 MB from 26695 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.92 MB from 31060 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 31201 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.98 MB from 31350 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 27529 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/000004b0.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 35731 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 33569 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 227.98 MB from 37769 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 227.98 MB from 38632 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 227.97 MB from 36113 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.98 MB from 35330 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 27842 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.80 MB from 10073 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 243.57 MB from 29900 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 238.27 MB from 27751 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 31242 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 228.77 MB from 26516 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/00000b55.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 455.65 MB from 38399 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 227.80 MB from 14026 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.98 MB from 29256 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 237.71 MB from 13702 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.71 MB from 33729 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 37247 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 244.40 MB from 28129 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 40849 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.93 MB from 39070 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 41419 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.92 MB from 26070 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 229.69 MB from 39389 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 33159 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 29745 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 30778 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 33940 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 36679 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 32231 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 436.13 MB from 35082 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 232.09 MB from 32369 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/statsmodels/compat/pandas.py:56: FutureWarning: The pandas.core.datetools module is deprecated and will be removed in a future version. Please use the pandas.tseries module instead.
+  from pandas.core import datetools
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:276: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:336: RuntimeWarning: invalid value encountered in less
+  y_origin[np.where(y_origin-bkgd < 0)[0]]
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/matplotlib/axes/_base.py:3449: UserWarning: Attempted to set non-positive ylimits for log-scale axis; invalid limits will be ignored.
+  'Attempted to set non-positive ylimits for log-scale axis; '
+distributed.utils_perf - INFO - full garbage collection released 455.59 MB from 43773 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 28828 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:442: RuntimeWarning: divide by zero encountered in double_scalars
+  ratio = np.sum(variance[wvar])/np.sum(bkgd[beam_stop_effect:end][wvar])
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 35479 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/00000ca9.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 227.97 MB from 29518 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 32540 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 217.93 MB from 37388 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 35728 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 29684 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 234.32 MB from 27746 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 33075 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 227.98 MB from 36609 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:442: RuntimeWarning: divide by zero encountered in double_scalars
+  ratio = np.sum(variance[wvar])/np.sum(bkgd[beam_stop_effect:end][wvar])
+distributed.utils_perf - INFO - full garbage collection released 217.97 MB from 28517 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 32759 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.04s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 237.88 MB from 30703 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 29042 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 236.97 MB from 34117 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.93 MB from 32290 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.88 MB from 25006 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.74 MB from 27037 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 27407 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 41475 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 36767 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 227.97 MB from 24989 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 37789 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 28800 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.88 MB from 31473 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 241.27 MB from 31252 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 219.93 MB from 28377 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 29690 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/00000611.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 29797 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 233.90 MB from 25831 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.05s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 37843 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 34874 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.04s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 26283 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 208.02 MB from 26158 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 28654 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 238.68 MB from 32029 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 38439 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 23746 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 43141 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.98 MB from 36856 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 32573 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 31387 reference cycles (threshold: 10.00 MB)
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/00000517.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:442: RuntimeWarning: divide by zero encountered in double_scalars
+  ratio = np.sum(variance[wvar])/np.sum(bkgd[beam_stop_effect:end][wvar])
+distributed.utils_perf - INFO - full garbage collection released 425.97 MB from 43953 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 38973 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 37419 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 37854 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 38780 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 38177 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 238.68 MB from 25895 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 34141 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 34205 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.88 MB from 38569 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.88 MB from 40710 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 30469 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 28184 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 41173 reference cycles (threshold: 10.00 MB)
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/000005cd.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 207.90 MB from 34493 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 653.81 MB from 34876 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 28337 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 37451 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 33896 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 38564 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.77 MB from 33431 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 35430 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 219.16 MB from 33338 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.74 MB from 30269 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 27951 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 236.52 MB from 35186 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 28693 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 32595 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.98 MB from 29874 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 230.60 MB from 30530 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 30069 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 32383 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.88 MB from 22942 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 28851 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/00000043.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 32116 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 34648 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 26487 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 38408 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 425.96 MB from 39012 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.98 MB from 33999 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 247.65 MB from 36516 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 207.90 MB from 31974 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 33899 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.01s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 435.74 MB from 44278 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 247.79 MB from 30139 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 188.35 MB from 26883 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.76 MB from 40131 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.93 MB from 30419 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 425.96 MB from 38603 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 32746 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.93 MB from 30624 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 41007 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:442: RuntimeWarning: divide by zero encountered in double_scalars
+  ratio = np.sum(variance[wvar])/np.sum(bkgd[beam_stop_effect:end][wvar])
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 31981 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 38862 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 24374 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 425.96 MB from 39539 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 30194 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 38853 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 45453 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 32054 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 37758 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 29476 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 33616 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.10s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 30568 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 247.65 MB from 27461 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 208.03 MB from 30000 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 229.06 MB from 30137 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.74 MB from 33091 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 28237 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 247.65 MB from 31261 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.74 MB from 31271 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 43427 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 38156 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.62 MB from 36826 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.74 MB from 39184 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 38699 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 48886 reference cycles (threshold: 10.00 MB)
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/00000c4f.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 34574 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 34940 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.05s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 38148 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.09s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 396.25 MB from 39748 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 31184 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 39775 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 208.16 MB from 32605 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 218.00 MB from 32164 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 40811 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 42534 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 42866 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 37247 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 34781 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/000007c9.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:442: RuntimeWarning: divide by zero encountered in double_scalars
+  ratio = np.sum(variance[wvar])/np.sum(bkgd[beam_stop_effect:end][wvar])
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 44025 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 50520 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 35945 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:442: RuntimeWarning: divide by zero encountered in double_scalars
+  ratio = np.sum(variance[wvar])/np.sum(bkgd[beam_stop_effect:end][wvar])
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 43541 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 208.03 MB from 41251 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.21s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 396.24 MB from 34027 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 45562 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.22s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 425.96 MB from 40202 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 35934 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 425.96 MB from 40205 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 28795 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 42044 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 219.16 MB from 31010 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 228.24 MB from 31405 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 36072 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 218.03 MB from 38187 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 43076 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 29240 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.93 MB from 41231 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:442: RuntimeWarning: divide by zero encountered in double_scalars
+  ratio = np.sum(variance[wvar])/np.sum(bkgd[beam_stop_effect:end][wvar])
+distributed.utils_perf - INFO - full garbage collection released 247.52 MB from 43027 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 29685 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 37181 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 41412 reference cycles (threshold: 10.00 MB)
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/00000aa6.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 37649 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 32830 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 34933 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.74 MB from 31224 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/00000b6b.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 227.71 MB from 34756 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 425.97 MB from 37426 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 31605 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 30398 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/000009da.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 37955 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 257.69 MB from 38031 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 34376 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 42146 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/00000573.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 236.52 MB from 31733 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.01s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 43016 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.01s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 455.68 MB from 42103 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.05s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 40631 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 396.25 MB from 43294 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 42145 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:326: RuntimeWarning: invalid value encountered in double_scalars
+  / len(local_std_gradeint[sel])
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 40254 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 43666 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.98 MB from 40984 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 425.84 MB from 40189 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 634.00 MB from 51228 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 44357 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 37416 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.07s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 396.25 MB from 39789 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.03s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 237.74 MB from 36355 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 426.10 MB from 45527 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.27s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 425.83 MB from 50371 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 425.97 MB from 42219 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 41642 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 43204 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.93 MB from 31136 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 39116 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 425.96 MB from 37221 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 30419 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 43434 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 33077 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 425.83 MB from 50546 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 45281 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 178.31 MB from 37684 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 238.55 MB from 34036 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:442: RuntimeWarning: divide by zero encountered in double_scalars
+  ratio = np.sum(variance[wvar])/np.sum(bkgd[beam_stop_effect:end][wvar])
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 40342 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 41623 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.94 MB from 44399 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:442: RuntimeWarning: divide by zero encountered in double_scalars
+  ratio = np.sum(variance[wvar])/np.sum(bkgd[beam_stop_effect:end][wvar])
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.17s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 386.34 MB from 44456 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 34091 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 37376 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 247.52 MB from 35347 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 396.25 MB from 45063 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.74 MB from 41929 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 37479 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.05s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 49987 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.02s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 237.75 MB from 39880 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.17s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 39977 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 425.96 MB from 51217 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 236.20 MB from 36636 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 426.90 MB from 42668 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:442: RuntimeWarning: divide by zero encountered in double_scalars
+  ratio = np.sum(variance[wvar])/np.sum(bkgd[beam_stop_effect:end][wvar])
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.05s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 42278 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.02s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 425.96 MB from 48370 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.24s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 41391 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 396.25 MB from 43324 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 427.55 MB from 48257 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.22s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 30682 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 396.25 MB from 38573 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.10s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 37930 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 54316 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 39847 reference cycles (threshold: 10.00 MB)
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/000000dd.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 47913 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.15s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 42833 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 41822 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 386.33 MB from 49044 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.19s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.31s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 178.45 MB from 36091 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 425.97 MB from 44707 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 246.54 MB from 42936 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:442: RuntimeWarning: divide by zero encountered in double_scalars
+  ratio = np.sum(variance[wvar])/np.sum(bkgd[beam_stop_effect:end][wvar])
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/000006b6.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 42127 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 35666 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 38380 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 634.00 MB from 48742 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.95 MB from 34593 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 426.10 MB from 51726 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.00s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 376.43 MB from 53205 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.34s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 435.74 MB from 47203 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.22s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 425.84 MB from 46468 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 37724 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.13s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 426.10 MB from 41549 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.12s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 45519 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:442: RuntimeWarning: divide by zero encountered in double_scalars
+  ratio = np.sum(variance[wvar])/np.sum(bkgd[beam_stop_effect:end][wvar])
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.18s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 455.69 MB from 55522 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.65s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 425.83 MB from 47982 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.22s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 425.97 MB from 43732 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.07s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 257.43 MB from 44626 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.28s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 237.74 MB from 40603 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 56697 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 386.34 MB from 56373 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.88 MB from 39868 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 408.55 MB from 44356 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 237.74 MB from 43989 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/00000c7d.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:442: RuntimeWarning: divide by zero encountered in double_scalars
+  ratio = np.sum(variance[wvar])/np.sum(bkgd[beam_stop_effect:end][wvar])
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/00000586.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 396.25 MB from 58054 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.30s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 425.84 MB from 45953 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 425.84 MB from 40610 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.35s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 50003 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 396.25 MB from 43178 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 233.32 MB from 36505 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 178.31 MB from 43662 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 41482 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 424.14 MB from 52417 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.84 MB from 38949 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 208.03 MB from 39501 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 247.65 MB from 40214 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.64 MB from 56755 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 44034 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.03s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 247.65 MB from 35619 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.06s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 376.43 MB from 41992 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.16s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 435.88 MB from 50275 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.15s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 634.00 MB from 54527 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 453.29 MB from 54211 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.31s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 653.81 MB from 51945 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.01s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 52861 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 46462 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 242.46 MB from 39138 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 396.25 MB from 48935 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.25s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 425.97 MB from 50162 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 219.62 MB from 37932 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 406.29 MB from 55765 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 48919 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.25s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 425.97 MB from 52260 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 407.09 MB from 57932 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 44323 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 198.12 MB from 39292 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 386.34 MB from 51158 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.15s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.03s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 46513 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.03s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 217.94 MB from 47952 reference cycles (threshold: 10.00 MB)
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:300: RuntimeWarning: invalid value encountered in less
+  bkgd_local_minimum = np.where(bkgd_turn < 0)[0] + beam_stop_effect
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:348: RuntimeWarning: invalid value encountered in greater
+  if np.size(np.where(variance > intensity_threshold)[0]) == 0:
+/home/georgeha/Repos/SciStreams/SciStreams/processing/peak_finding.py:355: RuntimeWarning: invalid value encountered in greater
+  inds = np.asarray(np.where(turn_v > 0))
+distributed.worker - WARNING -  Compute Failed
+Function:  primary_func
+args:      ({'data_folder': '/oasis/scratch/comet/georgeha/temp_project/images'}, ['/oasis/scratch/comet/georgeha/temp_project/images/0000008a.hd5'])
+kwargs:    {}
+Exception: IndexError('list index out of range',)
+
+distributed.utils_perf - INFO - full garbage collection released 445.78 MB from 46681 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 46529 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 227.85 MB from 38424 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 653.81 MB from 53390 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.00s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 179.18 MB from 41869 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.27s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.02s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 425.84 MB from 43778 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.33s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 44449 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.69s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 604.28 MB from 53713 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 49474 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.20s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 158.50 MB from 39862 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 594.37 MB from 61035 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 48668 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.23s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 376.43 MB from 52430 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.20s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 46567 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.41s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 396.25 MB from 47173 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 445.81 MB from 52176 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 396.25 MB from 55208 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.17s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 42746 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 52607 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 47931 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.12s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 435.87 MB from 45391 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 396.25 MB from 51188 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 50623 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 376.43 MB from 53890 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 435.74 MB from 43481 reference cycles (threshold: 10.00 MB)
+distributed.core - INFO - Event loop was unresponsive in Worker for 1.03s.  This is often caused by long-running GIL-holding functions or moving large chunks of data. This can cause timeouts and instability.
+distributed.utils_perf - INFO - full garbage collection released 416.06 MB from 50766 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 455.68 MB from 57762 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 425.98 MB from 53313 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 663.72 MB from 63230 reference cycles (threshold: 10.00 MB)
+distributed.utils_perf - INFO - full garbage collection released 396.49 MB from 51320 reference cycles (threshold: 10.00 MB)
+/home/georgeha/anaconda2/envs/scistreams/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+distributed.scheduler - INFO - Remove client Client-e0809838-5875-11e8-82a4-a0000a20fe80
+distributed.scheduler - INFO - Close client connection: Client-e0809838-5875-11e8-82a4-a0000a20fe80
+Killed by signal 15.
+distributed.scheduler - INFO - End scheduler at 'tcp://:8786'
