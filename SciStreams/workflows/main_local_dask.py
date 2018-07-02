@@ -63,6 +63,9 @@ import os
 import h5py
 # this splits images into one image to send to tasks
 def primary_func(data,files):
+
+    import os
+    os.chdir('/home/georgeha/Repos/SciStreams/SciStreams/workflows')
     
     futures = list()
     data_folder = data['data_folder'] 

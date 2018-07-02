@@ -3,12 +3,12 @@
 #SBATCH -J peakfinder             # Job name
 #SBATCH -o slurm.%j.out                  # STDOUT (%j = JobId)
 #SBATCH -e slurm.%j.err                  # STDERR (%j = JobId)
-#SBATCH --partition=debug
+#SBATCH --partition=compute
 # #SBATCH --constraint="large_scratch"
 #SBATCH --nodes=1                        # Total number of nodes requested (16 cores/node). You may delete this line if wanted
 #SBATCH --ntasks-per-node=24             # Total number of mpi tasks requested
 #SBATCH --export=ALL
-#SBATCH -t 00:30:00                      # wall time (D-HH:MM)
+#SBATCH -t 04:00:00                      # wall time (D-HH:MM)
 #SBATCH --mail-user=gc481e@scarletmail.rutgers.edu     # email address
 #SBATCH --mail-type=all                  # type of mail to send
 
@@ -34,9 +34,12 @@ for host in $hostnodes; do
     sleep 1
 done
 
+sleep 5
 echo "====-run script-===="
 
 ssh $SCHEDULER
 echo 'sshed scheduler'
-python $my_file.py --dask_client $SCHEDULER:8786
+python $my_file.py --dask_client $SCHEDULER:8786  --nodes 2  --images 2852
 echo 'script completed at '
+
+
